@@ -1,0 +1,974 @@
+See also TODO.txt
+Version 0.9.7:
+  * Releases no longer include sitecode.pl so new installations will
+    now need to create this file.  (You can start with a copy of
+    sitecode.pl.sample and customize it as needed.)  The former
+    inclusion of sitecode.pl was due to a bug in my release process,
+    wherein things happened in the wrong order.
+
+Version 0.9.6:
+  * Fixed a bug that prevented the generic "wherever" location from
+    working correctly with occasion hours.
+  * The month overview now sorts each day's bookings.
+  * The month overview now styles the bookings according to the
+    bgcolor for each resource (if that is set).
+  * When viewing a staff member's schedule, regular hours are sorted
+    by day of week, and exceptions are sorted chronologically.
+  * Separated program signup and staff schedules in the sidebar
+    (instead of being lumped together, they are each a section now;
+    this puts whitespace between them, making them easier to read and
+    distinguish quickly.
+  * Made slight improvements to formatreghours() and formatoccasion()
+    so staffschedule() can use them.
+  * Implemented "Partial Exceptions" -- special occasion hours that
+    do not replace regularly scheduled hours for that day.  Sites
+    upgrading from 0.9.3 or later will need to add this flag in order
+    to use it.  (For everyone else, create-tables.pl will do it.)
+  * Added customizaton guidelines to the POD.
+  * When viewing a staff member's schedule, you can now change the
+    start and end dates.  Thus you can now see what someone's
+    schedule was like last month or will be like next quarter.
+  * Fixed a bug that was causing regular hours not to be shown on a
+    staff member's schedule if they were scheduled to become obsolete
+    during the timeframe being viewed.
+  * Disabled stylesheets that were no longer being maintained.
+    You are still free to create your own stylesheets or to edit
+    the included ones.
+  * Added visual style section to the staff schedule sidebar.
+  * The admin and config interfaces now maintain persistent
+    variables (notably, usestyle).  So you don't lose your
+    light/dark/lowcontrast preference when you use them.
+  * On the staff schedule, styled the current day's bubble
+    to visually stand out.
+  * Fixed a bug in the variable-preservation code that was
+    causing useajax to gain extra copies of its value each time
+    the visual style was changed, which after a lot of successive
+    style changes could cause the URLs to be very long.
+  * Adjusted some visual styling on the edit-staff-hours form.
+  * Added the ability to have staff schedule flags that only
+    apply to exception/occasion hours (not to regular hours).
+  * While I was at it, I went ahead and added the ability to
+    have flags that only apply to regular hours (not to
+    exception/occasion hours).  None of the default flags
+    created by create-tables.pl make use of this, but per-site
+    flags can: in the resched_staffsch_flag record, the flags
+    field should have O for Occasion-only, R for Regular-only.
+  * Incidentally, for lack of a better place to document it, staff
+    schedule flag records can also be flagged P for partial-exception
+    behavior, S for Separate schedule entirely, A for Additional
+    schedule (but the hours with the flag still show up on the main
+    schedule also), X if the flag means the hours are canceled.
+  * Added the ability to cancel exception/occasion hours.  Sites
+    upgrading from 0.9.x may need to add an X flag to the
+    resched_staff_flags table in order to use this; for everyone
+    else, create-tables.pl will create one.
+  * When editing exception/occasion hours, it is no longer necessary
+    to set the date twice, unless it's different (or if you have
+    Javascript disabled).  Setting the starting date will
+    automatically set the end date to the same day.  (This does mean
+    that for multi-day schedule items, such as vacations, changing
+    the start date before you save means you have to enter the end
+    date again.  It's worth it to make the much more common cases
+    better.  The automatically-updated form element gets focus, to
+    improve the odds that the user will notice that it has changed.
+    Also, the autocopy will not happen if the dates were already
+    different the last time changes were saved.
+  * Commented out some obsolete debugging that was clogging the log.
+  * When viewing a staff member's schedule that you have permission
+    to edit (such as your own), if you are looking at past dates
+    when you click the Edit link, you now get an edit form that
+    includes the past dates.
+  * Improved the set of default staff schedule colors.
+  * Fixed a bug that prevented non-default visual style from
+    persisting when submitting intervalform.
+  * Fixed a staff schedule bug (in showinterval) that caused
+    very strange results if a site did not have any staff
+    schedule flags defined in a particular category (e.g.,
+    no separate-schedule flags).
+  * It is now possible to have staff schedule flags that
+    are not separate schedules (S) but do cause an additional
+    schedule (A).  The difference is, hours with such flags
+    will still show up on the main schedule; whereas, hours
+    flagged for a separate-schedule flag will not.
+  * Fixed a bug that prevented flags from being listed on regular
+    hours when looking at a single staff member's schedule.
+  * Added a config variable to suppress use of the location
+    field in staff schedule records.  May be useful if you
+    only have one location, or if your staff simply don't
+    want to be bothered with that information.
+  * When editing a staff member's schedule, regular hours are
+    sorted by day of week and occasion hours chronologically.
+  * On the staff schedule, multi-day special hours (e.g.,
+    for week-long vacations) now work.
+  * Galion only: added flags for OFF and Vacation, since
+    we are no longer using the location field.
+  * When looking at the schedule for a separate-schedule flag,
+    that flag is now suppressed in the display of each set of
+    hours, on the grounds that it is redundant.
+  * Implemented a unified editing form for regular and special hours.
+    It is no longer necessary to edit the regular hours, then go back
+    to the list of staff, find yourself, go into your schedule, click
+    Edit Exceptions...  You can edit the regular hours and the
+    exceptions all in one big happy form now.  (Limitation: if you
+    try to add more than 65535 timeslots at once to someone's regular
+    schedule, Undefined Behavior will ensue.)
+  * When viewing the schedule for a date range (this week, this
+    month, etc), each day separates any additional-schedule hours
+    into their own section for each additional-schedule flag, labeled
+    with the short description of that flag.  So e.g. if you have a
+    flag for circulation-desk hours, they'll be listed at the bottom
+    of each day's bubble, clearly labeled.
+  * The admin interface now allows editing the list of available
+    resource booking colors, in addition to assigning them to
+    individual resources.
+  * Fixed it so flags using a lowercase character are not confused
+    with uppercase-character flags, even if the database does
+    case-insensitive matching.
+  * Released 2014-April-07.
+
+Version 0.9.5:
+  * Created the first version of Galion-ReSched.POD, some rudimentary
+    POD documentation, mostly intended to help people find the
+    software on search.cpan.org.
+  * Adjusted the list of default staff schedule colors.
+  * Added to the resched_resources table a new field, bgcolor
+    (integer), which is a foreign key into the resched_booking_color
+    table.  Sites upgrading from an earlier version must add this
+    field in order to use it.
+  * Running create-tables.pl populates resched_booking_color with a
+    selection of default colors, similar to the ones in the default
+    stylesheets.
+  * With the above change, it is no longer necessary to manually edit
+    the style sheets just to assign background colors to resources.
+    Instead, you can now do this in the admin interface.
+  * The resource background colors in the default style sheets are
+    deprecated and will be removed in a future release.
+  * Automated the release process.
+  * Released 2014 March 18th.
+
+Version 0.9.4:
+  * If the user successfully logs in with a hashed password, any old
+    cleartext password is cleaned out.  In rare cases where this is
+    not wanted, it can be prevented by setting a new variable in
+    config.cgi
+  * If the user successfully logs in with a password that is stored
+    in cleartext, the password is salted and hashed and stored in the
+    database that way.
+  * Combining the above two changes means sites that had originally
+    deployed before password hashing was implemented can switch over
+    to all hashed passwords just by having everyone log in twice.
+    Note that authentication by IP address is unaffected, as no
+    password is used in that case.
+  * Whenever a user logs in, old expired login cookie records for
+    that user are cleared out.  This does not affect being logged in
+    on multiple computers at the same time with the same account,
+    since only expired sessions are cleared out.
+  * Fixed a bug in the staff schedule feature, wherein regularly
+    scheduled hours starting during the noon hour became corrupted
+    when saved.
+  * When looking at staff schedules, it is now possible to specify a
+    custom date interval.  (If it's more than one day, it will back
+    up the start of the interval until it's at the beginning of a
+    week.)
+  * A new config variable, staff_schedule_first_day_of_week, has been
+    added.  It defaults to 0 (Sunday), but for example if you want
+    your staff schedules to be shown corresponding to a
+    Thursday-through-Wednesday work week, just set this variable to 4
+    and Bob is your uncle.
+  * Some styling changes in the Staff Scheduling sidebar.
+  * Fixed a bug in the staff scheduling wherein, when the Add More
+    link was clicked while editing hours, only one set of hours could
+    be added (until you hit Save), because no new Add More link
+    appeared with the blank entry.
+  * Some minor visual style tweaks.
+  * Added the ability to easily edit the list of available colors.
+    Currently these colors are only used for the staff scheduling.
+  * Added a config variable to allow the shadow associated with staff
+    schedule name colors to be replaced with a solid opaque
+    background.
+  * Introduced a config variable for the salt length.
+  * The admin interface now has the ability to edit user records.
+    This has only been lightly tested; there may be bugs.
+  * Fixed a couple other bugs in the new staff schedule feature.
+  * Released 2014 March 14th.
+
+Version 0.9.3:
+  * Introduces the new "staff schedule" feature, a way to track
+    things like who is going to be around on any given day (and,
+    conversely, when is a certain person going to be here) and
+    who is going to be responsible for a particular station at
+    a particular time.
+  * For new installations, salt has been made a mediumtext field.
+    (Previously it was tinytext.)  Existing installations should
+    consider making this change as well.  In the future, this may
+    become important for security reasons.
+  * The salt generation code in create-user.pl now uses a larger
+    amount of salt than previously.  For now, it will still fit
+    in a tinytext field, for compatibility with older installations
+    that have not updated their database fields.
+  * Released 2014 March 4th.
+
+Version 0.9.2:
+  * If "Started Late" gets turned on by mistake, it can now be
+    unset simply by setting the late time to equal the starting
+    time of the timeslot.
+  * The "extend booking" link now passes an argument indicating
+    when the booking currently ends.  In the future this will be
+    used to detect if the same link is used more than once, but
+    I haven't implemented that part yet.
+  * Never released.
+
+Version 0.9.1:
+  * Bookings made with the small dyamic (AJAX) "quick" booking
+    form DURING the timeslot can now get their late-start time set
+    automatically to the current time when booked, if the new config
+    option automatic_late_start_time is enabled.  Bookings made before
+    the timeslots starts or after it ends are still treated as before,
+    and the long form still allows setting the late start time or
+    leaving it blank, as before.  The option defaults to off, which
+    preserves the 0.9.0 behavior.
+  * Prefixed the name of the software with the word Galion, to
+    make it easier to find via search engines.  I picked this
+    word because I happen to know it is not a competitive search
+    term, and because the software was developed here.
+  * Fixed a bug that caused the Started Late checkbox to default
+    to a checked state when it should not.
+  * Released 2013 April 10.
+
+Version 0.9.0:
+  * Month overview now lists which resources it's for at the top
+    of the page.
+  * Fixed a bug in config.cgi that did not allow markup in the
+    custom section of the sidebar.  (MOST config variables are
+    supposed to have entities encoded, but not that one.)
+  * Fixed a bug that prevented the redirect header and message
+    to the user from being sent in some cases.
+  * Added two new config variables to control the special case
+    of extending a booking past midnight.  By default, it is
+    now disallowed, as this results in less user confusion.
+    (An optimization prevents a booking that started on a
+    previous day from showing up on a day's booking schedule;
+    users think this means the resource should be available and
+    often become confused when told that it is already booked;
+    that message has the start date and time, but users don't
+    necessarily read that far.  If you enable booking past
+    midnight, you should inform your users about this.)
+  * Released 2013 March 05.
+
+Version 0.8.8:
+  * Dependency change: replaced Taint with Taint::Util, because
+    the latter consistently installs without force.
+  * Added flags field to the users table.  Sites upgrading from
+    earlier versions will need to add the field in order to use it, or
+    any features that rely on it.  So far the only flag with a defined
+    meaning is A, meaning admin; the user's account must have this
+    flag to use the new admin interface or the old config interface.
+  * Speaking of the new admin interface, this release introduces the
+    beginnings of that, with the ability to create and edit schedules
+    and resources.
+  * config.cgi now does entity encoding before storing information in
+    the database, rather than before displaying it.  (This makes
+    certain things easier for the new admin interface.)  If you
+    have HTML metacharacters (especially ampersands and
+    less-than signs) in any of your config values, you may need
+    to re-enter them in config.cgi and save your "changes".
+  * Introduced the errordiv() subroutine, to make construction
+    of user-visible error messages cleaner and more standardized.
+  * Repaired an omission to the always-closed-on-Sundays cleanup.
+    The collision detection code now respects daysclosed config.
+  * Released 2012 July 12.
+
+Version 0.8.7:
+  * Enhanced parsing of the showwith field to allow category names.
+    This also enhances the ability to list resources in an order
+    other than by database ID (if category showwith is in effect
+    and the resource just booked is itself listed in the category).
+  * Enhanced parsing of the switchwith field to allow category names.
+    The item itself is automatically excluded (since switching a
+    resource with itself would be a no-op, and having the option
+    listed would confuse people).
+  * For both showwith and switchwith, if you leave it blank but
+    have categories defined, you get the first category that
+    contains the just-booked resource by default.  This makes
+    category maintenance easier when you add new resources or
+    phase out old ones.
+  * Always being closed on Sundays is no longer hardcoded.
+    You can set your always-closed days of the week in
+    config.cgi.  (Sundays are the default.)
+  * Closing times are no longer hardcoded (and the defaults
+    have changed).  You can set them via config.cgi.  There
+    is also a provision for opening times (although note that
+    individual schedules can override that).  Setting closing
+    times earlier than the opening times (either the global
+    or schedule ones) will result in "undefined behavior",
+    so don't do that.
+  * Name order for normalization is now configurable, and
+    the default for program signup lists has changed.  The
+    default for normal booking contexts is the same as before.
+    Note that site code for additional normalization is still
+    called after order normalization, so it may receive
+    different input than before, depending on your config.
+  * Added a notes field to the resched_program table.  Sites
+    upgrading from 0.8.x will need to add this field in order
+    to use it.
+  * Released 2012 June 28.
+
+Version 0.8.6:
+  * Persistent variables are handled better.  They will now only
+    appear in query strings (and forms) when set, and individual
+    variables can be excluded from persistence in certain cases (such
+    as when user input is expected to change them).  This allows a
+    larger number of variables to be made persistent with as few
+    maintainability implications as possible.  Because of the
+    pervasive nature of this change, I expect to find some bugs.
+  * Fixed a typo in config.cgi that caused it to set the wrong
+    variable for config_seconds.
+  * Started work on allowing categories to list resources in an order
+    other than the default.  (Currently, the default order is sorted
+    by database id.)  More work is required to fully complete this
+    capability.
+  * Frequent user lookup now uses the configurable categories.
+  * Added a couple of resources to the default stylesheets.
+  * Names on program signup lists are now normalized and dealiased.
+  * Released 2012 Jun 25
+
+Version 0.8.5:
+  * Added a config variable that lets you set the number
+    of seconds after a successful signup before the
+    automatic redirect to a fresh copy of the form.
+  * Added redirects to the program signup facility.
+    Uses the same url_base and redirect_seconds config
+    variables as the main resource booking facility's
+    redirects.
+  * Fixed a bug in the create-user.pl script that caused
+    password hashes to be generated incorrectly when salt
+    was in use, preventing the user from logging in.
+  * Introduced a simple script that can be run from a cron
+    job to clean out old expired auth cookies if desired.
+    Currently this feature is untested.  (It's also no
+    longer really needed as of version 0.9.4., q.v.)
+  * Fixed a bug in program signup that caused incorrect flag
+    inheritance and could potentially have caused other bugs
+    down the line.
+  * Cleaned up the rest of the "\"escaped\" double quotes".
+  * Refactored alias search to a subroutine, aliassearch(),
+    to make the main if/elsif/elsif section (of index.cgi)
+    easier to follow.
+  * Refactored room overview (i.e., calendar view) to
+    a subroutine, "overview", for the same reason.
+  * Refactored makebooking() out to a subroutine, for
+    the same reason.  Also, made makebooking() more
+    readable by factoring out assemble_extranotes()
+  * Refactored viewbooking() out to a subroutine.
+  * You can now specify a custom bookmark icon via config.cgi
+  * Released 2012 June 11.
+
+Version 0.8.4:
+  * Fixed a bug that prevented the booking schedule from
+    displaying if there was a booking that started too early.
+  * It is now possible to view a program signup list in
+    the order in which they signed up.  (Alphabetical by
+    last name is still the default.  To see the list in
+    signup order, click the # at the head of that column.)
+  * Setting program flags at program creation time now works.
+  * Made one very small Galion-specific change to smooth the
+    upgrade process for us.
+  * Added salt field to users table.  Sites upgrading from
+    an earlier version must add the field (tinytext) if 
+    they want to use it.
+  * Added a create-user.pl script to assist with creating
+    user records, so you don't have to mess around with
+    salt generation and password hashing and whatnot.
+  * Marked the first column on program signup sheets as
+    numeric, so that the numbers are right-aligned.
+  * Made the default sort on program signup sheets
+    case-insensitive.
+  * Released 2012 Jun 05
+
+Version 0.8.3:
+  * Fixed a bug that caused programs to disappear from the
+    list when their start time passed, rather than when their
+    end time passed.
+  * It is now possible to go back and look at the signup
+    sheets for past programs.
+  * Program flags can now be edited.  This includes cancelation.
+  * Implemented the ability, when listing programs, to include
+    canceled ones.
+  * Signup sheets for past and canceled programs now inform
+    you of this fact rather than naively offering to let you
+    sign up more people.
+  * Fixed a bug in config.cgi that caused variables set to
+    zero to revert to their nonzero defaults the next time
+    the configuration utility is used, unless the user
+    changed the value again.
+  * Added preliminary support for program signup limits and
+    waiting lists.
+  * This release adds a "signuplimit" field to program table.  Sites
+    upgrading from 0.8.0 through 0.8.2 will need to create this field
+    (integer) in order to use it.  (If you upgrade from any release
+    prior to 0.8, create-tables.pl will handle it.)  This field allows
+    you to place a limit on how many people can sign up for a given
+    program.  0 means infinity, which is the out-of-the-box default,
+    but you can set a per-site default via config.cgi
+  * Released 2012 May 31
+
+Version 0.8.2:
+  * List of programs (for program signup) is now sorted.
+  * When you click "List of programs", you get up to a hundred;
+    the sidebar is still limited to max_sidebar_programs.
+  * Added config variables allowing programs in the sidebar
+    to list date and/or time.
+  * Fixed oversight in twelvehourtimefromdt() that caused a colon
+    to be used when it shouldn't be ("7:pm" instead of "7pm")
+  * Released 2012 May 29 and deployed in Galion.
+
+Version 0.8.1:
+  * You can now go back and edit a signup list entry.
+  * You can also go back and edit the details for a program.
+  * If people who have signed up for a program cancel, you can
+    now mark them canceled.  Canceled signups do not show on the
+    signup sheet by default nor are included in the count.
+  * Introduced generalized infrastructure for handling flags
+    on the various program-signup-related records.
+  * Certain program category flags are inherited by programs,
+    and certain program flags are inherited by signups.
+  * Fixed a couple of oversights wherein the new program signup
+    facility did not always preserve the user's choice of visual style.
+  * Minor stylesheet improvements, to the three main stylesheets,
+    e.g. to provide clear visual separation of program-signup lines.
+  * Deployed in Galion, 2012 May 24.  Never released to the public.
+
+Version 0.8.0:
+  * Introduced the program signup facility.  This is very basic,
+    but I'm planning some improvements to it soon.
+  * Cleaned up more "\"escaped\" quotes", this time in the sidebar.
+  * Introduced some new AJAX functionality.  Not all of it ended
+    up being used currently, as I found entirely client-side ways
+    of doing something that was going to involve the server.
+  * Separated out the AJAX support code from index.cgi to ajax.pl
+    and added support for the new functionality.
+  * Made the AJAX support code more general and more maintainable.
+  * Made some changes to ajax.js to get fewer warnings from JSLint.
+    More of this is needed (although, some of its warnings seem
+    entirely specious to me).
+  * Released 2012 May 22.
+
+Version 0.7.9:
+  * Fixed a bug in the recurring-booking code, which was causing the
+    "dates listed below" option to only allow two dates and leak HTML.
+  * capitalize() now handles given names differently from surnames,
+    so that names like "Vanessa VanMeter" can be handled correctly.
+  * Fixed a bug that was preventing capitalize() from correctly
+    handling apostrophized surnames (e.g., O'Reilly) and generalized
+    it to handle non-Irish ones (e.g., D'Alsenin).  Note that only
+    the standard ASCII apostrophe is supported at this time; if your
+    apostrophized surnames have exotic unicode apostrophe characters
+    (or, heaven help us, Microsoft SmartQuotesTM), it still won't
+    work quite as you might want.  If someone wanted to fix this,
+    the place to look would be on line 100 in include.pl (as of
+    version 0.7.9; one supposes the line number will change in
+    future releases).
+  * Cleaned up more "\"escaped\" quotes", this time in the view
+    code and also in datetime-extensions.pl
+  * Removed include.pl.old, which hasn't been used for a while.
+  * Factored out the $input{view} code to sub doview().
+    Much more refactoring of this type is needed.
+  * Released on 2012 April 4th.
+
+Version 0.7.8:
+  * Introduced the "favicon", resched.ico.  Individual sites can
+    of course customize or replace this icon.
+  * create-tables.pl no longer creates the deprecated plain-text
+    password field, only the hashedpass field.  The password field is
+    FOR NOW still supported, for backward compatibility, but sites
+    should go ahead and fill in the hashedpass fields for all users,
+    because cleartext password storage will become unsupported in a
+    future release.
+  * Cleaned up a bunch of backslash-intensive string quoting in
+    auth.pl, for improved code legibility and maintainability.
+  * Also cleaned up some of the backslash-intensive quoting in
+    the code that shows a booking; it still needs more.
+  * Added a variable (to config.cgi), show_booking_timestamp.
+    If this is set, the code that shows a booking will now
+    show the timestamp.
+  * Enhanced capitalise() to correctly handle names like O'Reilly and
+    O'Neal.
+  * Released 2010 June 17.
+
+Version 0.7.7:
+  * Introduced sitecode.pl for holding site-specific code.  The main
+    codebase will include hooks for some of this.
+  * Moved site-specific aspects of name normalization into sidecode.pl
+    and made some slight adjustments for Galion.
+  * Added preliminary support for the Combine Rooms feature (bug 199).
+    Note that if you are upgrading from an earlier version, you will
+    need to add the combine field (tinytext) to the resched_resources
+    table before you can use it.  The field holds a comma-separted
+    list of the record id numbers of the other rooms you want to
+    be able to book together with the one in the current record.
+  * Fixed the Choose Resources & Dates list to be generated from
+    include::categories (previously it was hardcoded).
+  * Introduced some (technically redundant) clarifications to the
+    blackonwite stylesheet to compensate for bugs in IE7 (probably
+    also IE6) that were causing illegibility.  I believe this makes
+    the thing mostly usable with IE7, though getting the AJAX-based
+    "Quick" feature to support IE is still on the TODO list.
+  * Repeat the default alternate stylesheet at the end of the list
+    of alternatives, so that IE6/7 will give it priority.  This is
+    still far short of real alternate stylesheet support, but hey,
+    it's not my fault you're using an old version of the worst
+    browser available.  At least now IE7 users will have *some*
+    flexibility when it comes to visual styling.  Incidentally,
+    this workaround probably violates the spirit of some RFC or
+    another, but it doesn't seem to bother Gecko.
+  * Released 2009 April 20.
+
+Version 0.7.6:
+  * Introduced the nonusers variable, to allow the site
+    admin to customize which special names resources can
+    be booked for that won't count toward usage stats.
+  * The "available" link (shown when a booking is done
+    early but has no followup) now indicates the time
+    that the resource became available.
+  * The capitalise routine now correctly handles roman
+    numerals up through VIII (if they appear as a word
+    by themselves, not embedded in a name).  Is this
+    enough, or should it go clear to Louis XVI?
+  * Initial support for hashed passwords (md5_base64).
+    This adds Digest::MD5 to the list of required
+    modules, but it's worth it.  If a user's record
+    has the hashedpass field set, this is checked
+    instead of the password field.  It is recommended,
+    that you clear the password fields of all user
+    records to NULL after setting the hashedpass values.
+  * Note that if you are upgrading from an earlier
+    version, you will need to add the hashedpass field
+    (tinytext) to the users table before you can use it.
+  * Released 2009 February 16th, and also deployed in Galion.
+
+Version 0.7.5:
+  * Changed the default stylesheets.  In Galion this means
+    children's-room computers are now more visually distinct from
+    adult-department computers, which will be important with the
+    categories we will be using now.  Of course, any other
+    site will probably want to edit the stylesheets anyway.
+  * Added the flags field (tinytext) to the resources table.
+    NOTE:  if you upgrade from a previous version, you need
+    to alter the table to add this field.
+  * The R flag will mean "this resource is a meeting room".
+  * The X flag will mean that the resource should not be
+    included in automatically generated lists, e.g., in the
+    sidebar.  So, for instance, if you have a phony room in
+    your practice zone that you use for testing the software,
+    you can get it excluded from the sidebars by giving it
+    this flag.  Similarly, if you don't have categories set
+    up, you can stop a certain resource from appearing under
+    Today and These Same Days by giving it the X flag.
+  * All other characters (as flags) are reserved for now:
+    lowercase letters for site-specific use, and all
+    other characters for future use in the main codebase.
+  * Updated isroom to look at the R flag.  (Previously the
+    list of room resources was hardcoded.)
+  * Changed out the hardcoded rooms-related parts of the
+    sidebar to take advantage of the above generalizations.
+    So now if a site sets the R flag on their room resources,
+    these parts of the sidebar are automagically generated.
+    Adding the X flag as well causes exclusion.
+  * Released 2009 January 21, and also deployed in Galion.
+
+Version 0.7.4:
+  * Updated the magic page titling to take account of
+    the new categories system.  (Still need to do the
+    isroom stuff, though.)
+  * Fixed a minor bug in include::categories that the
+    above work exposed.
+  * Deployed in Galion.  Didn't bother with a public
+    release of this version, because I just did 0.7.3,
+    and there'll be more changes coming anyway.
+
+Version 0.7.3:
+  * Fixed a glitch in RELEASE.txt so that the public demo
+    will be put back in working order after each release.
+  * Fixed an obscure bug (198) that triggered when a booking
+    was cancelled after it had been finished early and
+    a followup booking placed, wherein the followup
+    booking became orphaned (and thus invisible), which
+    caused problems.  For now you just get an error message
+    if you try to do this, because I can't think of a
+    legitimate use case for wanting to cancel a booking
+    that has a followup.  If someone actually needs to be
+    able to do that, it can be changed to clear the 
+    isfollowup field on the followup booking, instead
+    of giving the error message.  The code to do that
+    would go where the error message is now.  But unless
+    someone asks for it, I don't see the point.
+  * Galion only:  added booking guidelines link to
+    the sidebar.  This was done via the existing config
+    mechanism for adding things to the sidebar, so it
+    has no impact for any other site.
+  * Did some much-needed refactoring on the stats gathering
+    to get it into a more maintainable state, so I can
+    work with it better.  (This is in preparation for
+    making the stats that can be gathered more flexible.)
+  * Introduced the categories variable, which is now used
+    for subdividing the statistics, and in the sidebar
+    under Today and also This Same Day / These Same Days.
+    The default is for each resource to be its own category,
+    which will do fine if you have only a very small number
+    of resources.  Larger installations will want to
+    specify categories.  Added the variable to config.cgi.
+  * Released publically 2009 January 16th.  Held off on
+    Galion deployment because it was Friday.
+
+Version 0.7.2:
+  * Fixed a number of markup issues per validator.w3.org
+    recommendations:
+    * Added xmlns attribute to html element.
+    * Fixed a couple of malformed comments.
+    * Changed a span to a div in several places so that the
+      block-level ul element would be allowed inside it.
+    * Got rid of all instances of the nobr element, which
+      is not defined in xhtml.  Replaced with a styled class.
+  * In the course of those modifications, I banged into the
+    "annoying \"escaped\" quotes" issue several times and
+    refactored to a more maintainable style.  More of this
+    still needs to be done.
+  * Changed script tag from self-closing to paired open/close
+    style.  This is theoretically incorrect (it's an empty
+    tag pointing to an external script file via src attribute),
+    but it appears to be necessary for MSIE support.
+  * Speaking of which, MSIE now _partly_ works.  For full
+    MSIE support a legacy stylesheet is needed and maybe
+    some updates to the AJAX stuff.
+  * Released publically and deployed in Galion, 2008 Aug 29.
+
+Version 0.7.1:
+  * removed FormInput.pm, which was no longer being used
+    by anything.  (See the note in 0.7.0 about why.)
+    I am pretty sure that's finally the last of the old
+    Class::DBI stuff.
+  * Created RELEASE.txt with notes on doing a public release.
+  * Deployed in Galion, 2008 Aug 26.  This version was never
+    released publically, because it didn't have enough
+    changes over 0.7.0 to bother.
+
+Version 0.7.0:
+  * Removed DBConfig.pm, which was no longer being used by
+    anything.  (Actually, I think DBConfig.pm and Auth.pm
+    may have only ever been used by the 'events' stuff,
+    which is no longer even used in Galion and was never
+    a part of the public release in any case.)
+  * Removed Class::DBI from the list in INSTALL.txt,
+    since it was only needed for the aforementioned
+    removed stuff.
+  * Added the ils_name variable, which is used in two places
+    (both having to do with aliases -- the canonical name
+    should be spelled the same way as in the ILS).
+  * config.cgi now displays the variables in a logical
+    (rather than alphabetical) order.  Also, most of the
+    included stylesheets now put a visible border between
+    them, so that the user can more easily tell where the
+    explanation for each one ends and the next begins.
+  * Made time_zone a variable (previously it was hardcoded).
+  * Corrected a statement in TODO.txt regarding what would
+    be needed for Postgres support.
+  * Released 2008 August 5 (yes, two releases in one day).
+
+Version 0.6.9:
+  * Added the misc_variables table, for storing variables that
+    are specific to a particular site.
+  * Added the getvariable and setvariable routines to db.pl
+  * Added config.cgi to make it easier to set up these variables.
+    The sysadmin can always chmod -x it if he's worried about
+    users messing it up. (Note: this is no longer necessary as
+    of version 0.8.8, q.v.)
+  * Added support for the following variables:  sysadmin_name,
+    url_base (but, ajax.js still has it hardcoded), and
+    sidebar_post_today
+  * Removed Auth.pm, which, as it turns out, nothing is still
+    using at this point.
+  * Added the auth_by_ip table, with support in auth.pl
+  * Updated INSTALL.txt to account for the above changes.
+  * Released 2008 August 5.
+
+Version 0.6.8:
+  * Factored the AJAX javascript out to ajax.js, in preparation for
+    working in the forum software version's improvements (e.g., to
+    support MSIE).  Did not actually do that yet, this is just a
+    preparatory step.
+  * Added INSTALL.txt with basic install instructions.  These have
+    not yet been tested but should be a real good starting point.
+  * Released 2008 August 1.
+
+Version 0.6.7:
+  * Removed %fieldname from include.pl (a holdover from the
+    inventory tracking tool, which somehow got carried over,
+    discovered when I was sanitizing the resched code for
+    public distribution).
+  * Removed some things that were highly specific to the Galion Public
+    Library, in preparation for public release.
+  * Released 2008 July 31.
+
+Version 0.6.6:
+  * Fixed a long-standing bug in usersidebar that was causing
+    the This Same Day section to appear whenever the date
+    being viewed defaulted to the current date (by not being
+    specified in the query args).
+  * Deployed 2008 July 24.
+
+Version 0.6.5:
+  * Made houroptions put "am" on morning hours, per the request
+    of the downstairs staff, see bug 187,
+    http://localhost/bugzilla/show_bug.cgi?id=187
+  * Changed the list of links under This Same Day / These Same Days.
+    Instead of listing individual resources (which you can get
+    anyway by clicking the column headers) it now lists only the
+    broad categories.  This makes the list considerably shorter,
+    which pulls Today above the fold in most cases.  See bug 167.
+  * Deployed 2008 July 21.
+
+Version 0.6.4:
+  * The table is now preceded by a line that tells the current
+    time on the server.
+  * added washbookingrecord() to db.pl to clear up persistent 
+    bug wherein fromtime_datetime and util_datetime didn't
+    get cleared out of a record before updaterecord was called,
+    resulting in error messages about not being able to update
+    the non-existent field.
+  * Deployed 2008 June 27.
+
+Version 0.6.3:
+  * When a booking is created, the bookedfor name _as typed_ is
+    preserved in the notes, in parentheses, if it does not match
+    what actually goes into the bookedfor field (e.g. due to an alias).
+  * Adjusted the wording in a couple of error messages.
+  * Updated handleResponse to call retrieveupdates() if it gets
+    an updatecount element in the response.  Note that the retrieveupdates()
+    function is NOT defined in include.pl, as it might be different depending
+    on the page that is being updated.
+  * If dynamic-info.cgi gets an updates-p request, it checks for
+    updates.  If there are any, it sends an updatescount element.
+    Otherwise it sends a success element saying there are none.
+    (No action needs to be taken in the latter case.)  Note that
+    the only kind of new updates checked for at this point are
+    new bookings.  Changes and cancellations are not considered.
+  * When index.cgi generates a view page, it includes a suitable
+    retrieveupdates function and calls window.setInterval to issue
+    an asynchronous updates check request every two minutes.
+  * The net result of all that is that if a new booking is
+    created for one of the resources that you're currently
+    looking at on a view page, within two minutes you'll
+    get an updated view even if you don't do anything.
+  * Deployed 2008 Mar 18.    
+
+Version 0.6.2:
+  * Fixed a bug in frequent user lookup that was causing no records to be
+    found when restricting to certain resources (as opposed to "anything").
+  * Added meta-counting to frequent user lookup, which is useful when
+    you're looking up people who booked at least 1 times (e.g., for
+    statistical purposes).
+  * Added link in the sidebar to the QuickNet control facility.
+  * Deployed 2008 Mar 07.
+
+Version 0.6.1:
+  * Added funwithfont.css, which uses different fonts for different resources.
+    This is intended solely for my own use, since I normally keep page colors
+    disabled, so I otherwise miss the benefits of the new style system.
+    Note that many of the fonts it uses are obscure and unlikely to be
+    installed on other systems, but they are available on my workstation.
+  * Fixed a bug in usage stats gathering.  (It was failing to take account
+    of the added internet station and the accompanying renumbering.)
+  * When a booking is successfully extended, a redirect header is issued
+    with a thirty-second delay, so that somebody won't walk up to the
+    computer minutes later, hit reload, and extend the booking _again_
+    without meaning to do so.  (If they _intend_ to extend it again, the
+    extend link should still be there.)
+  * Fixed extendbooking to kludge %input better so that the correct day's
+    table is displayed if a non-today booking is extended.  (I was noticing
+    this when extending computer class bookings.  I suspect none of the
+    other staff were seeing it, because it's a real corner case.  Anyway,
+    it's fixed now.)
+  * If a name _has_ aliases, this fact is displayed on the booking edit
+    form, linked to an alias search that will display them.
+    http://10.0.0.21/bugzilla/show_bug.cgi?id=159
+  * Deployed 2008 February 22.    
+
+Version 0.6.0:
+  * More double-quote refactoring.
+  * Improved the alias search so that it finds more results.  In particular,
+    it now always does a substring search (rather than trying an exact match
+    search first and stopping if successful).  Also, it looks in the canon
+    field, as well as the alias field, and unifies the results.
+  * Refactored search-results generation out to a subroutine, searchresults,
+    to get that logic out of the big elsif($input{foo}) chain.  There are
+    some other things too that need to be refactored out of there to their
+    own subroutines, but that was the first one.
+  * Refactored alias updating out to the updatealias subroutine.
+  * Moved isalias, dealias, normalisebookedfor, and capitalise into include.pl
+    As a result they are now in the include:: namespace, but also they are now
+    accessible to dynamic-info.cgi
+  * showbooking in dynamic-info.cgi now normalises (etc) the bookedfor field.
+  * Implemented AJAXified done-early feature.
+  * Followup bookings now have the name normalised and dealiased.
+    This was neglected previously.
+  * Added a couple of testing options to the Special Testing Zone.
+  * Cleaned out some old debugging cruft that's no longer needed.
+  * Cleaned out references to stylepics, which is no longer needed since
+    the stylesheet overhaul.
+  * Booking search results now use resource classes (res16 etc),
+    so they get the styling.  I added styles for the practice zone
+    resources.
+  * Deployed 2007 Dec 27.
+
+Version 0.5.9:
+  * Worked some more on the quoted-string refactoring (see under the
+    changes for version 0.5.6).  Still need to do more of this.
+  * Added UI for creating a new alias, in the Aliases sidebar section.
+  * Added "mark this name as an alias" link next to bookedfor on the
+    view/edit booking screen, if the name is not already an alias.
+    (If it is already an alias, then that information is displayed,
+    with a link, since version 0.5.3, and I didn't change that.)
+  * Moved the sanity-check logic for aliases into a subroutine,
+    sanitycheckalias, which is now called from two places.
+  * Deployed 2007 December 19.
+
+Version 0.5.8:
+  * Based on feedback from Darlene, made Low Contrast the default.
+  * Deployed 2007 Dec 11.
+
+Version 0.5.7:
+  * Jill wanted a lower-contrast variant of darkonlight, so I created the
+    Low Contrast style.
+  * Deployed 2007 Dec 11.
+
+Version 0.5.6:
+  * Totally overhauled the stylesheet system.  The new system, among other things,
+    uses color to create visual cues for distinguishing different resources.
+    It's also simplified.  There are four choices of style:  light on dark,
+    dark on light, black on white, and browser colors.  Printing uses a variant
+    of black on white with certain navigational features set to display: none.
+  * Fixed a minor bug on the overview so the room name and first word of the
+    bookedfor don't runtogether.
+  * Replaced some "\"regular\"" double-quoted strings with qq["quote-like"] ones,
+    to get rid of all the backslashing.  Still need to do more of this.
+  * Fixed a bug in the authentication used by events.cgi
+  * Created v2 of the blue down-arrow for extending bookings.  v2 has better
+    contrast against the new blue-background styles for internet resources.
+  * Deployed 2007 Dec 11.
+
+Version 0.5.5:
+  * Added leobardis (large print internet).
+  * Deployed 2007 Dec 10.
+
+Version 0.5.4:
+  * Bookings search now looks under all aliases, plus the canonical name.
+  * Fixed Did You Mean feature to ignore 'CLOSED', which has special meaning.
+  * Deployed 2007 Nov 13.
+
+Version 0.5.3:
+  * Created sub capitalise to replace the ad-hoc split/map/join name capitalization.
+  * Added a line to sub capitalise to bicapitalize McNames, MacNames, and VanNames.
+  * When showing a booking, if the bookedfor is an alias, this is noted, with a link
+    to the alias record.
+  * Added alias record display, with an Edit link.
+  * Added alias edit functionality, with ability to save changes, subject to sanity checks.
+  * Added alias search to Search section of sidebar
+  * Created Aliases section of sidebar, which for now just also has alias search,
+    but this is where stuff like creating a new alias can go.
+  * Deployed 2007 Nov 13.
+
+Version 0.5.2:
+  * Created the new resched_alias table and moved the contents of %alias there.
+  * Altered sub dealias to use the resched_alias table rather than the hash.
+  * Created sub isalias, using the resched_alias table, to replace other
+    uses of the hash where dealias is not suitable.
+  * Tested: frequent user lookup still works correctly.
+  * Tested: booking the jukebox for an alias results in the canonical name
+    being shown, as it should.
+  * Fixed a long-standing minor bug that caused an extraneous message to be
+    output when deleting a non-followup booking.
+  * The view table cells now normalise and dealias the bookedfor names.
+  * When search returns a booking where bookedfor is an alias, it now
+    also gives the canon in parentheses.
+  * Deployed 2007 Nov 7.
+
+Version 0.5.1:
+  * Added [another patron] to %alias
+  * Not sure I ever deployed this version.
+
+Version 0.5.0:
+  * Fixed a bug in Automatic single-choice Did You Mean corrections.
+  * Deployed 2007 July 27.
+
+Version 0.4.9:
+  * Made debug comments in usage stats only occur if $debug is >1.
+  * Deployed 2007 July 25.
+
+Version 0.4.8:
+  * If there's only one Did You Mean choice, don't ask, just do it.
+  * Deployed 2007 July 23.
+
+Version 0.4.7:
+  * Added some more entries to %alias.
+  * Added multiple choice Did You Mean for single-word names per bug 77.
+  * Deployed 2007 July 13.
+
+Version 0.4.6:
+  * Added first part of the "Did You Mean" feature, per bug 77.
+  * Deployed 2007 July 11.
+
+Version 0.4.5:
+  * Added [another patron] to %alias.
+  * Search was returning results in forwards chronological order,
+    which now that we've been using the software for a while was
+    starting to feel wrong, since all the first results were
+    typically ancient history.  So I reversed it.
+  * Deployed 2007 May 30.
+
+Version 0.4.4:
+  * Made search and frequent user lookup ignore case.
+  * Made frequent user lookup normalize names (from "last, first"
+    to "first last", remove parenthesized "IN" notes, and so forth).
+  * Introduced %alias.  For the moment, frequent user lookup is the
+    only thing that uses it.
+  * Deployed sometime in 2007Q1 IIRC.
+  * Redeployed May 29 with minor fix to accommodate changes in our
+    network infrastructure: Use $ENV{HTTP_HOST} instead of
+    $ENV{SERVER_ADDR} when composing the base URI, since staff now
+    access this service through NAT.  Did not increment the version
+    number, partly because I was in a hurry.
+
+Version 0.4.3:
+  * Notes icon is now shown for followup bookings that have notes.
+  * Fixed a bug wherein deleting a followup booking left the parent
+    booking with an invalid followedby field, resulting in the
+    inability to schedule anybody else in that timeslot.  Now
+    deleting a followup booking changes the parent record to not
+    list a followup, so that a new one can be added if needed.
+  * Deployed 2006 Nov 06
+
+Version 0.4.2:
+  * Changed sendnewbookingform (in dynamic-info.cgi) so that if the
+    full durationmins is not available the default is to book
+    intervalmins rather than durationmins.  This reduces the
+    likelihood that the user will have to change the end time.
+  * Modified the index to apply the class dateth or todayth to the
+    date cells in the table header, depending on whether it matches
+    the current day or not.  Styled dateth to stand out visually
+    (black on yellow, with black border and yellow outline).
+  * Deployed 2006 October 9 (yeah, two updates on the same day).
+
+Version 0.4.1:
+  * Fixed a bug in sendnewbookingform (in dynamic-info.cgi) that had
+    prevented the Quick button from returning a usable form when there
+    was less than durationmins available.
+  * Changed showbooking (in dynamic-info.cgi) so that the done-early link
+    is not shown in situations wherein the booking might extend beyond the
+    table cell where it is currently shown.
+  * Deployed 2006 October 9.
+
+Version 0.4.0:
+  * This was the first version robust enough that we used it for
+    months with no changes.
+  * Consequently, it was _after_ this version that I instituted the
+    CHANGES.txt file.

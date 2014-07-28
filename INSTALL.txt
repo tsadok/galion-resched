@@ -1,0 +1,104 @@
+Perhaps eventually there could be an install-and-configure script, but
+for the time being this is just an attempt to document what needs to
+be done when installing this software.
+
+ 1. Unzip the downloaded Galion ReSched software in a suitable location.
+    Issue any necessary chmod commands to ensure that the web server
+    user can access the files and execute the cgi scripts.  For
+    security reasons, it is important to ensure that dbconfig.pl
+    cannot be directly accessed by web users.  (If .pl is associated
+    with cgi execution, chmod ugo-x dbconfig.pl should do this.)
+
+ 2. Ensure that you have the prerequisite software installed.
+   * You need an RDBMS.  At this time MySQL is the only one supported,
+     though it would probably only require minor changes (mostly in
+     db.pl) to support Postgres or any other reasonably capable DBMS.
+   * You need a web server, of course.  I've only tested with Apache.
+     The web server must be configured to serve out the directory
+     where you unzipped resched, and the .cgi extension must be
+     associated with perl (or may use shebangs if /usr/bin/perl
+     is the correct path to perl on your system).
+   * Speaking of which, you need perl, and at least the following
+     modules (available from the CPAN): DateTime, DateTime::Span,
+     DateTime::Format::MySQL, DBI, DBD::mysql, Carp, Digest::MD5,
+     HTML::Entities, Taint::Util, and Data::Dumper.
+
+ 3. Open ajax.js in a text editor and change the basedir variable (on
+    the second line) so that it contains the public URI of the resched
+    directory on your installation.  This value should end with a
+    directory separator (forward slash).
+
+ 4. Open dbconfig.pl in a text editor and assign suitable values to
+    the four variables therein.  (If dbconfig.pl does not exist, copy
+    dbconfig.pl.sample.)
+
+ 5. Log into the RDBMS as a privileged user (e.g., root), create the
+    database you specified in dbconfig.pl, and grant all privileges on
+    that database to the user you specified in dbconfig.pl.  The SQL
+    to do this will probably look something like the following:
+    CREATE DATABASE resched;
+    GRANT ALL PRIVILEGES ON resched.* TO username@localhost
+          IDENTIFIED BY 'somepassword';
+
+ 6. Also, if you have not already done so, check that the MySQL root
+    user account is password protected.  (In most distributions this
+    should be the case by default, but check.)
+
+ 7. Run the create-tables.pl Perl script.  This will create the empty
+    database tables.  
+
+ 8. If you are upgrading from a previous version, check CHANGES.txt
+    to see if there are fields you need to add to existing tables.
+
+ 9. Create at least one user record in the users table, which you and
+    your users will use to log into the web interface.  You can use
+    the create-user.pl script to do this.  (Even if you are doing
+    authentication by IP address, as we do, you still need a user
+    account.  The IP auth logs users in automatically based on their
+    network address, but it still needs a user account to log them
+    into.)
+
+10. If you want to do authentication by IP address, create the
+    appropriate record(s) in the auth_by_ip table.  Each IP address
+    should be in the same notation the web server gives it to you in
+    $ENV{REMOTE_ADDR}.  For Apache, this is standard dotted quad
+    notation (for IPv4; not sure about IPv6).  The user field needs an
+    id from the users table.  Authentication by IP address is probably
+    not real secure, but my users would never put up with needing Yet
+    Another Password for this.  If your users are willing to remember
+    individual usernames and passwords, that's probably better.
+
+11. Create at least one schedule.  You can use admin.cgi to do
+    this.  Multiple resources (e.g., rooms, computers) can be
+    booked according to the same schedule, so you may only need
+    one schedule record, depending on your needs.  The schedule
+    record tells what time of day you start booking and describes
+    the positions and lengths of the booking timeslots.
+
+12. For each resource you want to take bookings for, create a record
+    in the resched_resources table.  You can use admin.cgi to do this.
+
+13. You need certain entries in the misc_variables table.  You can
+    use config.cgi to create these.  Even if you wish to accept
+    the defaults, you should hit the save button at least once,
+    so that the variables are created.
+
+14. Create sitecode.pl.  There's a sitecode.pl.sample that you
+    can just copy.  If you need to do any site-specific name
+    normalization, edit the normalisebookedfor function here.
+
+15. You may need to make a few changes to the code itself, as some
+    things may still be hardcoded that shouldn't be.  (I wrote a lot
+    of this code several years ago, and at that time I had no idea
+    that I would later be sharing it.)  As time goes on I am getting
+    more and more of that stuff moved into config.cgi and/or
+    sitecode.pl, but this is an ongoing process.  TODO.txt might
+    provide some clues as to what remains, but it is not entirely
+    comprehensive.
+
+16. Nonetheless, you should be able to start testing your local
+    installation at this point.
+
+17. If you have questions or comments, you can contact the
+    author at the following address:
+        rescheddev@galionlibrary.net

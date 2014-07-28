@@ -1,0 +1,242 @@
+/*
+   This screen-oriented stylesheet for the resource scheduling
+   does not specify colors, leaving the browser to fill in its defaults.
+ */
+
+body {
+  font-family:          "Verdana", sans-serif;
+  font-weight:          bold;
+}
+
+.content {
+  vertical-align:       top;
+  padding-top:          0.5em;
+}
+
+.authbox, .sidebar {
+  vertical-align:       top;
+}
+
+div.authbox {
+  border:               2pt outset;
+  padding:              0.5em;
+}
+
+div.sidebar {
+  border:               2pt outset;
+}
+
+div.admin {
+  border:               2pt outset;
+  padding:              0.5em;
+  margin-top:           0.5em;
+  margin-bottom:        0.5em;
+}
+
+strong {
+  font-size:            1.25em;
+}
+
+.error {
+  border:               3pt outset;
+  padding:              0.5em;
+  margin-top:           0.5em;
+  margin-bottom:        0.5em;
+}
+
+.info {
+  border:               2pt outset;
+  padding:              0.5em;
+  margin-top:           0.5em;
+  margin-bottom:        0.5em;
+}
+
+div.category {
+  border-top:           3pt solid;
+  border-bottom:        3pt solid;
+  padding-top:          0.5em;
+  padding-bottom:       0.5em;
+}
+div.category + div.category {
+  border-top:           none;
+}
+
+.rightpad {
+  padding-right:        1.5em;
+  margin-right:         15px;
+}
+.numeric {
+  text-align:           right;
+}
+
+img {
+  border:               none;
+  padding:              0px;
+}
+img.extendarrow {
+  float:                left;
+}
+
+a {
+  font-family:          "Georgia", "Bitstream Vera Serif", "Constantia", serif;
+  text-decoration:      none;
+}
+a:link,
+a:visited {
+  font-family:          "Georgia", "Bitstream Vera Serif", "Constantia", serif;
+  font-style:           italic;
+}
+a.avail {
+  font-family:          "Comic Sans MS";
+  font-style:           normal;
+  font-weight:          normal;
+}
+a:hover, a:active {
+  text-decoration:      underline;
+}
+
+div.sidebar > div {
+  padding-left:         0.5em;
+  padding-right:        0.5em;
+  padding-bottom:       0.5em;
+  padding-top:          0.5em;
+}
+
+div.sidebar > div > ul,
+div.sidebar > div > span > ul {
+  margin-top:           0.2em;
+  margin-bottom:        0.5em;
+}
+
+input[type=submit],
+input[type=button],
+a.button,
+a.button:link,
+a.button:visited {
+  background-color:     ButtonFace;
+  color:                ButtonText;
+  text-decoration:      none;
+  font-weight:          bold;
+  font-size:            0.9em;
+  font-style:           normal;
+  border-style:         solid;
+  border-width:         2px;
+  border-left-color:    ButtonHighlight;
+  border-top-color:     ButtonHighlight;
+  border-right-color:   ButtonShadow;
+  border-bottom-color:  ButtonShadow;
+  padding-bottom:       1px;
+  padding-top:          1px;
+  padding-left:         0.25em;
+  padding-right:        0.25em;
+}
+
+input, textarea, select, a.button {
+  border-width:         2px;
+  padding:              1px;
+}
+
+input[type=text], input[type=checkbox]
+textarea, select {
+  border-style:         inset;
+}
+
+.nav,
+td.content > table,
+td.content > form {
+  border:               3pt solid;
+  border-width:         0.2em;
+  margin-right:         0.5em;
+  padding:              0.5em;
+}
+
+
+td.beforeopen {
+  visibility:          hidden;
+  border-width:        0px;
+  margin:              0px;
+  padding:             0px;
+  height:              0px;
+}
+
+th.dateth, th.dateth * {
+  border:              2px solid black !important;
+  outline:             2px solid yellow;
+  color:               black;
+  padding:             2px;
+  margin:              2px;
+}
+.todayth {
+  /* Nothing to specify here but color */
+}
+
+hr.doneearly {
+  margin:              0.1em;
+}
+div.doneearly {
+  font-size:           70%;
+}
+
+div.switchwith {
+  font-size:           0.75em;
+  font-weight:         normal;
+}
+
+td.content > table.monthcal,
+td.content > table.searchresults,
+td.content > table.alias,
+td.content > table.eventlist,
+table > caption {
+  border:              2pt outset;
+  width:               99%;
+}
+table.monthcal td {
+  vertical-align:      top;
+  font-size:           0.65em;
+  min-height:          3em;
+}
+table.monthcal td,
+table.monthcal th,
+table.searchresults td,
+table.searchresults th,
+table.alias td,
+table.alias th,
+table.eventlist td,
+table.eventlist th {
+  border:              1px solid;
+}
+div.calmdaynum,
+div.calmdaynum a {
+  font-size:           1.5em;
+  float:               left;
+  padding:             3px;
+  font-style:          normal;
+  width:               2.5em;
+}
+
+.expmark {
+  font-weight:         bold;
+  border:              1px dotted;
+  font-family:         "Bitstream Vera Sans Mono", "Andale Mono", "Lucida Console", monospace; 
+}
+
+.label {
+  border:              1px outset;
+  text-align:          center;
+}
+
+div.footer {
+  text-align:          center;
+  padding-left:        1em;
+  padding-right:       1em;
+  padding-bottom:      0.25em;
+  padding-top:         0.25em;
+  margin-top:          0.25em;
+  clear:               both;
+  border-top:          2pt solid;
+}
+code {
+  font-style:          normal;
+  font-family:         "Bitstream Vera Sans Mono", "Lucida Console", "Andale Mono", "Consolas", monospace;
+}
+

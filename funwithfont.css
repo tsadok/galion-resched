@@ -1,0 +1,362 @@
+/*
+   This screen-oriented stylesheet for the resource scheduling
+   follows a general convention of placing light-colored text on
+   darker backgrounds.
+ */
+
+body {
+  font-family:          "Verdana", sans-serif;
+  background-color:     Window;
+  color:                WindowText;
+  font-weight:          bold;
+}
+
+.content {
+  vertical-align:       top;
+  padding-top:          0.5em;
+}
+
+.authbox, .sidebar {
+  vertical-align:       top;
+}
+
+div.authbox {
+  background-color:     ThreeDFace;
+  color:                WindowText;
+  border-left:          2pt solid ThreeDHighlight;
+  border-top:           2pt solid ThreeDHighlight;
+  border-right:         2pt solid ThreeDShadow;
+  border-bottom:        2pt solid ThreeDShadow;
+  padding:              0.5em;
+}
+
+div.sidebar {
+  background-color:     Window;
+  color:                WindowText;
+  border:               2pt outset Window;
+}
+
+div.admin {
+  background-color:     ThreeDFace;
+  color:                WindowText;
+  border:               2pt outset red;
+}
+
+strong {
+  font-size:            1.25em;
+}
+
+.error {
+  background-color:     Window;
+  color:                WindowText;
+  border:               3pt dotted yellow;
+  padding:              1em;
+  margin-top:           1em;
+  margin-bottom:        1em;
+}
+
+.info {
+  background-color:     InfoBackground;
+  color:                InfoText;
+  border:               2pt outset ThreeDFace;
+  padding:              0.5em;
+  margin-top:           0.5em;
+  margin-bottom:        0.5em;
+}
+
+div.category {
+  border-top:           3pt solid ThreeDHighlight;
+  border-bottom:        3pt solid ThreeDHighlight;
+  padding-top:          0.5em;
+  padding-bottom:       0.5em;
+}
+div.category + div.category {
+  border-top:           none;
+}
+
+.rightpad {
+  padding-right:        1.5em;
+  margin-right:         15px;
+}
+.numeric {
+  text-align:           right;
+}
+
+img {
+  border:               none;
+  padding:              0px;
+}
+img.extendarrow {
+  float:                left;
+}
+
+a {
+  text-decoration:      none;
+  color:                HighlightText;
+}
+a:link,
+a:visited {
+  color:                HighlightText;
+}
+a.avail {
+  font-style:           normal;
+  font-weight:          normal;
+  color:                HighlightText;
+}
+a:hover, a:active {
+  color:                HighlightText;
+  background-color:     Highlight;
+  text-decoration:      underline;
+}
+
+div.sidebar > div {
+  padding-left:         0.5em;
+  padding-right:        0.5em;
+  padding-bottom:       0.5em;
+  padding-top:          0.5em;
+}
+
+div.sidebar > div > ul,
+div.sidebar > div > span > ul {
+  margin-top:           0.2em;
+  margin-bottom:        0.5em;
+}
+
+input[type=submit],
+input[type=button],
+a.button,
+a.button:link,
+a.button:visited {
+  background-color:     ButtonFace;
+  color:                ButtonText;
+  text-decoration:      none;
+  font-weight:          bold;
+  font-size:            12pt;
+  font-style:           normal;
+  border-style:         solid;
+  border-width:         2px;
+  border-left-color:    ButtonHighlight;
+  border-top-color:     ButtonHighlight;
+  border-right-color:   ButtonShadow;
+  border-bottom-color:  ButtonShadow;
+  padding-bottom:       1px;
+  padding-top:          1px;
+  padding-left:         0.25em;
+  padding-right:        0.25em;
+}
+
+input, textarea, select, a.button {
+  background-color:     Window;
+  color:                WindowText;
+  border-width:         2px;
+  padding:              1px;
+}
+
+input[type=text], input[type=checkbox]
+textarea, select {
+  border-style:         inset;
+}
+
+.nav,
+td.content > table,
+td.content > form {
+  border:               3pt solid;
+  background-color:     Highlight;
+  color:                HighlightText;
+  border-width:         0.2em;
+  margin-right:         0.5em;
+  padding:              0.5em;
+}
+
+
+td.beforeopen {
+  visibility:          hidden;
+  border-width:        0px;
+  margin:              0px;
+  padding:             0px;
+  height:              0px;
+}
+
+th.dateth, th.dateth * {
+  background-color:    #FFFF00;
+  border:              2px solid black !important;
+  outline:             2px solid yellow;
+  color:               black;
+  padding:             2px;
+  margin:              2px;
+}
+.todayth {
+  background-color:    ThreeDFace;
+}
+
+hr.doneearly {
+  margin:              0.1em;
+}
+div.doneearly {
+  font-size:           70%;
+}
+
+div.switchwith {
+  font-size:           0.75em;
+  font-weight:         normal;
+}
+
+td.content > table.monthcal,
+td.content > table.searchresults,
+td.content > table.alias,
+td.content > table.eventlist,
+table > caption {
+  background-color:    Highlight;
+  color:               HighlightText;
+  border:              2pt outset Highlight;
+  width:               99%;
+}
+table.monthcal td {
+  vertical-align:      top;
+  font-size:           0.65em;
+  min-height:          3em;
+}
+table.monthcal td,
+table.monthcal th,
+table.searchresults th,
+table.alias td,
+table.alias th,
+table.eventlist td,
+table.eventlist th {
+  background-color:    Highlight;
+  color:               HighlightText;
+  border:              1px solid WindowText;
+}
+table.searchresults td {
+  border:              1px solid WindowText;
+}
+
+div.calmdaynum,
+div.calmdaynum a {
+  font-size:           1.5em;
+  float:               left;
+  padding:             3px;
+  font-style:          normal;
+  color:               ButtonHighlight;
+  width:               2.5em;
+}
+
+.expmark {
+  font-weight:         bold;
+  color:               WindowText;
+  border:              1px dotted WindowText;
+  font-family:         "Bitstream Vera Sans Mono", "Andale Mono", "Lucida Console", monospace; 
+}
+
+.label {
+  background-color:    Window;
+  color:               WindowText;
+  border:              1px outset WindowText;
+  text-align:          center;
+}
+
+div.footer {
+  text-align:          center;
+  background-color:    Highlight;
+  color:               HighlightText;
+  padding-left:        1em;
+  padding-right:       1em;
+  padding-bottom:      0.25em;
+  padding-top:         0.25em;
+  margin-top:          0.25em;
+  clear:               both;
+  border-top:          2pt solid HighlightText;
+}
+code {
+  font-style:          normal;
+  font-family:         "Bitstream Vera Sans Mono", "Lucida Console", "Andale Mono", "Consolas", monospace;
+}
+
+.res3,
+td.content > form.res3
+{ /* CR internet */
+  font-family:         "Georgia", serif;
+}
+.res15,
+td.content > form.res15
+{ /* LP internet */
+  font-family:         "Schwarzwald", "Georgia", serif;
+  font-size:           1.2em;
+}
+.res16, .res17,
+td.content > form.res16,
+td.content > form.res17
+{ /* left and right internet */
+  font-family:         "Euphorigenic", "Georgia", serif;
+  font-size:           1.2em;
+}
+
+.res6,
+td.content > form.res6
+{ /* CR w.p. */
+  font-family:         "Comic Sans MS", sans-serif;
+}
+.res4, .res5,
+td.content > form.res4,
+td.content > form.res5
+{
+  font-family:         "Balcony Angels", "Comic Sans MS", sans-serif;
+  font-size:           1.2em;
+}
+.res7,
+td.content > form.res7
+{ /* typewriter */
+  font-family:         "Andale Mono", "Lucida Console", "Consolas", "Bitstream Vera Sans Mono", monospace;
+}
+.res8,
+td.content > form.res8
+{ /* community room */
+  font-family:         "BrushStroke", cursive;
+  font-size:           1.2em;
+}
+.res9,
+td.content > form.res9
+{ /* board room */
+  font-family:         "Brush Flair", cursive;
+  font-size:           1.2em;
+}
+.res10,
+td.content > form.res10
+{  /* staff room */
+  font-family:         "Brody", cursive;
+  font-size:           1.2em;
+}
+
+.res11,
+td.content > form.res11
+{ /* sandbox */
+  font-family:         "HydrogenWhiskey", fantasy;
+  font-size:           1.2em;
+}
+.res12,
+td.content > form.res12
+{ /* jukebox */
+  font-family:         "Delta Hey Max Nine", fantasy;
+  font-size:           1.75em;
+}
+.res13,
+td.content > form.res13
+{ /* backetball court */
+  font-family:         "MightyContour", fantasy;
+  font-size:           1.2em;
+}
+.res14,
+td.content > form.res13
+{ /* lecture hall */
+  font-family:         "Old Oak", fantasy;
+  font-size:           1.2em;
+}
+
+tr.cfgvar > td {
+  border-bottom:        1px dotted #FFE6BC;
+}
+
+span.tsmod {
+  font-size:           60%;
+  font-style:          italic;
+}

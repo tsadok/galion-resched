@@ -1,0 +1,64 @@
+Desired Changes:
+ * The admin interface should have the ability to edit
+   IP authentication settings.
+ * The admin interface needs the ability to edit the
+   resched_staffsch_flag table, especially because the
+   meaning of the flags field in that table is not well
+   documented and not easy to find by code diving.
+ * When editing staff schedule hours (either regular or occasion),
+   there should be a UI for getting ones from a different timeframe.
+   The capability is there (sstart_datetime_foo), just needs UI.
+ * The user should be able to set preferences for things
+   like visual style and AJAX, which should then automatically
+   kick in whenever they are logged in.  Ideally, it should
+   also be possible to set preferences that only apply for
+   the current user/IP-address combination.
+ * Users should also be able to set their own nickname.
+ * Users should be able to change their own passwords
+   (subject to config variable approval).
+ * The users table probably should be able to store initials,
+   so that users at their own desks logged in with their
+   own accounts can have their initials autofilled.
+ * Make alternate name order available by clicking a link.
+ * Incorrectly specifying openingtimes or closingtimes should
+   result in a MUCH friendlier error message.  Also, there
+   should be a wizard or utility for putting the specs together.
+ * Would like to sanity check date number inputs before storing
+   them in the database.  If anybody finds a way to get an
+   invalid date into the db, it could cause denial-of-service.
+ * Provide a statistical_categories variable, just like
+   categories but used only by the statistics (not sidebar stuff)
+   and in preference to categories.
+ * Test recent versions of IE.
+ * After a suitable deprecation period, we should remove support in
+   auth.pl for checking the deprecated (unhashed) password field.  The
+   hashedpass field should be used instead.
+ * It would be good to add some POD, to make the software more 
+   discoverable on the CPAN.
+ * The whole thing should be profiled for perf bottlenecks.
+ * I have thought about adding a notes table, to allow notes
+   to be attached to specific patrons (rather than just certain
+   bookings) and appear any time they book anything.
+ * Various things are hardcoded that should not be, e.g., URLs,
+   meeting room equipment available, some of the stuff in the sidebar, ...
+ * General refactoring would not go amiss.
+ * It would be really cool if it could use NCIP or something
+   to consult the ILS patron database.  If we could just
+   scan a barcode, and it would look it up and display the
+   name, that would be nifty.  (In such a case a field should
+   be added to the db for the barcode.)
+ * Some of the error messages might ought to be improved.
+   A lot of them only contain enough information to let me
+   uniquely identify the line in the source that produced the
+   error message.  Also, some of them are goofier than is
+   strictly necessary.
+ * At this time, db.pl only works with MySQL.  It would be
+   nice to also have Postgres support.  In addition to
+   db.pl, there is some date-conversion stuff that might
+   need to change, in DateTimeExtensions.pm, and some
+   custom SQL in the gatherstatsforadaterange function.
+ * The tutorial has never been written, and probably
+   should be, and a link added to the sidebar.
+ * Implement the ability for users to change their passwords,
+   and for the admin to set temporary passwords that must be
+   changed before the user can do anything else.

@@ -1,0 +1,517 @@
+/*
+   This screen-oriented stylesheet for the resource scheduling
+   follows a general convention of placing light-colored text on
+   darker backgrounds.
+ */
+
+body {
+  font-family:          "Verdana", sans-serif;
+  background-color:     #999999;
+  color:                white;
+  font-weight:          bold;
+}
+
+.content {
+  vertical-align:       top;
+  padding-top:          0.5em;
+}
+
+.authbox, .sidebar {
+  vertical-align:       top;
+}
+
+div.authbox {
+  background-color:     #446666;
+  color:                yellow;
+  border:               2pt outset #999900;
+  padding:              0.5em;
+}
+
+.box,
+div.sidebar {
+  background-color:     #667F7F;
+  color:                white;
+  border:               2pt outset #667F7F;
+}
+
+div.admin {
+  background-color:     black;
+  color:                red;
+  border:               2pt outset red;
+}
+
+strong {
+  font-size:            1.25em;
+}
+
+.error {
+  background-color:     black;
+  color:                yellow;
+  border:               3pt dotted yellow;
+  padding:              1em;
+  margin-top:           1em;
+  margin-bottom:        1em;
+}
+
+.info {
+  background-color:     #999999;
+  color:                white;
+  border:               2pt outset #999999;
+  padding:              0.5em;
+  margin-top:           0.5em;
+  margin-bottom:        0.5em;
+}
+
+div.category {
+  border-top:           3pt solid #7FAAAA;
+  border-bottom:        3pt solid #7FAAAA;
+  padding-top:          0.5em;
+  padding-bottom:       0.5em;
+}
+div.category + div.category {
+  border-top:           none;
+}
+
+.rightpad {
+  padding-right:        1.5em;
+  margin-right:         15px;
+}
+.numeric {
+  text-align:           right;
+}
+.explan {
+  font-style:           italic;
+  font-size:            0.9em;
+}
+
+img {
+  border:               none;
+  padding:              0px;
+}
+img.extendarrow {
+  float:                left;
+}
+
+a {
+  font-family:          "Georgia", "Bitstream Vera Serif", "Constantia", serif;
+  text-decoration:      none;
+  color:                white;
+}
+a:link,
+a:visited {
+  font-family:          "Georgia", "Bitstream Vera Serif", "Constantia", serif;
+  font-style:           italic;
+  color:                white;
+}
+a.avail {
+  font-family:          "Comic Sans MS";
+  font-style:           normal;
+  font-weight:          normal;
+  color:                white;
+}
+a:hover, a:active {
+  color:                white;
+  text-decoration:      underline;
+}
+
+a.adminlink {
+  color:                #FF7F7F;
+  text-shadow:          1px 1px 0px black;
+}
+
+
+div.sidebar > div {
+  padding-left:         0.5em;
+  padding-right:        0.5em;
+  padding-bottom:       0.5em;
+  padding-top:          0.5em;
+}
+
+div.sidebar > div > ul,
+div.sidebar > div > span > ul {
+  margin-top:           0.2em;
+  margin-bottom:        0.5em;
+}
+
+input[type=submit],
+input[type=button],
+a.button,
+a.button:link,
+a.button:visited {
+  background-color:     ButtonFace;
+  color:                ButtonText;
+  text-decoration:      none;
+  font-weight:          bold;
+  font-size:            0.9em;
+  font-style:           normal;
+  border-style:         solid;
+  border-width:         2px;
+  border-left-color:    ButtonHighlight;
+  border-top-color:     ButtonHighlight;
+  border-right-color:   ButtonShadow;
+  border-bottom-color:  ButtonShadow;
+  padding-bottom:       1px;
+  padding-top:          1px;
+  padding-left:         0.25em;
+  padding-right:        0.25em;
+}
+
+input, textarea, select, a.button {
+  background-color:     #666666;
+  color:                white;
+  border-width:         2px;
+  padding:              1px;
+}
+
+input[type=text], input[type=checkbox]
+textarea, select {
+  border-style:         inset;
+}
+
+.nav,
+td.content > table,
+td.content > form,
+td.content > .list {
+  border:               3pt solid black;
+  background-color:     #446666;
+  border-width:         0.2em;
+  margin-right:         0.5em;
+  padding:              0.5em;
+}
+
+
+td.beforeopen {
+  visibility:          hidden;
+  border-width:        0px;
+  margin:              0px;
+  padding:             0px;
+  height:              0px;
+}
+
+th.dateth, th.dateth * {
+  background-color:    #FFFF00;
+  border:              2px solid black !important;
+  outline:             2px solid yellow;
+  color:               black;
+  padding:             2px;
+  margin:              2px;
+}
+.todayth {
+  background-color:    #667F7F;
+}
+
+hr.doneearly {
+  margin:              0.1em;
+}
+div.doneearly {
+  font-size:           70%;
+}
+
+div.switchwith {
+  font-size:           0.75em;
+  font-weight:         normal;
+}
+
+td.content > table.monthcal,
+td.content > table.searchresults,
+td.content > table.alias,
+td.content > table.eventlist,
+table > caption {
+  background-color:    #667F7F;
+  border:              2pt outset #667F7F;
+  width:               99%;
+}
+table.monthcal td {
+  vertical-align:      top;
+  font-size:           0.65em;
+  min-height:          3em;
+}
+table.monthcal td,
+table.monthcal th,
+table.searchresults th,
+table.alias td,
+table.alias th,
+table.eventlist td,
+table.eventlist th {
+  background-color:    #446666;
+  border:              1px solid #223333;
+}
+table.formtable td {
+  padding-bottom:      0.2em;
+}
+table.searchresults td {
+  border:              1px solid #223333;
+}
+
+div.calmdaynum,
+div.calmdaynum a {
+  font-size:           1.5em;
+  float:               left;
+  padding:             3px;
+  font-style:          normal;
+  color:               #FFFF66;
+  width:               2.5em;
+}
+
+.expmark {
+  font-weight:         bold;
+  color:               white;
+  border:              1px dotted white;
+  font-family:         "Bitstream Vera Sans Mono", "Andale Mono", "Lucida Console", monospace; 
+}
+
+.explan {
+  font-family:         "Bitstream Vera Serif", "Georga", serif;
+  font-style:          italic;
+  font-weight:         normal;
+  font-size:           0.9em;
+}
+
+.label {
+  background-color:    #667F7F;
+  color:               yellow;
+  border:              1px outset yellow;
+  text-align:          center;
+}
+
+div.footer {
+  text-align:          center;
+  background-color:    #667F7F;
+  padding-left:        1em;
+  padding-right:       1em;
+  padding-bottom:      0.25em;
+  padding-top:         0.25em;
+  margin-top:          0.25em;
+  clear:               both;
+  border-top:          2pt solid #446666;
+}
+code {
+  font-style:          normal;
+  font-family:         "Bitstream Vera Sans Mono", "Lucida Console", "Andale Mono", "Consolas", monospace;
+}
+
+div#programnotes {
+  background-color:    #667F7F;
+  border:              2px outset #667F7F;
+  padding:             0.5em;
+  text-align:          center;
+  margin:              0.5em;
+}
+div.overviewheader {
+  text-align:          center;
+  margin:              1em;
+  margin-top:          0;
+}
+
+
+.res3,
+td.content > form.res3
+{ /* CR internet */
+  background-color:     #7F7F00;
+}
+
+.res4, .res5,
+td.content > form.res4,
+td.content > form.res5
+{
+  background-color:     #497549;
+}
+
+.res6,
+td.content > form.res6
+{ /* CR w.p. */
+  background-color:     #7F7F00;
+}
+
+.res7,
+td.content > form.res7
+{ /* typewriter */
+/*  background-color:     #7F7F00;*/
+    background-color:     #355535;
+}
+.res8,
+td.content > form.res8
+{ /* community room */
+  background-color:     #7F0000;
+}
+.res9,
+td.content > form.res9
+{ /* board room */
+  background-color:     #603333;
+}
+.res10,
+td.content > form.res10
+{  /* staff room */
+  background-color:     #7F4900;
+}
+
+.res11,
+td.content > form.res11
+{ /* sandbox */
+  background-color:     #446622;
+}
+.res12,
+td.content > form.res12
+{ /* jukebox */
+  background-color:     #224466;
+}
+.res13,
+td.content > form.res13
+{ /* backetball court */
+  background-color:     #662244;
+}
+.res14,
+td.content > form.res14
+{ /* lecture hall */
+  background-color:     #664422;
+}
+
+.res15, .res18,
+td.content > form.res15,
+td.content > form.res18
+{ /* side internet */
+  background-color:     #332060;
+}
+.res16, .res17,
+td.content > form.res16,
+td.content > form.res17
+{ /* left and right internet */
+  background-color:     #494975;
+}
+
+.res19, .res20,
+td.content > form.res19,
+td.content > form.res20
+{
+  background-color:     #497549;
+}
+
+
+
+tr.cfgvar > td {
+  border-bottom:        1px dotted #294D4A;
+}
+
+
+div.wholeprogramactions,
+div.listactions {
+  margin:               0.5em;
+  padding:              1em;
+  background-color:     #667F7F;
+  color:                white;
+  border:               2pt outset #667F7F;
+}
+
+table.dbrecord th,
+table.dbrecord td {
+  border-bottom:        1pt solid #294D4A;
+}
+
+tr.signup:nth-child(2n) td {
+  background-color:     #3B5959;
+  color:                #CCCCCC;
+}
+
+form.staffscheduleform .reghoursinstance,
+form.staffscheduleform .occasionhoursinstance {
+  border-bottom:        1px dotted #294D4A;
+  margin-bottom:        3pt;
+  padding-bottom:       3pt;
+}
+form.staffscheduleform div.addmore {
+  margin-top:           1em;
+  margin-bottom:        0.75em;
+}
+
+table.addstaff th,
+table.addstaff td {
+  border:               1px dotted white;
+}
+div.staffscheduleday {
+  background-color:     #7F7F7F;
+  font-weight:          normal;
+  border:               2pt solid black;
+  padding:              0.5em;
+  border-radius:        1em;
+}
+div.staffscheduletoday {
+  border:               3pt solid black;
+  background-color:     #666666;
+  box-shadow:           2px 3px 2px #CCCCCC,
+                        1px 2px 3px #333333 inset;
+}
+div.staffscheduletoday > div.scheduledate {
+  color:                #7FFF99;
+}
+div.staffscheduletoday > div.scheduledate:before {
+  content:              "Today, ";
+  font-weight:          bold;
+}
+div.staffscheduletoday > div.scheduledate > span.scheduledatemonth,
+div.staffscheduletoday > div.scheduledate > span.scheduledatemday,
+div.staffscheduletoday > div.scheduledate > span.punctuation {
+  display:              none;
+}
+
+div.staffscheduleday div.scheduledate {
+  border-bottom:        1px solid white;
+  margin-bottom:        3px;
+}
+div.staffscheduleweek {
+  margin-top:           1em;
+  margin-bottom:        1em;
+  vertical-align:       top;
+  font-size:            0.75em;
+}
+div.staffscheduleweek > .ilb {
+  vertical-align:       top;
+  min-height:           3em;
+}
+div.staffscheduleday {
+/* max-width:            11em; */
+  width:                10em;
+  text-align:           center;
+}
+div.staffscheduleweek div.staffscheduleday span.staffschname {
+  display:              block; /* Vicki asked for this specifically */
+}
+div.regularhours,
+div.specialhours {
+  padding-bottom:       0.25em;
+  border-bottom:        1px dotted #AAAAAA;
+  margin-bottom:        0.25em;
+}
+div.regularhours:last-child,
+div.specialhours:last-child {
+  border-bottom:        0px;
+}
+div.specialhours {
+  font-weight:          bold;
+  color:                #7FFF99;
+}
+
+div.staffscheduleday div.altschedulename {
+  font-weight:          bold;
+  margin-top:           0.3em;
+  padding-top:          0.3em;
+  border-top:           2pt solid;
+  margin-bottom:        0.4em;
+}
+
+span.staffschname {
+  padding:              1px;
+  margin:               1px;
+}
+
+
+.ilb { 
+  display:              inline-block;
+}
+
+div.p {
+  margin-bottom:        0.5em;
+}
+div.p:last-child {
+  margin-bottom:        0.1em;
+}
+

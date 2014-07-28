@@ -1,0 +1,281 @@
+/*
+   This is the print-oriented stylesheet: black text,
+   white backgrounds, and navigational elements are turned off.
+ */
+
+body {
+  font-family:          "Verdana", sans-serif;
+  background-color:     white;
+  color:                black;
+  font-weight:          bold;
+}
+
+.content {
+  vertical-align:       top;
+  padding-top:          0.5em;
+}
+
+.authbox, .sidebar, .footer, .admin {
+  display:              none;
+}
+
+strong {
+  font-size:            1.25em;
+}
+
+.error {
+  background-color:     white;
+  color:                black;
+  border:               3pt solid black;
+  padding:              0.5em;
+  margin-top:           0.5em;
+  margin-bottom:        0.5em;
+}
+
+.info {
+  background-color:     white;
+  border:               2pt solid black;
+  padding:              0.5em;
+  margin-top:           0.5em;
+  margin-bottom:        0.5em;
+}
+
+div.category {
+  border-top:           3pt solid black;
+  border-bottom:        3pt solid black;
+  padding-top:          0.5em;
+  padding-bottom:       0.5em;
+}
+div.category + div.category {
+  border-top:           none;
+}
+
+.rightpad {
+  padding-right:        1.5em;
+  margin-right:         15px;
+}
+.numeric {
+  text-align:           right;
+}
+
+img {
+  border:               none;
+  padding:              0px;
+}
+img.extendarrow {
+  float:                left;
+}
+
+a {
+  font-family:          "Georgia", "Bitstream Vera Serif", "Constantia", serif;
+  text-decoration:      none;
+  color:                black;
+}
+a:link,
+a:visited {
+  font-family:          "Georgia", "Bitstream Vera Serif", "Constantia", serif;
+  font-style:           italic;
+  color:                black;
+}
+a.avail {
+  font-family:          "Comic Sans MS";
+  font-style:           normal;
+  font-weight:          normal;
+  color:                black;
+}
+a:hover, a:active {
+  color:                red;
+  text-decoration:      underline;
+}
+
+div.sidebar > div {
+  padding-left:         0.5em;
+  padding-right:        0.5em;
+  padding-bottom:       0.5em;
+  padding-top:          0.5em;
+}
+
+div.sidebar > div > ul,
+div.sidebar > div > span > ul {
+  margin-top:           0.2em;
+  margin-bottom:        0.5em;
+}
+
+input[type=submit],
+input[type=button],
+a.button,
+a.button:link,
+a.button:visited {
+  background-color:     white;
+  color:                black;
+  text-decoration:      none;
+  font-weight:          bold;
+  font-size:            0.9em;
+  font-style:           normal;
+  border-style:         solid;
+  border-width:         2px;
+  border-color:         black;
+  padding-bottom:       1px;
+  padding-top:          1px;
+  padding-left:         0.25em;
+  padding-right:        0.25em;
+}
+
+input, textarea, select, a.button {
+  background-color:     white;
+  color:                black;
+  border-width:         2px;
+  padding:              1px;
+}
+
+input[type=text], input[type=checkbox]
+textarea, select {
+  border-style:         inset;
+}
+
+.nav,
+td.content > table,
+td.content > form {
+  border:               3pt solid black;
+  background-color:     white;
+  border-width:         0.2em;
+  margin-right:         0.5em;
+  padding:              0.5em;
+}
+
+
+td.beforeopen {
+  visibility:          hidden;
+  border-width:        0px;
+  margin:              0px;
+  padding:             0px;
+  height:              0px;
+}
+
+th.dateth, th.dateth * {
+  background-color:    white;
+  border:              2px solid black !important;
+  outline:             2px solid white;
+  color:               black;
+  padding:             2px;
+  margin:              2px;
+}
+.todayth {
+  background-color:    white;
+}
+
+hr.doneearly {
+  margin:              0.1em;
+}
+div.doneearly {
+  font-size:           70%;
+}
+
+div.switchwith {
+  font-size:           0.75em;
+  font-weight:         normal;
+}
+
+td.content > table.monthcal,
+td.content > table.searchresults,
+td.content > table.alias,
+td.content > table.eventlist,
+table > caption {
+  background-color:    white;
+  border:              2pt solid black;
+  width:               99%;
+}
+table.monthcal td {
+  vertical-align:      top;
+  font-size:           0.65em;
+  min-height:          3em;
+}
+table.monthcal td,
+table.monthcal th,
+table.searchresults td,
+table.searchresults th,
+table.alias td,
+table.alias th,
+table.eventlist td,
+table.eventlist th {
+  background-color:    white;
+  border:              1px solid black;
+}
+div.calmdaynum,
+div.calmdaynum a {
+  font-size:           1.5em;
+  float:               left;
+  padding:             3px;
+  font-style:          normal;
+  color:               black;
+  width:               2.5em;
+}
+
+.expmark {
+  font-weight:         bold;
+  color:               black;
+  border:              1px dotted black;
+  font-family:         "Bitstream Vera Sans Mono", "Andale Mono", "Lucida Console", monospace; 
+}
+
+.label {
+  background-color:    white;
+  color:               black;
+  border:              1px solid black;
+  text-align:          center;
+}
+
+code {
+  font-style:          normal;
+  font-family:         "Bitstream Vera Sans Mono", "Lucida Console", "Andale Mono", "Consolas", monospace;
+}
+
+.res3,
+td.content > form.res3
+{ /* CR internet */
+  background-color:     white;
+}
+.res15,
+td.content > form.res15
+{ /* LP internet */
+  background-color:     white;
+}
+.res16, .res17,
+td.content > form.res16,
+td.content > form.res17
+{ /* left and right internet */
+  background-color:     white;
+}
+
+.res6,
+td.content > form.res6
+{ /* CR w.p. */
+  background-color:     white;
+}
+.res4, .res5,
+td.content > form.res4,
+td.content > form.res5
+{
+  background-color:     white;
+}
+.res7,
+td.content > form.res7 { /* typewriter */
+  background-color:     white;
+}
+
+.res8,
+td.content > form.res8 { /* community room */
+  background-color:     white;
+}
+.res9,
+td.content > form.res9 { /* board room */
+  background-color:     white;
+}
+.res10,
+td.content > form.res10 {  /* staff room */
+  background-color:     white;
+}
+
+tr.cfgvar > td {
+  border-bottom:        1px dotted black;
+}
