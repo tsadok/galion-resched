@@ -13,6 +13,9 @@ be done when installing this software.
    * You need an RDBMS.  At this time MySQL is the only one supported,
      though it would probably only require minor changes (mostly in
      db.pl) to support Postgres or any other reasonably capable DBMS.
+     I've done Postgres support in another project (jonadabot) and
+     will probably port that over once it has been tested a bit more,
+     but that hasn't been done yet, so for now MySQL.
    * You need a web server, of course.  I've only tested with Apache.
      The web server must be configured to serve out the directory
      where you unzipped resched, and the .cgi extension must be
@@ -30,7 +33,7 @@ be done when installing this software.
 
  4. Open dbconfig.pl in a text editor and assign suitable values to
     the four variables therein.  (If dbconfig.pl does not exist, copy
-    dbconfig.pl.sample.)
+    dbconfig.pl.sample and edit the copy to meet your needs.)
 
  5. Log into the RDBMS as a privileged user (e.g., root), create the
     database you specified in dbconfig.pl, and grant all privileges on
@@ -41,7 +44,7 @@ be done when installing this software.
           IDENTIFIED BY 'somepassword';
 
  6. Also, if you have not already done so, check that the MySQL root
-    user account is password protected.  (In most distributions this
+    user account is password protected.  (In modern distributions this
     should be the case by default, but check.)
 
  7. Run the create-tables.pl Perl script.  This will create the empty
@@ -94,11 +97,13 @@ be done when installing this software.
     more and more of that stuff moved into config.cgi and/or
     sitecode.pl, but this is an ongoing process.  TODO.txt might
     provide some clues as to what remains, but it is not entirely
-    comprehensive.
+    comprehensive.  Please feel free to email me bug reports about
+    things that are hardcoded and should be configurable.  Send
+    them to the email address given below.
 
-16. Nonetheless, you should be able to start testing your local
-    installation at this point.
+16. You should be able to start testing your local installation
+    at this point.
 
-17. If you have questions or comments, you can contact the
-    author at the following address:
+17. If you have questions or comments or bug reports, you can
+    contact the author at the following address:
         rescheddev@galionlibrary.net
