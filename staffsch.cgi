@@ -994,7 +994,7 @@ sub formatoccasion {
   if (not $arg{suppresslocation} and not getvariable('resched', 'staff_schedule_suppress_locations')) {
     $location = ' ' . formatlocation(getrecord('resched_staffsch_location', $$or{location}));
   }
-  my $comment = $arg{suppresscomment} ? "" : (qq[<span class="comment occasioncomment">] . encode_entities($$r{comment}) . qq[</span>]);
+  my $comment = $arg{suppresscomment} ? "" : (qq[<span class="comment occasioncomment">] . encode_entities($$or{comment}) . qq[</span>]);
   my $when = qq[<abbr title="from ] . $sdt->ymd() . ' at ' . $sdt->hms() . ' to ' . $edt->ymd() . ' at' . $edt->hms() . qq[">$date$time</abbr>];
   return join " ", grep { $_ } $when, $name, $location, $comment, $flags
     if $arg{datefirst};
