@@ -5,6 +5,12 @@ Version 0.9.7:
     sitecode.pl.sample and customize it as needed.)  The former
     inclusion of sitecode.pl was due to a bug in my release process,
     wherein things happened in the wrong order.
+  * Added a comment field to the resched_staffsch_occasion table.
+    Existing installations will need to create this field in order
+    to use it.  I added it because our director wants to be able
+    to add comments, when she's going to be offsite for some reason,
+    to indicate where and why (e.g., county-wide directors' meeting,
+    community group meeting, etc.)
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

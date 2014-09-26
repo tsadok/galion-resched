@@ -458,6 +458,7 @@ sub updateoccasionhours {
                                   } grep {
                                     (not $$_{obsolete}) or ($dbnow lt $$_{obsolete})
                                   } getrecord('resched_staffsch_flag');
+    $$r{comment} = $input{"occsncomment$n"};
     if ($id) {
       updaterecord('resched_staffsch_occasion', $r);
     } else {
@@ -488,6 +489,7 @@ sub occasionhoursform {
                                                             grep { not /X/ } getrecord('resched_staffsch_location'))
                                                     ],
                                       ($$r{location} || 0));
+  my $comment   = encode_entities($$r{comment});
   my $next      = $n + 1;
   my $flags    = join "\n", map {
     my $f = $_;
@@ -509,6 +511,7 @@ sub occasionhoursform {
        <div class="ilb"><label for="endtime_day${n}_datetime_day">To</label> $end</div>
        <div class="ilb">$locsel</div>
        <div class="ilb">$flags</div>
+       <div class="ilb"><label for="occsncomment$n">Comment:</label> <input type="text" size="30" name="occsncomment$n" id="occsncomment$n" value="$comment" /></div>
     </div>
        </div>];
 }
@@ -991,10 +994,11 @@ sub formatoccasion {
   if (not $arg{suppresslocation} and not getvariable('resched', 'staff_schedule_suppress_locations')) {
     $location = ' ' . formatlocation(getrecord('resched_staffsch_location', $$or{location}));
   }
+  my $comment = $arg{suppresscomment} ? "" : (qq[<span class="comment occasioncomment">] . encode_entities($$r{comment}) . qq[</span>]);
   my $when = qq[<abbr title="from ] . $sdt->ymd() . ' at ' . $sdt->hms() . ' to ' . $edt->ymd() . ' at' . $edt->hms() . qq[">$date$time</abbr>];
-  return join " ", grep { $_ } $when, $name, $location, $flags
+  return join " ", grep { $_ } $when, $name, $location, $comment, $flags
     if $arg{datefirst};
-  return join " ", grep { $_ } $name, $location, $flags, $when;
+  return join " ", grep { $_ } $name, $location, $comment, $flags, $when;
 }
 
 sub formatshortname {
