@@ -947,8 +947,10 @@ sub formatreghours {
   }
   my $time = '';
   if (not $arg{suppresstime}) {
-    $time  = qq[<nobr>] . include::twelvehourtime(qq[$$rr{starthour}:$$rr{startmin}]) . qq[</nobr>];
-    $time .= '-' . qq[<nobr>] . include::twelvehourtime(qq[$$rr{endhour}:$$rr{endmin}] . qq[</nobr>])
+    my $fromtime = qq[$$rr{starthour}:$$rr{startmin}];
+    my $endtime  = qq[$$rr{endhour}:$$rr{endmin}];
+    $time  = qq[<nobr>] . include::twelvehourtime($fromtime) . qq[<!-- $fromtime --></nobr>];
+    $time .= '-' . qq[<nobr>] . include::twelvehourtime($endtime) . qq[<!-- $endtime --></nobr>]
       if not $arg{suppressendtime};
     if ($time =~ /am.*am|pm.*pm/) {
       $time =~ s/\s?[ap]m//;
@@ -983,9 +985,9 @@ sub formatoccasion {
     }
     $date .= ' ';
   }
-  my $time = include::twelvehourtimefromdt($sdt);
+  my $time = include::twelvehourtimefromdt($sdt) . '<!-- ' . $sdt->hms() . ' -->';
   if (not $arg{suppressendtime}) {
-    $time .= '&mdash;' . include::twelvehourtimefromdt($edt);
+    $time .= '&mdash;' . include::twelvehourtimefromdt($edt) . '<!-- ' . $edt->hms() . ' -->';
   }
   if ($$or{flags} =~ /A/) {
     $time = 'all&nbsp;day';
@@ -996,9 +998,9 @@ sub formatoccasion {
   }
   my $comment = $arg{suppresscomment} ? "" : (qq[<span class="comment occasioncomment">] . encode_entities($$or{comment}) . qq[</span>]);
   my $when = qq[<abbr title="from ] . $sdt->ymd() . ' at ' . $sdt->hms() . ' to ' . $edt->ymd() . ' at' . $edt->hms() . qq[">$date$time</abbr>];
-  return join " ", grep { $_ } $when, $name, $location, $comment, $flags
+  return "<!-- format_occasion -->" . join " ", grep { $_ } $when, $name, $location, $comment, $flags
     if $arg{datefirst};
-  return join " ", grep { $_ } $name, $location, $comment, $flags, $when;
+  return "<!-- format_occasion -->" . join " ", grep { $_ } $name, $location, $comment, $flags, $when;
 }
 
 sub formatshortname {
