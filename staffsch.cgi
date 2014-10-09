@@ -1034,10 +1034,15 @@ sub liststaff {
            <td>$editlink</td></tr>];
   } @staff;
   my $addstafflink = (($$user{flags} =~ /A/) or getvariable('resched', 'staff_schedule_lax_security'))
-    ? qq[<tr><td colspan="4"><a class="button" href="staffsch.cgi?action=newstaff&amp;$persistentvars">Add Staff</a></td></tr>] : '';
+    ? qq[<td><a class="button" href="staffsch.cgi?action=newstaff&amp;$persistentvars">Add Staff</a></td>] : '';
+  my $listalllink  = (($$user{flags} =~ /A/) or getvariable('resched', 'staff_schedule_lax_security'))
+    ? (($input{listall} eq 'yes')
+       ? qq[<td colspan="2"><a class="button" href="staffsch.cgi?action=liststaff">Hide Former Staff</a></td>]
+       : qq[<td colspan="2"><a class="button" href="staffsch.cgi?action=liststaff&amp;listall=yes">Show Former Staff</a></td>]) : '';
+  my $links = ($addstafflink || $listalllink) ? qq[<tr>$addstafflink$listalllink</tr>] : '';
   return qq[<table class="stafflist table"><thead>
        <tr><td>Short Name</td><td>Full Name</td><td>Personal Schedule</td></tr>
-     </thead><tbody>] . (join "\n         ", @li ). qq[$addstafflink</tbody></table>];
+     </thead><tbody>] . (join "\n         ", @li ). qq[$links</tbody></table>];
 }
 
 sub updatestaff {

@@ -11,6 +11,9 @@ Version 0.9.7:
     to add comments, when she's going to be offsite for some reason,
     to indicate where and why (e.g., county-wide directors' meeting,
     community group meeting, etc.)
+  * When listing staff (for staff scheduling purposes), there is
+    now an option to show former staff, as well as current ones.
+    (As before, former staff are hidden by default.)
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from
