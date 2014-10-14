@@ -1063,7 +1063,7 @@ sub newbooking {
                        </tr>
                        <tr id="insertmorelisteddateshere" />
                    </tbody></table>
-                   <input type="button" value="Add Another Date" onclick= "augmentdatelist('].$when->year.qq[');"/>
+                   <input type="button" value="Add Another Date" onclick= "augmentdatelist('].($when->year).q[',].($when->month).qq[);"/>
                    <p />
                </span>
        </div>

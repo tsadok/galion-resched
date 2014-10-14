@@ -185,14 +185,26 @@ function copyfieldvalue(source, dest) {
 }
  
 var datenumber = 1;
-function augmentdatelist(year) {
+function augmentdatelist(year, month) {
   datenumber = datenumber + 1;
+  var jansel = (month == 1)  ? ' selected="selected"' : '';
+  var febsel = (month == 2)  ? ' selected="selected"' : '';
+  var marsel = (month == 3)  ? ' selected="selected"' : '';
+  var aprsel = (month == 4)  ? ' selected="selected"' : '';
+  var maysel = (month == 5)  ? ' selected="selected"' : '';
+  var junsel = (month == 6)  ? ' selected="selected"' : '';
+  var julsel = (month == 7)  ? ' selected="selected"' : '';
+  var augsel = (month == 8)  ? ' selected="selected"' : '';
+  var sepsel = (month == 9)  ? ' selected="selected"' : '';
+  var octsel = (month == 10) ? ' selected="selected"' : '';
+  var novsel = (month == 11) ? ' selected="selected"' : '';
+  var decsel = (month == 12) ? ' selected="selected"' : '';
   var newcontent = '<tr><td><input type="text" name="recurlistyear' + datenumber + '" size="5" value="' + year + '" /></td>'
     +  '        <td><select name="recurlistmonth' + datenumber + '">'
-    +  '              <option value="1">Jan</option>  <option value="2">Feb</option>  <option value="3">Mar</option>'
-    +  '              <option value="4">Apr</option>  <option value="5">May</option>  <option value="6">Jun</option>'
-    +  '              <option value="7">Jul</option>  <option value="8">Aug</option>  <option value="9">Sep</option>'
-    +  '              <option value="10">Oct</option> <option value="11">Nov</option> <option value="12">Dec</option>'
+    +  '              <option value="1"'  + jansel + '>Jan</option>  <option value="2"' + febsel + '>Feb</option>  <option value="3"' + marsel + '>Mar</option>'
+    +  '              <option value="4"'  + aprsel + '>Apr</option>  <option value="5"' + maysel + '>May</option>  <option value="6"' + junsel + '>Jun</option>'
+    +  '              <option value="7"'  + julsel + '>Jul</option>  <option value="8"' + augsel + '>Aug</option>  <option value="9"' + sepsel + '>Sep</option>'
+    +  '              <option value="10"' + octsel + '>Oct</option> <option value="11"' + novsel + '>Nov</option> <option value="12"' + decsel + '>Dec</option>'
     +  '             </select></td>'
     +  '        <td><input type="text" name="recurlistmday' + datenumber + '" size="3" /></td>';
   var elt = document.getElementById('insertmorelisteddateshere');

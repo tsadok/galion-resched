@@ -86,7 +86,7 @@ $db->prepare(
      )"
     )->execute();
 my @bkcolor = getrecord('resched_booking_color');
-if (not scalar @schflag) {
+if (not scalar @bkcolor) {
     addrecord('resched_booking_color', +{ colorname     => 'Blue A', #res16, res17, main internet
                                           darkbg        => '#494975',
                                           lightbg       => '#BBDDFF',
@@ -353,6 +353,7 @@ $db->prepare(
 my @schflag = getrecord('resched_staffsch_flag');
 if (not scalar @schflag) {
     addrecord('resched_staffsch_flag', +{ flagchar => 'A', shortdesc => 'All Day',      longdesc => 'Starting and ending times are moot on this date.', });
+    addrecord('resched_staffsch_flag', +{ flagchar => 'C', shortdesc => 'reCur',        longdesc => 'Created by recurring-event logic.', flags => 'D'});
     addrecord('resched_staffsch_flag', +{ flagchar => 'P', shortdesc => 'Plus-Regular', longdesc => 'This is in addition to (not replacing) regular hours.', flags => 'PO', });
     addrecord('resched_staffsch_flag', +{ flagchar => 'X', shortdesc => 'X-Cancel',     longdesc => 'These special hours are canceled', flags => 'OX', });
 }

@@ -147,11 +147,16 @@ sub DateTime::Form::Fields {
            my $selected = ($_ == $dt->hour) ? qq[ selected="selected"] : "";
            qq[<option value="$_" $selected>].(($_>12)?(($_-12) . " pm"):(($_<12)?"$_ am":$_))."</option>"
          } $firsthour .. $lasthour).qq[</select>];
+    my @minlist = (0, 15, 30, 45, 1 .. 14, 16 .. 29, 31 .. 44, 46 .. 59);
+    # TODO: read a config variable and maybe set @minlist to (0 .. 60) instead.
+    
     $mininput = qq[<select name="${prefix}_datetime_minute" id="${prefix}_datetime_minute"$disabletime$copymin>\n           ]
       .( join "\n", map {
-        my $selected = ($_ == $dt->minute) ? ' selected="selected"' : "";
-        qq[<option value="$_" $selected>$_</option>]
-      } map { sprintf "%02d", $_ } 0 .. 59)."</select>";
+        my $value    = $_;
+        my $selected = ($value == $dt->minute) ? ' selected="selected"' : "";
+        my $showval  = ($value % 15) ? $value : qq[<strong>$value</strong>];
+        qq[<option value="$value" $selected>$showval</option>];
+      } map { sprintf "%02d", $_ } @minlist)."</select>";
   }
   if ($optn{layout} eq 'ilb') {
     my $ymd = $skipdate ? ''

@@ -84,6 +84,8 @@ if ($auth::user) {
     $content = addregularhours();
   } elsif ($input{action} eq 'editoccasionhours') {
     $content = maybeeditoccasionhours();
+  } elsif ($input{action} eq 'inputrecurocchours') {
+    $content = inputrecurocchours();
   } elsif ($input{action} eq 'updateoccasionhours') {
     $content = maybeupdateoccasionhours();
   } elsif ($input{action} eq 'addoccasionhours') {
@@ -434,10 +436,12 @@ sub updatestaffhours {
 sub updateoccasionhours {
   my %input = %{DateTime::NormaliseInput(\%input)};
   #use Data::Dumper; warn Dumper(+{ input => { map { $_ => qq[$input{$_}] } keys %input}});
+  my $debugrecur = '';
   my $sr = getrecord('resched_staff', include::getnum('staffid'));
   return qq[<div class="error"><div class="h">Staff Not Found</div> I cannot seem to find staff record ID <q>$input{staffid}</q> in the database</div>]
     if not ref $sr;
   for my $n (map { /^occasion(\d+)/; $1 } grep { /^occasion\d+$/ } keys %input) {
+    $debugrecur .= "[uco: $n]";
     my $id = include::getnum(qq[ohid$n]);
     my $r  = +{ staffid => $$sr{id} };
     if ($id) {
@@ -462,7 +466,144 @@ sub updateoccasionhours {
     if ($id) {
       updaterecord('resched_staffsch_occasion', $r);
     } else {
+      $debugrecur .= "[uco: new]";
       addrecord('resched_staffsch_occasion', $r);
+      my $firstoccasion = getrecord('resched_staffsch_occasion', $db::added_record_id);
+      if ($input{recurtype}) {
+        $debugrecur .= "[uco: recur]";
+        my ($startdow, $enddow, $startcnt, $endcnt, @rdate);
+        my $findnext   = sub{ die "Fallthrough: findnext->() not specified for events scheduled '$input{recurtype}'." };
+        my $startdt    = $input{qq[starttime${n}_datetime]} || $now;
+        my $enddt      = $input{qq[endtime${n}_datetime]}   || $startdt->add( hours => 1 );
+        my $duration   = $enddt - $startdt;
+        $debugrecur   .= "recur: [type: $input{recurtype}]";
+        if ($input{recurtype} =~ /(daily|weekly|monthly|quarterly|annually)(?!nthdow)/) {
+          my $freq = $1; $debugrecur .= "[freq: $freq]";
+          my %add  = ( daily     => [ days   => 1],
+                       weekly    => [ days   => 7],
+                       monthly   => [ months => 1],
+                       quarterly => [ months => 3],
+                       annually  => [ years  => 1],
+                     );
+          my ($unit, $number) = @{$add{$freq}};
+          $debugrecur .= "[unit '$unit', number $number]";
+          $findnext = sub {
+            my ($prevdt) = @_;
+            $debugrecur .= "[findnext: incrementing $unit by $number]";
+            my $nextdt = $prevdt->clone()->add( $unit => $number );
+            return $nextdt;
+          };
+        } elsif ($input{recurtype} =~ /(nthdow|quarterlynthdow)/) {
+          my $freq = $1; $debugrecur .= "[freq: $freq]";
+          my %addmonths = ( nthdow => 1, quarterlynthdow => 3, );
+          $startdow = $startdt->dow();
+          $startcnt = 0;
+          my $tempdt = $startdt->clone();
+          while ($tempdt->month() eq $startdt->month()) {
+            $startcnt++;
+            $tempdt = $tempdt->subtract( days => 7 );
+          }
+          $debugrecur .= "[startdow: $startdow][startcnt: $startcnt]";
+          $findnext = sub {
+            my ($prevdt) = @_;
+            my $nextdt = $prevdt->clone()->add( months => $addmonths{$input{recurtype}} )->set( day => 1 );
+            $debugrecur .= "[findnext: looking for day $startdow of week $startcnt (sort of), after $addmonths{$input{recurtype}} month(s), going from " . $nextdt->ymd() . "]";
+            while ($nextdt->dow() ne $startdow) {
+              $nextdt = $nextdt->add( days => 1 );
+              $debugrecur .= ".";
+            }
+            for (1 .. ($startcnt - 1)) {
+              $nextdt = $nextdt->add( days => 7 );
+              $debugrecur .= "w";
+            }
+            return $nextdt;
+          };
+        } elsif ($input{recurtype} eq 'listed') {
+          $debugrecur .= '[listed]';
+          for my $num (map { /recurlistmday(\d+)/; $1 } grep { /^recurlistmday/ } keys %input) {
+            my $year  = $input{qq[recurlistyear$num]};
+            my $month = $input{qq[recurlistmonth$num]};
+            my $mday  = $input{qq[recurlistmday$num]};
+            push @rdate, DateTime->new( year      => $year,
+                                        month     => $month,
+                                        day       => $mday,
+                                        hour      => $startdt->hour(),
+                                        minute    => $startdt->minute(),
+                                        time_zone => $localtimezone,
+                                      );
+            $findnext = sub {
+              my $nextdate = shift @rdate;
+              $debugrecur .= '[findnext: shift]';
+              if (ref $nextdate) { return $nextdate; }
+              return qq[<div class="error">Oops, I seem to have run out of dates.</div>];
+            };
+          }
+        } else {
+          die "Unknown recurtype: '$input{recurtype}' ($debugrecur)";
+        }
+        # Now we just read off the startdates using findnext(), calcuate the enddates by adding the duration:
+        my $dt = $startdt;
+        if ($input{recurtype} eq 'listed') {
+          $debugrecur .= '[listed]';
+          while (scalar @rdate) {
+            $debugrecur .= '[while: ' . (scalar @rdate) . ']';
+            $dt = $findnext->($dt);
+            $debugrecur .= '[' . (scalar @rdate) . ' left]';
+            addrecord('resched_staffsch_occasion', +{ staffid   => $$sr{id},
+                                                      starttime => DateTime::Format::ForDB($dt->clone()),
+                                                      endtime   => DateTime::Format::ForDB($dt->clone()->add_duration($duration)),
+                                                      location  => $$firstoccasion{location},
+                                                      flags     => ($$firstoccasion{flags} . 'C'),
+                                                      comment   => $$firstoccasion{comment},
+                                                    });
+          }
+        } elsif ($input{recurstyle} eq 'ntimes') {
+          $debugrecur .= '[ntimes]';
+          for (1 .. $input{recurtimes}) {
+            $debugrecur .= "[for: $_]";
+            $dt = $findnext->($dt);
+            addrecord('resched_staffsch_occasion', +{ staffid   => $$sr{id},
+                                                      starttime => DateTime::Format::ForDB($dt->clone()),
+                                                      endtime   => DateTime::Format::ForDB($dt->clone()->add_duration($duration)),
+                                                      location  => $$firstoccasion{location},
+                                                      flags     => ($$firstoccasion{flags} . 'C'),
+                                                      comment   => $$firstoccasion{comment},
+                                                    });
+            $debugrecur .= "[id: $db::added_record_id]";
+          }
+        } elsif ($input{recurstyle} eq 'until') {
+          $debugrecur .= '[until]';
+          my $until;
+          eval {
+            $debugrecur .= "[eval: start][year: $input{recuruntilyear}][month: $input{recuruntilmonth}][day: $input{recuruntilmday}]";
+            $until = DateTime->new( year  => $input{recuruntilyear},
+                                    month => $input{recuruntilmonth},
+                                    day   => $input{recuruntilmday},
+                                  )->ymd();
+            $debugrecur .= '[dt.ok]';
+          };$debugrecur   .= "[posteval: $until]";
+          $until or return qq[<div class="error">Sorry, I'm not sure when to schedule that until.  My date parsing has failed.
+                                    (You said: year '$input{recuruntilyear}', month '$input{recuruntilmonth}', day '$input{recuruntilday}'.)
+                <!-- $debugrecur (] . (warn $debugrecur) . qq[) --></div>];
+          $debugrecur .= "[until is true: $debugrecur]";
+          $dt = $findnext->($dt);
+          while ($dt->ymd() le $until) {
+            $debugrecur .= '[while: ' . $dt->ymd() . ']';
+            addrecord('resched_staffsch_occasion', +{ staffid   => $$sr{id},
+                                                      starttime => DateTime::Format::ForDB($dt->clone()),
+                                                      endtime   => DateTime::Format::ForDB($dt->clone()->add_duration($duration)),
+                                                      location  => $$firstoccasion{location},
+                                                      flags     => ($$firstoccasion{flags} . 'C'),
+                                                      comment   => $$firstoccasion{comment},
+                                                    });
+            $dt = $findnext->($dt);
+            $debugrecur .= '[next: ' . $dt->ymd() . ']';
+          }
+        } else {
+          return qq[<div class="error">Sorry, I'm not sure how many times to schedule that.<!-- recurstyle '$input{recurstyle}', recurtype '$input{recurtype}', debug '$debugrecur' --></div>];
+        }
+        #warn "[done with recur: $debugrecur]";
+      }
     }
   }
   return editoccasionhours($sr);
@@ -491,29 +632,37 @@ sub occasionhoursform {
                                       ($$r{location} || 0));
   my $comment   = encode_entities($$r{comment});
   my $next      = $n + 1;
-  my $flags    = join "\n", map {
-    my $f = $_;
-    my $long    = encode_entities($$f{longdesc});
-    my $short   = encode_entities($$f{shortdesc});
-    my $checked = ($$r{flags} =~ /$$f{flagchar}/) ? ' checked="checked"' : '';
-    qq[<input type="checkbox" id="flag$$f{flagchar}$n" name="flag$$f{flagchar}$n" $checked />
-                  <label for="flag$$f{flagchar}${n}"><abbr title="$long">$short</abbr></label>];
-  } grep {
-    ((not ($$_{flags} =~ /R/)) or ($$_{flags} =~ /O/))
-  } grep {
-    (not $$_{obsolete}) or ($dbnow lt $$_{obsolete})
-  } getrecord('resched_staffsch_flag');
+  my $flags     = occasionflagcheckboxes($n, ($$r{flags} || ''));
   # fields: id, staffid, starttime, endtime, location, flags
   return qq[<div class="occasionhoursinstance">
     <div class="ilb">$idfield
        <input type="hidden" name="occasion$n" value="occasion$n" />
        <div class="ilb"><label for="starttime${n}_datetime_day">From</label> $start</div>
-       <div class="ilb"><label for="endtime_day${n}_datetime_day">To</label> $end</div>
+       <div class="ilb"><label for="endtime${n}_datetime_day">To</label> $end</div>
        <div class="ilb">$locsel</div>
        <div class="ilb">$flags</div>
        <div class="ilb"><label for="occsncomment$n">Comment:</label> <input type="text" size="30" name="occsncomment$n" id="occsncomment$n" value="$comment" /></div>
     </div>
        </div>];
+}
+
+sub occasionflagcheckboxes {
+  my ($n, $flags) = @_;
+  $flags ||= '';
+  return join "\n                  ", map {
+    my $f = $_;
+    my $long    = encode_entities($$f{longdesc});
+    my $short   = encode_entities($$f{shortdesc});
+    my $checked = ($flags =~ /$$f{flagchar}/) ? ' checked="checked"' : '';
+    my $disable = ($$f{flags} =~ /D/) ? ' disabled="disabled"' : '';
+    ($checked or not $disable)
+      ? qq[<input type="checkbox" id="flag$$f{flagchar}$n" name="flag$$f{flagchar}$n"$checked$disable />
+                  <label for="flag$$f{flagchar}${n}"><abbr title="$long">$short</abbr></label>] : '';
+  } grep {
+    ((not ($$_{flags} =~ /R/)) or ($$_{flags} =~ /O/))
+  } grep {
+    (not $$_{obsolete}) or ($dbnow lt $$_{obsolete})
+  } getrecord('resched_staffsch_flag');
 }
 
 sub addoccasionhours {
@@ -604,7 +753,9 @@ sub editstaffhours {
       <div>
         <div class="extant">
            $extantocc</div>
-        <div id="eohadd$next" class="occasionhoursinstance addmore"><a href="javascript: sendajaxrequest('action=addoccasionhours&amp;number=$next&amp;ajaxreplace=eohadd$next', 'staffsch.cgi')">Add Hours on a Specific Date</a></div>
+        <div id="eohadd$next" class="occasionhoursinstance addmore"><a href="javascript: sendajaxrequest('action=addoccasionhours&amp;number=$next&amp;ajaxreplace=eohadd$next', 'staffsch.cgi')">Add Hours on a Specific Date</a>
+             <div><a href="staffsch.cgi?action=inputrecurocchours&amp;staffid=$$sr{id}&amp;$persist">Add Recurring Events</a></div>
+             </div>
         <div><input type="submit" value="Save Changes" /></div>
       </div>
     </form>\n    $viewlink\n];
@@ -614,7 +765,7 @@ sub editoccasionhours {
   my ($sr) = @_;
   $sr ||= getrecord('resched_staff', include::getnum('staffid'));
   ref $sr or return qq[<div class="error"><div class="h">Error: No Staff Record Found</div>
-      I cannot seem to find staff ID <q>$input{staffid}</q> in the database.</div>];
+      I cannot seem to find staff ID <q>$input{staffid}</q> in the database.<!-- editoccasionhours --></div>];
   my $sname   = formatshortname($sr);
   my $cutoff  = (include::getnum('sstart_datetime_day'))
     ? DateTime->new( time_zone => $localtimezone,
@@ -645,6 +796,94 @@ sub editoccasionhours {
       <div id="eohadd$next" class="occasionhoursinstance addmore"><a href="javascript: sendajaxrequest('action=addoccasionhours&amp;number=$next&amp;ajaxreplace=eohadd$next', 'staffsch.cgi')">Add More</a></div>
       <div><input type="submit" value="Save Changes" /></div>
     </div>
+  </form>];
+}
+
+sub inputrecurocchours {
+  my ($sr) = @_;
+  $sr ||= getrecord('resched_staff', include::getnum('staffid'));
+  ref $sr or return qq[<div class="error"><div class="h">Error: No Staff Record Found</div>
+      I cannot seem to find staff ID <q>$input{staffid}</q> in the database.<!-- inputrecurocchours --></div>];
+  my $sname   = formatshortname($sr);
+  my $startdt = DateTime->new( time_zone => $localtimezone,
+                               year => $now->year(), month => $now->month(), day => $now->mday(),
+                               hour => 9, minute => 0, );
+  my $enddt   = DateTime->new( time_zone => $localtimezone,
+                               year => $now->year(), month => $now->month(), day => $now->mday(),
+                               hour => 17, minute => 0, );
+  my $start   = DateTime::Form::Fields($startdt, "starttime1", undef, undef, undef, layout => 'compactilb',
+                                       copydate => ($startdt->ymd() eq $enddt->ymd() ? "endtime1" : undef) );
+  my $end     = DateTime::Form::Fields($enddt,   "endtime1",   undef, undef, undef, layout => 'compactilb' );
+  my $locsel  = getvariable('resched', 'staff_schedule_suppress_locations')
+    ? '' : include::orderedoptionlist("location1", [
+                                                    map { [$$_{id} => encode_entities($$_{briefname})]
+                                                        } ($wherever,
+                                                           grep { not /X/ } getrecord('resched_staffsch_location'))
+                                                   ],
+                                      0);
+  my $flags  = occasionflagcheckboxes(1);
+  my $monthoptions = join "\n                        ", map {
+    my $monthnum = $_;
+    my $dt = DateTime->new( year => 1974, month => $monthnum , day => 7);
+    warn "Blurgle-Argh-Aaarghh-Blargh-Blarghle-Fazoop" if not ref $dt;
+    my $selected = (($dt->month() == $now->month())?qq[ selected="selected"]:"");
+    (qq[<option value="$_"$selected>].($dt->month_abbr)."</option>")
+  } (1 .. 12);
+  return qq[<form class="staffscheduleform recuroccform" action="staffsch.cgi" method="post">
+    <input type="hidden" name="action"  value="updatestaffhours" />
+    <input type="hidden" name="staffid" value="$$sr{id}" />
+    <div class="h">Schedule Recurring Event for $sname:</div><hr />
+    <div class="occasionhoursinstance">
+      <input type="hidden" name="occasion1" value="occasion1" />
+      <div class="ilb">
+        <div class="ilb"><label for="starttime1_datetime_day">From</label> $start</div>
+        <div class="ilb"><label for="endtime1_datetime_day">To</label> $end</div>
+        <div class="ilb">$locsel </div>
+        <div class="ilb">$flags </div>
+        <div class="ilb"><label for="occsncomment1">Comment:</label> <input type="text" size="30" name="occsncomment1" id="occsncomment1" /></div>
+      </div>
+      <hr />
+      <div class="ilb recurfields">
+        <div class="ilb"><label for="recurformselect">Also Schedule Identical Events:</label>
+            <select name="recurtype" id="recurformselect" onchange="changerecurform();">
+               <option value="">Just This Once</option>
+               <option value="daily">Daily</option>
+               <option value="weekly">Weekly</option>
+               <option value="monthly">Monthly (nth day of the month)</option>
+               <option value="nthdow">Monthly (same day of the week, nth week)</option>
+               <option value="quarterly">Quarterly (nth day of the month)</option>
+               <option value="quarterlynthdow">Quarterly (same day of the week, nth week of the month)</option>
+               <option value="listed">on the dates listed below</option>
+            </select>
+
+            <span id="recurstyles" style="display: none;">
+                 <div><input type="radio" name="recurstyle" value="ntimes" id="BookTimesRadio" />Book
+                      <input type="text"  name="recurtimes" size="4" value="1" onchange="document.getElementById('BookTimesRadio').checked = 'checked';" /> additional time(s).</div>
+                 <div><input type="radio" name="recurstyle" value="until" id="BookThruRadio" checked="checked" />Book through
+                      <input type="text" name="recuruntilyear" size="6" value="].($now->year).qq[" onchange="document.getElementById('BookThruRadio').checked = 'checked';" />
+                      <select name="recuruntilmonth" onchange="document.getElementById('BookThruRadio').checked = 'checked';">].($monthoptions).qq[</select>
+                      <input type="text" name="recuruntilmday" value="].($now->mday).qq[" size="4" onchange="document.getElementById('BookThruRadio').checked = 'checked';" />.</div>
+               </span>
+
+               <span id="recurlist" style="display: none;">
+                   <table class="table"><thead>
+                       <tr><th>year</th><th>month</th><th>day</th></tr>
+                   </thead><tbody>
+                       <tr><td>].$now->year."</td><td>".$now->month_abbr."</td><td>".$now->mday.qq[</td></tr>
+                       <tr><td><input type="text" name="recurlistyear1" size="5" value="].$now->year.qq[" /></td>
+                           <td><select name="recurlistmonth1">$monthoptions</select></td>
+                           <td><input type="text" name="recurlistmday1" size="3" /></td>
+                       </tr>
+                       <tr id="insertmorelisteddateshere" />
+                   </tbody></table>
+                   <input type="button" value="Add Another Date" onclick= "augmentdatelist('].($now->year).qq[',].($now->month()).qq[);"/>
+                   <p />
+            </span>
+
+        </div>
+      </div>
+    </div>
+    <input type="submit" value="Save To Staff Schedule" />
   </form>];
 }
 
@@ -880,6 +1119,8 @@ sub staffschedule {
   my $editocc = (($user{flags} =~ /A/) or ($user{id} eq $$sr{userid}) or getvariable('resched', 'staff_schedule_lax_security'))
     ? qq[ <a href="staffsch.cgi?action=editstaffhours&amp;staffid=$$sr{id}&amp;$persist">[Edit Schedule]</a>] : '';
   my $occasions = qq[<div>$editocc</div>];
+  my $dorecur = (($user{flags} =~ /A/) or ($user{id} eq $$sr{userid}) or getvariable('resched', 'staff_schedule_lax_security'))
+    ? qq[<div><a href="staffsch.cgi?action=inputrecurocchours&amp;staffid=$$sr{id}&amp;$persist">[Add Recurring Events]</a></div>] : '';
   if (scalar @occasion) {
     $occasions = qq[<div class="p">Specific Dates$editocc:</div><ul class="staffoccasionhours">]
       . (join "\n            ", map {
@@ -893,7 +1134,7 @@ sub staffschedule {
   my $enddateform   = DateTime::Form::Fields($enddt,   'send',   undef, 'skiptime', 'staffschedule()', layout => 'compactilb');
   my $snamepos      = formatshortname($sr, possessive => 1);
   my $showcanceled  = $input{showcanceled} ? ' checked="checked"' : '';
-  return qq[<div class="h">Schedule for $forwhom:</div>\n$regular\n$occasions
+  return qq[<div class="h">Schedule for $forwhom:</div>\n$regular\n$occasions\n$dorecur
   <div class="spacer">&nbsp;</div>
   <form action="staffsch.cgi" method="post">
     <input type="hidden" name="action" value="staffschedule" />

@@ -14,6 +14,22 @@ Version 0.9.7:
   * When listing staff (for staff scheduling purposes), there is
     now an option to show former staff, as well as current ones.
     (As before, former staff are hidden by default.)
+  * Time fields now list :00, :15, :30, and :45 at the top, for
+    convenience.  Non-rounded values are still shown, subsequently.
+    (TODO: add a config variable to suppress this.)
+  * When entering recurring bookings using the "on the dates listed"
+    option, clicking the Add Another Date button now gives you a
+    form with the current month pre-selected (not always January).
+    (TODO: when the user changes this to a different month and
+     then clicks Add Another Date again, copy the new value.)
+  * When adding occasions to a staff schedule, it is now possible
+    to specify a recurring event, such as a quarterly board meeting
+    on the first of the month or an off-site luncheon on the third
+    Tuesday of every month.  Dates can also be listed individually,
+    similar to how meeting-room recurring bookings work.
+  * Fixed a bug in the create-tables helper script, that in some
+    uncommon situations might have created extra entries in the
+    list of staff-schedule colors.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from
