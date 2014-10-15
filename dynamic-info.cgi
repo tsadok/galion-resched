@@ -94,7 +94,8 @@ sub senddoneearlyform {
                    <input type="hidden" name="donetime_datetime_year"  value="].$donedt->year.qq[" />
                    <input type="hidden" name="donetime_datetime_month" value="].$donedt->month.qq[" />
                    <input type="hidden" name="donetime_datetime_day"   value="].$donedt->mday.qq[" />
-                   ].(DateTime::Form::Fields($now, 'donetime','skipdate',undef,'FieldsQ')).qq[
+                   ].(DateTime::Form::Fields($now, 'donetime','skipdate',undef,'FieldsQ',
+                                             time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[
                        and was followed by
                        <input type="text" name="followupname" id="$focid" />
                        initial:<input type="text" name="staffinitials" size="3" />

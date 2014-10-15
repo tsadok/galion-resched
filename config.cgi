@@ -106,6 +106,11 @@ my %cfgvar =
                                   default     => 0,
                                   sortkey     => 580,
                                  },
+   time_list_quarter_hours_first => +{
+                                      description => 'In the minutes fields for times, list :00, :15, :30, and :45 before all the other options.  0=No, 1=Yes.',
+                                      default     => 0,
+                                      sortkey     => 605,
+                                     },
    program_signup_show_in_sidebar => +{
                                        default     => 0,
                                        description => 'If true, the resource scheduling sidebar contains a link to the program signup facility.',

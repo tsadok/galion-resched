@@ -223,7 +223,8 @@ if ($auth::user) {
                    .qq[<input type="hidden" name="donetime_datetime_year"  value="].$donedt->year.qq[" />
                        <input type="hidden" name="donetime_datetime_month" value="].$donedt->month.qq[" />
                        <input type="hidden" name="donetime_datetime_day"   value="].$donedt->mday.qq[" />
-                     ].(DateTime::Form::Fields($donedt, 'donetime','skipdate',undef,'FieldsQ')).qq[
+                     ].(DateTime::Form::Fields($donedt, 'donetime','skipdate',undef,'FieldsQ',
+                                               time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[
                 </td>
                 <td><input type="button" value="Right Now" onclick="
                        var f=document.doneearlyform;
@@ -690,14 +691,18 @@ sub viewbooking {
                                           (initials:&nbsp;<input type="text" size="3" name="staffinitials" value="$b{staffinitials}" />) $ts
                                      </td></tr>
               <tr><td>From<sup><a href="#footnote1">1</a></sup>:</td>
-                  <td>].(DateTime::Form::Fields($fromdt, 'booking_fromtime',undef,undef,'FieldsK')).qq[</td>
+                  <td>].(DateTime::Form::Fields($fromdt, 'booking_fromtime',undef,undef,'FieldsK',
+                                                time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td>
                   <td><input type="checkbox" name="latestart" ]
                     .($b{latestart} ? ' checked="checked" ' : '').qq[ />&nbsp;Started late at
-                      ].(DateTime::Form::Fields($latedt, 'booking_late', 'skipdate',undef,'FieldsL')).qq[</td></tr>
+                      ].(DateTime::Form::Fields($latedt, 'booking_late', 'skipdate',undef,'FieldsL',
+                                                time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td></tr>
               <tr><td>Until<sup><a href="#footnote2">2</a></sup>:</td>
-                  <td>].(DateTime::Form::Fields($untidt, 'booking_until',undef,undef,'FieldsM')).qq[</td>
+                  <td>].(DateTime::Form::Fields($untidt, 'booking_until',undef,undef,'FieldsM',
+                                                time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td>
                   <td><input type="checkbox" name="doneearlycheckbox" ].($b{doneearly}?' checked="checked" ' : '').qq[ />&nbsp;Done early at
-                      ].(DateTime::Form::Fields($earldt,'booking_doneearly', 'skipdate',undef,'FieldsN')).qq[
+                      ].(DateTime::Form::Fields($earldt,'booking_doneearly', 'skipdate',undef,'FieldsN',
+                                                time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[
                       Followed by: <input name="followupname" value="$fbyrec{bookedfor}" />
                       <span class="nobr">Initials:<input name="followupstaffinitials" size="4" type="text" value="$fbyrec{staffinitials}" /></span>
                       </td></tr>

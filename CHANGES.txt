@@ -14,9 +14,10 @@ Version 0.9.7:
   * When listing staff (for staff scheduling purposes), there is
     now an option to show former staff, as well as current ones.
     (As before, former staff are hidden by default.)
-  * Time fields now list :00, :15, :30, and :45 at the top, for
-    convenience.  Non-rounded values are still shown, subsequently.
-    (TODO: add a config variable to suppress this.)
+  * Time fields can now list :00, :15, :30, and :45 at the top of the
+    minutes dropdown box, for convenience.  To enable this feature,
+    set the config variable time_list_quarter_hours_first.  Non-round
+    values are still shown, subsequently.
   * When entering recurring bookings using the "on the dates listed"
     option, clicking the Add Another Date button now gives you a
     form with the current month pre-selected (not always January).

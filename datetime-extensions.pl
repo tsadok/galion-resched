@@ -148,8 +148,7 @@ sub DateTime::Form::Fields {
            qq[<option value="$_" $selected>].(($_>12)?(($_-12) . " pm"):(($_<12)?"$_ am":$_))."</option>"
          } $firsthour .. $lasthour).qq[</select>];
     my @minlist = (0, 15, 30, 45, 1 .. 14, 16 .. 29, 31 .. 44, 46 .. 59);
-    # TODO: read a config variable and maybe set @minlist to (0 .. 60) instead.
-    
+    if (not $optn{time_list_quarter_hours_first}) { @minlist = (0 .. 60); }
     $mininput = qq[<select name="${prefix}_datetime_minute" id="${prefix}_datetime_minute"$disabletime$copymin>\n           ]
       .( join "\n", map {
         my $value    = $_;

@@ -297,8 +297,10 @@ sub custominterval {
 
 sub intervalform {
   my ($startdt, $enddt, %option) = @_;
-  my $start = DateTime::Form::Fields($startdt, 'intervalstart', undef, 'skiptime', undef, layout => 'compactilb');
-  my $end   = DateTime::Form::Fields($enddt,   'intervalend',   undef, 'skiptime', undef, layout => 'compactilb');
+  my $start = DateTime::Form::Fields($startdt, 'intervalstart', undef, 'skiptime', undef, layout => 'compactilb',
+                                     time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'));
+  my $end   = DateTime::Form::Fields($enddt,   'intervalend',   undef, 'skiptime', undef, layout => 'compactilb',
+                                     time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'));
   my $rflag = $input{requireflag} ? qq[<input type="hidden" name="requireflag" value="$input{requireflag}" />] : '';
   return qq[<form class="intervalform box" action="staffsch.cgi" method="post">
   <input type="hidden" name="action" value="showinterval" />\n  $rflag
@@ -620,8 +622,10 @@ sub occasionhoursform {
                      year => $now->year(), month => $now->month(), day => $now->mday(),
                      hour => 17, minute => 0, );
   my $start = DateTime::Form::Fields($startdt, "starttime$n", undef, undef, undef, layout => 'compactilb',
+                                     time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'),
                                      copydate => ($startdt->ymd() eq $enddt->ymd() ? "endtime$n" : undef) );
-  my $end   = DateTime::Form::Fields($enddt,   "endtime$n",   undef, undef, undef, layout => 'compactilb' );
+  my $end   = DateTime::Form::Fields($enddt,   "endtime$n",   undef, undef, undef, layout => 'compactilb',
+                                     time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first') );
   my $idfield   = $$r{id} ? qq[<input type="hidden" name="ohid$n" value="$$r{id}" />] : '';
   my $locsel    = getvariable('resched', 'staff_schedule_suppress_locations')
     ? '' : include::orderedoptionlist("location$n", [
@@ -812,8 +816,10 @@ sub inputrecurocchours {
                                year => $now->year(), month => $now->month(), day => $now->mday(),
                                hour => 17, minute => 0, );
   my $start   = DateTime::Form::Fields($startdt, "starttime1", undef, undef, undef, layout => 'compactilb',
-                                       copydate => ($startdt->ymd() eq $enddt->ymd() ? "endtime1" : undef) );
-  my $end     = DateTime::Form::Fields($enddt,   "endtime1",   undef, undef, undef, layout => 'compactilb' );
+                                       copydate => ($startdt->ymd() eq $enddt->ymd() ? "endtime1" : undef),
+                                       time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'), );
+  my $end     = DateTime::Form::Fields($enddt,   "endtime1",   undef, undef, undef, layout => 'compactilb',
+                                       time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first') );
   my $locsel  = getvariable('resched', 'staff_schedule_suppress_locations')
     ? '' : include::orderedoptionlist("location1", [
                                                     map { [$$_{id} => encode_entities($$_{briefname})]
@@ -939,10 +945,12 @@ sub reghoursform {
   my $effdt = $$r{effective} ? DateTime::From::MySQL($$r{effective}) : $now;
   my $obsdt = $$r{obsolete}  ? DateTime::From::MySQL($$r{obsolete})  : $now->clone()->add(years => 30);
   my $obsch = $$r{obsolete}  ? qq[ checked="checked"] : '';
-  my $effective = DateTime::Form::Fields($effdt, "effective$n", undef, 'skiptime', undef, layout => 'compactilb');
+  my $effective = DateTime::Form::Fields($effdt, "effective$n", undef, 'skiptime', undef, layout => 'compactilb',
+                                         time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'));
   my $obsolete  = qq[<input type="checkbox" name="isobsolete$n" id="isobsolete$n" $obsch />
       <label for="isobsolete$n">obsolete as of</label>
-      ] . DateTime::Form::Fields($obsdt, "obsolete$n", undef, 'skiptime', undef, layout => 'compactilb');
+      ] . DateTime::Form::Fields($obsdt, "obsolete$n", undef, 'skiptime', undef, layout => 'compactilb',
+                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'));
   my $idfield   = $$r{id} ? qq[<input type="hidden" name="rhid$n" value="$$r{id}" />]
                           : '';
   my $defdow    = $$r{dow} || ($n % 7);
@@ -1130,8 +1138,10 @@ sub staffschedule {
 
   my $forwhom = formatshortname($sr);
   # TODO:  Add edit links when appropriate.
-  my $startdateform = DateTime::Form::Fields($startdt, 'sstart', undef, 'skiptime', 'staffschedule()', layout => 'compactilb');
-  my $enddateform   = DateTime::Form::Fields($enddt,   'send',   undef, 'skiptime', 'staffschedule()', layout => 'compactilb');
+  my $startdateform = DateTime::Form::Fields($startdt, 'sstart', undef, 'skiptime', 'staffschedule()', layout => 'compactilb',
+                                             time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'));
+  my $enddateform   = DateTime::Form::Fields($enddt,   'send',   undef, 'skiptime', 'staffschedule()', layout => 'compactilb',
+                                             time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'));
   my $snamepos      = formatshortname($sr, possessive => 1);
   my $showcanceled  = $input{showcanceled} ? ' checked="checked"' : '';
   return qq[<div class="h">Schedule for $forwhom:</div>\n$regular\n$occasions\n$dorecur
