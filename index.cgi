@@ -1063,12 +1063,12 @@ sub newbooking {
                    </thead><tbody>
                        <tr><td>].$when->year."</td><td>".$when->month_abbr."</td><td>".$when->mday.qq[</td></tr>
                        <tr><td><input type="text" name="recurlistyear1" size="5" value="].$when->year.qq[" /></td>
-                           <td><select name="recurlistmonth1">$monthoptions</select></td>
+                           <td><select id="recurlistmonth1" name="recurlistmonth1">$monthoptions</select></td>
                            <td><input type="text" name="recurlistmday1" size="3" /></td>
                        </tr>
                        <tr id="insertmorelisteddateshere" />
                    </tbody></table>
-                   <input type="button" value="Add Another Date" onclick= "augmentdatelist('].($when->year).q[',].($when->month).qq[);"/>
+                   <input type="button" value="Add Another Date" onclick= "augmentdatelist('].($when->year).q[');"/>
                    <p />
                </span>
        </div>

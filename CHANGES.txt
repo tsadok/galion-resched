@@ -20,9 +20,8 @@ Version 0.9.7:
     values are still shown, subsequently.
   * When entering recurring bookings using the "on the dates listed"
     option, clicking the Add Another Date button now gives you a
-    form with the current month pre-selected (not always January).
-    (TODO: when the user changes this to a different month and
-     then clicks Add Another Date again, copy the new value.)
+    form with the month pre-selected to the same month you just
+    entered on the previous listed date (rather than always January).
   * When adding occasions to a staff schedule, it is now possible
     to specify a recurring event, such as a quarterly board meeting
     on the first of the month or an off-site luncheon on the third
