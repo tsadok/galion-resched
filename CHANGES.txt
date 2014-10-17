@@ -30,6 +30,7 @@ Version 0.9.7:
   * Fixed a bug in the create-tables helper script, that in some
     uncommon situations might have created extra entries in the
     list of staff-schedule colors.
+  * Minor documentation updates to the POD.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

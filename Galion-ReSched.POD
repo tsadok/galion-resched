@@ -39,6 +39,7 @@ Ensure that you have the prerequisite software installed.
 You need an RDBMS.  At this time MySQL is the only one fully
 supported, though it would probably only require minor changes (mostly
 to C<db.pl>) to support Postgres or any other reasonably capable DBMS.
+(Postgres support could probably be easily ported over from jonadabot.)
 
 =item *
 
@@ -94,7 +95,8 @@ C<Data::Dumper>
 Open C<ajax.js> in a text editor and change the basedir variable (on
 the second line) so that it contains the public URI of the resched
 directory on your installation.  This value should end with a
-directory separator (forward slash).
+directory separator (forward slash).  This step must be repeated any
+time you upgrade.
 
 =item 4
 
@@ -107,11 +109,13 @@ a copy of C<dbconfig.pl.sample>.)
 Log into the RDBMS as a privileged user (e.g., root), create the
 database you specified in C<dbconfig.pl>, and grant all privileges on
 that database to the user you specified in dbconfig.pl.  The SQL to do
-this will probably look something like the following:
+this on MySQL will probably look something like the following:
 
 C<CREATE DATABASE resched;>
 
 C<GRANT ALL PRIVILEGES ON resched.* TO username@localhost IDENTIFIED BY 'somepassword';>
+
+C<FLUSH PRIVILEGES;>
 
 =item 6
 
@@ -155,12 +159,12 @@ that's probably better.
 =item 11
 
 Create at least one schedule.  You can log into the web interface and
-use admin.cgi to do this.  Multiple resources (e.g., rooms, computers)
-can be booked according to the same schedule, so you may only need one
-schedule record, depending on your needs.  The schedule record tells
-what time of day you start booking and describes the positions and
-lengths of the booking timeslots (e.g., every hour on the hour
-starting at 9am).
+use C<admin.cgi> to do this.  Multiple resources (e.g., rooms,
+computers) can be booked according to the same schedule, so you may
+only need one schedule record, depending on your needs.  The schedule
+record tells what time of day you start booking and describes the
+positions and lengths of the booking timeslots (e.g., every hour on
+the hour starting at 9am).
 
 =item 12
 
@@ -188,12 +192,15 @@ may still be hardcoded that shouldn't be.  As time goes on I am
 getting more and more of that stuff moved into C<config.cgi> and/or
 C<sitecode.pl>, but this is an ongoing process.  C<TODO.txt> might
 provide some clues as to what remains, but it is not entirely
-comprehensive.  
+comprehensive.  If you do need to make code changes because of
+things that are hardcoded, the author would appreciate hearing
+about what changes you had to make.  Ideally, I would like to get
+all such things moved into the config interface and/or sitecode.pl.
 
 =item 16
 
-Nonetheless, you should be able to start your local installation at
-this point.
+Nonetheless, you should be able to start testing your local
+installation at this point.
 
 =item 17
 
@@ -285,7 +292,17 @@ in future versions of the software.
 
 If you change the actual code, be sure to keep track of what changes
 you have made.  If you later need to re-apply your changes to a future
-version, knowing exactly what your changes are will help.
+version, knowing exactly what your changes are will help.  
+
+If you feel that your code changes make the software more flexible and
+would make it easier for other sites to customize to their needs, you
+may consider sending them to the author.  If you are willing to
+release your changes into the public domain, they may be included in a
+future version of the software so that everyone can benefit from them.
+Even if you do not wish to send your specific changes, dropping the
+author a brief note about what you needed to change may lead to better
+customizability in future releases.  Making the software easy to
+customize is a goal, albeit one that is not always fully achieved.
 
 =back
 
@@ -293,13 +310,15 @@ version, knowing exactly what your changes are will help.
 
 This software is provided free of charge and free of licensing
 restrictions (as pertains to usage, modification, or distribution)
-with absolutely no warranty of any kind whatsoever.
+with absolutely no warranty of any kind whatsoever.  Releasing this
+software with no licensing restrictions, the author understands it to
+be, effectively, in the public domain.
 
-Galion ReSched was written primarily for the Galion Public Library.  
-I am pleased if others can make use of it, but I cannot provide any
+Galion ReSched was written primarily for the Galion Public Library.  I
+am pleased if others can make use of it, but I cannot provide any
 warranty as to its suitability for the needs of any other
-organization, and I also cannot guarantee my ability to provide
-any technical support for the sofware.
+organization, and I also cannot guarantee my ability to provide any
+technical support for the sofware.
 
 Therefore, if you use this software, you must be responsible to
 determine whether it meets your needs and those of your organization
@@ -315,7 +334,10 @@ ReSched software.  The software is provided to you on an AS-IS basis.
 
 Permission to use, modify, and redistribute the software is granted,
 provided you agree that neither the original author nor the Galion
-Public Library is responsible.
+Public Library is responsible.  The author waives any right that he
+otherwise might have (pursuant to copyright law) to restrict your use,
+modification, or redistribution of the software.  No such restrictions
+shall be made by the author.
 
 Contributing any improvements that you have made so that they can
 be considered for inclusions in future versions of the software
@@ -325,9 +347,10 @@ of the software that I distribute, and you are not required to
 submit them in the first place if you do not choose to do so.
 
 Attribution (i.e., crediting the original author as the source)
-is also optional.
+is also optional.  I do not require it.
 
 Monetary compensation for the software is not expected, and the author
 himself is unwilling to receive any.  (I have already been paid by the
 library for the time I spent developing it.)  If you wish to make a
-donation to the Galion Public Library, you may; but it is not required.
+donation to the Galion Public Library, you may; but it is not
+required.
