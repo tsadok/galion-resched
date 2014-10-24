@@ -184,7 +184,6 @@ sub showinterval {
       my $mday = include::htmlordinal($dt->mday());
       my $tday = ($dt->ymd() eq $now->ymd()) ? ' staffscheduletoday' : '';
       my %aflagcount = ();
-      #my @special = findbetween('resched_staffsch_occasion', 'starttime', $dt, $dt->clone()->add( days => 1 ));
       my @special = finddateoverlap('resched_staffsch_occasion', 'starttime', 'endtime', $dt, $dt->clone()->add( days => 1 ));
       if (not $input{showcanceled}) {
         @special = grep { not $$_{flags} =~ /$cancelflag/ } @special;
@@ -213,7 +212,11 @@ sub showinterval {
           unless $$spc{flags} =~ /$partial/;# Partial exception, does not entirely replace regular hours
         my $aflags = join '', grep { $_ =~ /$aflag/ } split //, $$spc{flags};
         $aflagcount{$aflags}++ if $aflags;
-        my $o = formatoccasion($spc, suppressdate => 1, suppressflag => \%reqflag );
+        my %suppressflag = %reqflag;
+        if (not (getvariable('resched', 'staff_schedule_show_redundant_flags') || 0)) {
+          $suppressflag{$_}++ for grep { $_ =~ /$aflag/ } split //, $$spc{flags};
+        }
+        my $o = formatoccasion($spc, suppressdate => 1, suppressflag => \%suppressflag );
         [qq[<div class="staffschedulehours specialhours">$o</div>], $$spc{starttime}, $$spc{endtime}, $aflags];
       } @special);
       my @regular = grep {
@@ -237,8 +240,12 @@ sub showinterval {
         my $rh = $_;
         my $aflags = join '', grep { $_ =~ /$aflag/ } split //, $$rh{flags};
         $aflagcount{$aflags}++ if $aflags;
+        my $suppressflag = %reqflag;
+        if (not (getvariable('resched', 'staff_schedule_show_redundant_flags') || 0)) {
+          $suppressflag{$_}++ for grep { $_ =~ /$aflag/ } split //, $$rh{flags};
+        }
         [qq[<div class="staffschedulehours regularhours">] . formatreghours($rh, suppressdow => 1,
-                                                                                 suppressflag => \%reqflag,
+                                                                                 suppressflag => \%suppressflag,
                                                                            ) . qq[</div>],
          DateTime::Format::ForDB(DateTime->new(year      => $dt->year,
                                                month     => $dt->month,

@@ -172,6 +172,11 @@ my %cfgvar =
                                           description => 'If true, the location field for staff schedule records will not be used at all.',
                                           sortkey     => 2070,
                                          },
+   staff_schedule_show_redundant_flags => +{
+                                            default     => 0,
+                                            description => 'If true, list flags that may be redundant, e.g., an auxiliary-schedule flag on the auxiliary schedule.',
+                                            sortkey     => 2080,
+                                           },
    minimum_password_length => +{ default     => 12,
                                  description => 'Minimum length requirement for new user account passwords.',
                                  sortkey     => 7000,

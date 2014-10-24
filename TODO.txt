@@ -8,6 +8,9 @@ Desired Changes:
  * When editing staff schedule hours (either regular or occasion),
    there should be a UI for getting ones from a different timeframe.
    The capability is there (sstart_datetime_foo), just needs UI.
+   (Workaround: to get there with the current UI, you can select the
+   time frame you want while /viewing/ a staff member's schedule, then
+   click the edit link.)
  * The user should be able to set preferences for things
    like visual style and AJAX, which should then automatically
    kick in whenever they are logged in.  Ideally, it should

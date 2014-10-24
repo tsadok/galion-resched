@@ -39,6 +39,11 @@ Version 0.9.7:
     equipment we have available for the Community Room in Galion.)
     The booking code now reads this list of equipment from the
     database, rather than using the old hardcoded list.
+  * Added a config option, staff_schedule_show_redundant_flags.
+    By default now, staff hours listed on auxiliary schedules
+    are shown with their auxiliary-schedule flag suppressed,
+    because it's redundant with the auxiliary-schedule subheading.
+    To get back the old behavior, set the new config variable to 1.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from
