@@ -5,6 +5,7 @@ $ENV{PATH}='';
 $ENV{ENV}='';
 
 use HTML::Entities;
+use Data::Dumper;
 require "./forminput.pl";
 require "./include.pl";
 require "./auth.pl";
@@ -28,6 +29,12 @@ my %schflag = (
                booknow         => [ undef, 'BookNow',       ''],
                alwaysbooknow   => [ undef, 'AlwaysBookNow', ''],
               );
+my %equipflag = (
+                 G => [ 'G', 'GroupUp',   'Allow this equipment item to be listed on the same line with the previous one (in  booking forms).'],
+                 H => [ 'H', 'Headlabel', 'The category heading itself is the label for this one.  (If radiobool, the equipment label will be added to the Yes label.  There can only be one of these per category, and it should have the lowest sortnum in the category.)'],
+                 N => [ 'N', 'Number',    'Only meaningful for <q>text</q> fields; causes a smaller text entry box.'],
+                 X => [ 'X', 'Disabled',  'Do not offer this equipment when booking any resource now, even if it is assigned.' ],
+                );
 
 if ($auth::user) {
   my $user = getrecord('users', $auth::user);
@@ -63,6 +70,8 @@ if ($auth::user) {
       ($notice, $title) = editrescolors();
     } elsif ($input{action} eq 'updaterescolors') {
       ($notice, $title) = updaterescolors();
+    } elsif ($input{action} eq 'equipment') {
+      ($notice, $title) = equipment();
     } else {
       $notice = qq[<p>Welcome to the resource scheduling administration interface.</p>]
     }
@@ -366,6 +375,48 @@ sub resform {
     my $note = $$clr{sitenote} ? qq[ - $$clr{sitenote}] : '';
     [ $$clr{id} => encode_entities(qq[$$clr{colorname}$note]) ]
   } getrecord('resched_booking_color')], $$res{bgcolor});
+  my (@ecat, %ecat, %ecatyn);
+  for my $e (sort { $$a{sortnum} <=> $$b{sortnum} } grep { not $$_flags =~ /X/ } getrecord('resched_equipment')) {
+    my $c = $$e{category};
+    if (not ref $ecat{$c}) {
+      push @ecat, $c;
+      $ecat{$c} = [];
+    }
+    if ($$e{flags} =~ /H/) {
+      $ecatyn{$c} = $e;
+    } else {
+      push @{$ecat{$c}}, $e;
+    }
+  }
+  my $ecbform = sub {
+    my ($e) = @_;
+    my $extant; if ($$res{id} =~ /\d+/) {
+      $$e{id} or warn "edbform: " . Dumper(+{ e => $e });
+      $extant = findrecord('resched_resource_equipment', 'equipment', $$e{id}, 'resource', $$res{id});
+    } else {
+      $extant = +{ flags => 'X' };
+    }
+    my $label       = encode_entities($$e{label});
+    my $pubcommment = encode_entities($$e{pubcomment}); # public comment is also shown elsewhere, e.g., on bookings
+    my $privcomment = ($$e{privcomment}) ? ('[' . encode_entities($$e{privcomment}) . ']') : ''; # private comment is only shown in the admin interface.
+    my $comment     = join ' &mdash; ', grep { $_ } ($pubcomment, $privcomment);
+    $label          = qq[<abbr title="$comment">$label</abbr>] if $comment;
+    my $checked     = ($$extant{flags} =~ /X/) ? '' : ' checked="checked"';
+    qq[<div class="reschedequipment"><input id="resequip$$e{id}" name="resequip$$e{id}" type="checkbox"$checked /> <label for="resequip$$e{id}">$label</label></div>];
+  };
+  my $equipment = join "", map {
+    my $c = $_;
+    my $ecatyn  = '';
+    if (ref($ecatyn{$c})) {
+      my ($rre) = findrecord('resched_resource_equipment', 'equipment', $ecatyn{$c}{id}, 'resource', $$res{id});
+      $rre ||= +{ flags => 'X'};
+      my $checked = ($$rre{flags} =~ /X/) ? ' class="uncheckedbox"' : ' checked="checked"';
+      $ecatyn  = ref($ecatyn{$c}) ? (qq[<input type="checkbox" id="resequip$ecatyn{$c}{id}" name="resequip$ecatyn{$c}{id}"$checked />]) : '';
+    }
+    qq[<div class="category ilb"><div>$ecatyn<strong><label for="resequip$ecatyn{$c}{id}">${c}</label>:</strong></div><div>&nbsp;</div>
+         ] . (join "\n         ", map { $ecbform->($_); } @{$ecat{$c}}) . qq[
+       </div>]
+  } @ecat;
   return (qq[<form id="resourceform" action="admin.cgi" method="post">
      $hiddenpersist
      <input type="hidden" name="action" value="$action" />$idfield
@@ -399,6 +450,13 @@ sub resform {
                     <label for="autoex" title="$resflag{autoex}[2]">Auto-Extend</label></div>
                $flagcheckboxes
            </td></tr>
+       <tr><th>Available Equipment &amp; Furniture (offered for room bookings):</th>
+           <td>]
+          #. (qq[<!-- ] . (Dumper(+{ ecats    =>  \@ecat,
+          #                          catequip => \%ecat,
+          #                          ecatyn   => \%ecatyn })) . qq[ -->])
+          . qq[$equipment</td>
+       </tr>
      </tbody></table>
      <input type="Submit" value="$saveword" />
   </form>], qq[$editword]);
@@ -416,6 +474,20 @@ sub resupdate {
   my $bg = getrecord('resched_booking_color', include::getnum('bgcolor'));
   $$res{bgcolor} = $bg ? $$bg{id} : 0;
   updaterecord('resched_resources', $res);
+  for my $e (grep { not $$_{flags} =~ /X/ } getrecord('resched_equipment')) {
+    my $dbg = qq[equip $$e{id}: inp:'] . $input{qq[resequip$$e{id}]} . "' ";
+    my ($re) = findrecord('resched_resource_equipment', 'equipment', $$e{id}, 'resource', $$res{id});
+    $re    ||= +{ resource => $$res{id}, equipment => $$e{id}, flags => 'X', };  $dbg .= qq[re:$$re{id} f:$$re{flags} ];
+    $$re{flags} =~ s/X//g; $dbg .= qq[f2:$$re{flags} ];
+    $$re{flags} .= 'X' unless ($input{qq[resequip$$e{id}]} =~ /on/); $dbg .= qq[f3:$$re{flags} ];
+    if ($$re{id}) {
+      warn "updating r_r_e record for equipment $$e{id} for resource $$res{id} ($dbg)";
+      updaterecord('resched_resource_equipment', $re);
+    } elsif (not $$re{flags} =~ /X/) {
+      warn "adding r_r_e record for equipment $$e{id} for resource $$res{id} ($dbg)";
+      addrecord('resched_resource_equipment', $re);
+    }
+  }
   return resform();
 }
 
@@ -442,6 +514,118 @@ sub rescreate {
   my $result = addrecord('resched_resources', $res);
   $input{id} = $db::added_record_id;
   return resform();
+}
+
+sub equipform {
+  my ($e)   = @_;
+  my $cat   = encode_entities($$e{category});
+  my ($num) = $$e{sortnum} =~ /(\d+)/;
+  my $lbl   = encode_entities($$e{label});
+  my $ftype = include::orderedoptionlist("equipfieldtype$$e{id}", [ # TODO: support enum
+                                                                   [ checkbox  => 'Checkbox' ],
+                                                                   [ text      => 'Short Answer'],
+                                                                   [ radiobool => 'Yes/No Buttons'],
+                                                                   # NOTE:  equipment() also has a list of these.
+                                                                  ], ($$e{fieldtype} || 'checkbox') );
+  my $pubcm = encode_entities($$e{pubcomment});
+  my $pricm = encode_entities($$e{privcomment});
+  my $flags = join "\n            ", map { my $k = $_;
+                                           my $checked = ($$e{flags} =~ $k) ? ' checked="checked"' : '';
+                                           my ($fk, $fname, $fdescr) = @{$equipflag{$k}};
+                                           qq[<span class="ilb"><input type="checkbox" id="equipflag$k$$e{id}" name="equipflag$k$$e{id}"$checked />
+                                              <label for="equipflag$k$$e{id}"><abbr title="$fname - $fdescr">$fname</abbr></label></span>]
+                                         } sort { ((lc $a) cmp (lc $b)) or ($a cmp $b) } keys %equipflag;
+  $num ||= 0; # Should only happen if the user clears the field (or makes it non-numeric); see equipment() for the real defaults.
+  return qq[
+    <tr><input type="hidden" name="equipid$$e{id}" value="$$e{id}" />
+        <td colspan="2"><input type="text" size="20" id="equipcategory$$e{id}"    name="equipcategory$$e{id}"    value="$cat" /></td>
+        <td>$ftype</td>
+        <td rowspan="2"><textarea rows="3" cols="20" id="equippubcomment$$e{id}"  name="equippubcomment$$e{id}">$pubcm</textarea></td>
+        <td rowspan="2"><textarea rows="3" cols="20" id="equipprivcomment$$e{id}" name="equipprivcomment$$e{id}">$pricm</textarea></td>
+        <td rowspan="2">$flags</td>
+    </tr>
+    <tr><td class="numeric"><input type="text" size="4"  id="equipsortnum$$e{id}"     name="equipsortnum$$e{id}"     value="$num" class="numeric" /></td>
+        <td><input type="text" size="20" id="equiplabel$$e{id}"       name="equiplabel$$e{id}"       value="$lbl" /></div></td>
+        <td><input type="text" size="20" id="equipdfltval$$e{id}"     name="equipdfltval$$e{id}"     value="$dfval" /></td>
+    </tr>];
+}
+
+sub equipment {
+  for my $id (sort { (($a eq 'new') ? LONG_MAX : $a) <=> (($b eq 'new') ? LONG_MAX : $b) # This sort is probably unnecessary, but I like doing things in order :-)
+                   } map { $input{$_} } grep { /^equipid/ } keys %input) {
+    my $e = +{};
+    if ($id ne 'new') { $e = getrecord('resched_equipment', $id); }
+    my %type = (
+                sortnum   => 'integer',
+                fieldtype => [ 'checkbox', 'text', 'radiobool' ], # NOTE: Keep this list in sync with equipform()'s
+                dfltval   => sub { my ($proposedvalue) = @_;
+                                   if (($$e{fieldtype} eq 'radiobool') or ($$e{fieldtype} eq 'checkbox')) {
+                                     return ($proposedvalue =~ /^(yes|true|1|y)/i) ? 1 : 0;
+                                   } elsif ($$e{fieldtype} eq 'text') {
+                                     return encode_entities($proposedvalue);
+                                   } else {
+                                     warn "equipment(): unknown field type '$$e{fieldtype}' (for equipment '$id'), not sure how to process dfltval";
+                                     return encode_entities($proposedvalue);
+                                   }
+                                 },
+               );
+    for my $k (qw(category sortnum label fieldtype dfltval pubcomment privcomment)) { # flags are handled separately, below.
+      my $intext = $input{qq[equip$k$id]};
+      if ('ARRAY' eq ref $type{$k}) { # array ref = enum
+        my ($value) = grep { $_ eq $intext } @{$type{$k}};
+        $$e{$k} = $value || $$e{$k};
+      } elsif ('CODE' eq ref $type{$k}) {
+        $$e{$k} = $type{$k}->($intext)
+      } elsif ($type{$k} eq 'integer') {
+        ($$e{$k}) = $intext =~ /(\d+)/;
+        $$e{$k} = 0 if not defined $$e{$k};
+      } else {
+        $$e{$k} = $intext || $$e{$k};
+      }
+    }
+    $$e{flags} = join '', grep { $input{qq[equipflag$_$id]} } keys %equipflag;
+    if ($$e{category} and $$e{fieldtype} and ($$e{label} or ($$e{flags} =~ /H/))) {
+      if ($id eq 'new') {
+        addrecord('resched_equipment', $e);
+      } else {
+        updaterecord('resched_equipment', $e);
+      }
+    } else {
+      warn "Not saving equipment '$id' b/c required field is blank (c: '$$e{category}'; ft: '$$e{fieldtype}'; l: '$$e{label}'; f: '$$e{flags}')";
+    }
+  }
+  my $maxn = 10;
+  my @tr = map { my $e = $_; $maxn = $$e{sortnum} if $maxn < $$e{sortnum};
+                 equipform($e)
+               } sort { $$a{sortnum} <=> $$b{sortnum} } getrecord('resched_equipment');
+  my $saveword = (scalar @tr) ? qq[Save Changes] : qq[Save];
+  return qq[
+<ul>
+   <li>Once entered here, specific pieces of equipment can be <strong>enabled or disabled</strong> for individual
+       <a href="admin.cgi?action=reslist&amp;$persistentvars">resources (q.v.)</a>,
+       in case you do not have all of the same resources available for every room.</li>
+   <li>Items in the same <strong>category</strong> will always be listed together.  Within each category,
+       items will be sorted numerically by the <strong>sort number</strong>.  Categories will be sorted based
+       on the sort number of their first item.</li>
+   <li>The <strong>booking comment</strong> will be shown when booking a room, so it can provide information
+       about what the equipment is, to help decide whether it is needed.</li>
+   <li>The <strong>admin comment</strong> is only shown in this admin interface, so you can use it for
+       notes e.g. about which kinds of rooms a given piece of equipment is meant for.</li>
+   </ul>
+<div class="p">When booking a meeting room, the following additional equipment may be offered:</div>
+<form action="admin.cgi" method="post">
+<input type="hidden" name="action" value="equipment" />
+<table class="equipform"><thead>
+    <tr><td colspan="2">category</td><td>field type</td><td rowspan="2">booking comment</td><td rowspan="2">admin comment</td><td rowspan="2">flags</td></tr>
+    <tr><td class="numeric">sort #</td><td>name/label</td><td>default value</td></tr>
+  </thead><tbody>
+    ] . (join "\n    ", @tr) . qq[
+    <tr class="addnew"><th>Add New:</th></tr>
+    ] . equipform(+{ id => 'new', sortnum => ($maxn + 10), }) . qq[
+  </tbody></table>
+  <div class="p"><input type="submit" value="$saveword" /></div>
+  <div class="p">(To add more than one new equipment record, simply enter each one and click the save button.)</div>
+</form>]
 }
 
 sub schlist {
@@ -584,8 +768,9 @@ sub usersidebar {
      <div><div><strong><span onclick="toggledisplay('sbreslist','sbresmark');" id="sbresmark" class="expmark">-</span>
                        <span onclick="toggledisplay('sbreslist','sbresmark','expand');">Resources:</span></strong></div>
           <div id="sbreslist"><ul>
-             <li><a href="admin.cgi?action=reslist&amp;$persistentvars">List Existing</a></li>
-             <li><a href="admin.cgi?action=resnew&amp;$persistentvars">Create New</a></li>
+             <li><a href="admin.cgi?action=reslist&amp;$persistentvars">List Resources</a></li>
+             <li><a href="admin.cgi?action=resnew&amp;$persistentvars">Create Resource</a></li>
+             <li><a href="admin.cgi?action=equipment&amp;$persistentvars">Aux. Equipment</a></li>
              <li><a href="admin.cgi?action=editrescolors&amp;$persistentvars">Color List</a></li>
              </ul></div>
           </div>

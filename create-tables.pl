@@ -56,6 +56,24 @@ $db->prepare(
      )"
     )->execute();
 
+$db->prepare("CREATE TABLE IF NOT EXISTS resched_equipment (
+              id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
+              category tinytext,
+              sortnum integer,
+              label tinytext,
+              fieldtype tinytext,
+              dfltval tinytext,
+              pubcomment tinytext,
+              privcomment tinytext,
+              flags tinytext
+     )")->execute();
+
+$db->prepare("CREATE TABLE IF NOT EXISTS resched_resource_equipment (
+              id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
+              resource integer,
+              equipment integer,
+              flags tinytext
+     )")->execute();
 
 $db->prepare(
     "CREATE TABLE IF NOT EXISTS

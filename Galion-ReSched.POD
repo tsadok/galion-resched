@@ -174,18 +174,27 @@ interface and use C<admin.cgi> to do this.
 
 =item 13
 
+Optionally, if some of your resources are meeting rooms, and if you
+have additional equipment available for them (e.g., tables, chairs,
+coffee makers, whatever), you may wish to use the admin interface to
+add this auxilliary equipment.  Once you have done so, you can go into
+the resource records for your bookable resources and select which
+equipment is available with each resource.
+
+=item 14
+
 You need certain entries in the C<misc_variables> table.  You can use
 C<config.cgi> to create these.  Even if you wish to accept the defaults,
 you should hit the save button at least once, so that the variables
 are created.
 
-=item 14
+=item 15
 
 Create C<sitecode.pl>.  There's a C<sitecode.pl.sample> that you can
 copy.  If you need to do any site-specific name normalization, edit
 the normalisebookedfor function here.
 
-=item 15
+=item 16
 
 You may need to make a few changes to the code itself, as some things
 may still be hardcoded that shouldn't be.  As time goes on I am
@@ -197,12 +206,12 @@ things that are hardcoded, the author would appreciate hearing
 about what changes you had to make.  Ideally, I would like to get
 all such things moved into the config interface and/or sitecode.pl.
 
-=item 16
+=item 17
 
 Nonetheless, you should be able to start testing your local
 installation at this point.
 
-=item 17
+=item 18
 
 If you have questions or comments, you can contact the author
 at the email address given in C<INSTALL.txt>.  (I'm not putting

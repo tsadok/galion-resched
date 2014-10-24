@@ -294,6 +294,20 @@ div.overviewheader {
 }
 
 
+table.equipform thead td,
+table.equipform th {
+  text-align:          left;
+  font-weight:         bold;
+}
+table.equipform thead td.numeric,
+table.equipform th.numeric {
+  text-align:          right;
+}
+table.equipform tr.addnew {
+  font-size:           1.25em;
+}
+
+
 .res3,
 td.content > form.res3,
 table.searchresults .res3

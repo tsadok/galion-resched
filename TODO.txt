@@ -18,7 +18,8 @@ Desired Changes:
    (subject to config variable approval).
  * The users table probably should be able to store initials,
    so that users at their own desks logged in with their
-   own accounts can have their initials autofilled.
+   own accounts can have their initials autofilled (subject
+   to config variable approval).
  * Make alternate name order available by clicking a link.
  * Incorrectly specifying openingtimes or closingtimes should
    result in a MUCH friendlier error message.  Also, there
@@ -33,14 +34,12 @@ Desired Changes:
  * After a suitable deprecation period, we should remove support in
    auth.pl for checking the deprecated (unhashed) password field.  The
    hashedpass field should be used instead.
- * It would be good to add some POD, to make the software more 
-   discoverable on the CPAN.
  * The whole thing should be profiled for perf bottlenecks.
  * I have thought about adding a notes table, to allow notes
    to be attached to specific patrons (rather than just certain
    bookings) and appear any time they book anything.
- * Various things are hardcoded that should not be, e.g., URLs,
-   meeting room equipment available, some of the stuff in the sidebar, ...
+ * Various things are hardcoded that should not be, e.g., the
+   meeting room policy stuff.
  * General refactoring would not go amiss.
  * It would be really cool if it could use NCIP or something
    to consult the ILS patron database.  If we could just

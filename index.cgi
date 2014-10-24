@@ -790,7 +790,7 @@ sub makebooking {
               'Contact Information Missing', undef);
     }
     # Plus there'll be all those extra form fields, which have to be added to the notes:
-    $input{notes} .= "\n==============================\n" . assemble_extranotes();
+    $input{notes} .= "\n==============================\n" . assemble_extranotes($res);
   }
   my $redirect_header = redirect_header(\%res, $when); # tentatively
   my @booking_result = map {
@@ -813,34 +813,68 @@ sub makebooking {
 }
 
 sub assemble_extranotes {
+  my ($resource) = @_;
+  $resource ||= getrecord('resched_resources', $input{resource});
+  ref $resource or die "assemble_extranotes(): no resource, no valid resource id.  " . Dumper(\%input);
   my $extranotes = "";
   my ($participants) = $input{participants} =~ /(\d+)/;
-  $extranotes .= "$participants participants.\n" if $participants;
-  if ($input{kitchenuse} =~ /y/i) {
-    $extranotes .= "Kitchen.";
-    $extranotes .= "  Coffee."        if $input{coffee}; # My testing indicates these fields are set to "on" if true.
-    $extranotes .= "  Microwave."     if $input{nuker};
-    $extranotes .= "  Refrigerator."  if $input{fridge};
-    $extranotes .= "  Meal."          if $input{meal};
-    $extranotes .= "\n";
+
+  my (@cat, %cat, %catyn);
+  for my $e (sort { $$a{sortnum} <=> $$b{sortnum}
+                  } map { getrecord('resched_equipment', $$_{equipment})
+                        } grep { not $$_{flags} =~ /X/
+                               } findrecord('resched_resource_equipment', 'resource', $$resource{id})) {
+    my $cat = $$e{category};
+    if (not ref($cat{$cat})) {
+      push @cat, $cat;
+      $cat{$cat} = [];
+    }
+    if ($$e{flags} =~ /H/) {
+      $catyn{$cat} = $e;
+    } else {
+      push @{$cat{$cat}}, $e;
+    }
   }
-  if ($input{ourequipment} =~ /y/i) {
-    $extranotes .= "Our Equipment:";
-    my ($chairs) = $input{chairs} =~ /(\d+)/;
-    $extranotes .= "  $chairs chairs."       if $chairs;
-    my ($tables) = $input{tables} =~ /(\d+)/;
-    $extranotes .= "  $tables extra tables." if $tables;
-    $extranotes .= "  Podium."               if $input{podium};
-    $extranotes .= "\n";
-    $extranotes .= "  Dry Erase Board."      if $input{dryboard};
-    $extranotes .= "  TV/VCR."               if $input{tv};
-    $extranotes .= "  Screen."               if $input{screen};
-    $extranotes .= "  Overhead."             if $input{overhead};
-    $extranotes .= "  Slides."               if $input{slides};
-    $extranotes .= "  Projector."            if $input{projector};
-    $extranotes .= "\nAdditional Equipment:  $input{anythingelse}" if $input{anythingelse};
-    $extranotes .= "\n";
+  my $eqval = sub {
+    my ($e) = @_;
+    my $label = ($$e{flags} =~ /H/) ? $$e{category} : $$e{label};
+    my $indent = ($$e{flags} =~ /H/) ? "" : "   ";
+    if ($$e{fieldtype} eq 'radiobool') {
+      if (0 + $input{qq[equip$$e{id}]}) {
+        return qq[$indent${label}.\n];
+      } else { return ''; }
+    } elsif ($$e{fieldtype} eq 'checkbox') {
+      if ($input{qq[equip$$e{id}]}) {
+        return qq[$indent${label}.\n];
+      } else { return ''; }
+    } elsif ($$e{fieldtype} eq 'text') {
+      if ($input{qq[equip$$e{id}]}) {
+        if ($$e{flags} =~ /N/) {
+          my ($num) = $input{qq[equip$$e{id}]} =~ /(\d+)/;
+          $label =~ s/^\s*([#]|No[.]?|Number|Num[.]?)(\s*of)?\s*// if $num;
+          return qq[$indent$num ${label}.\n];
+        } else {
+          return qq[$indent${label}: ] . $input{qq[equip$$e{id}]} . "\n";
+        }
+      } else { return ''; }
+    } else {
+      warn "assemble_extranotes(): Unhandled field type: '$$e{fieldtype}' (equip$$e{id})";
+      return $indent . "[unhandled: label=" . $input{qq[equip$$e{id}]} . "]\n";
+    }
+  };
+  for my $c (@cat) {
+    my $olden = $extranotes;
+    if ($catyn{$c}) {
+      $extranotes .= $eqval->($catyn{$c});
+    } else {
+      $extranotes .= $c;
+    }
+    for my $e (@{$cat{$c}}) {
+      $extranotes .= $eqval->($e);
+    }
+    $extranotes .= "\n" unless $extranotes eq $olden;
   }
+
   if ('yes' eq lc $input{policyhave}) {
     $extranotes .= "Already have a copy of our meeting room policy on file.\n";
   } else {
@@ -916,52 +950,91 @@ sub newbooking {
       ( '',                 'Notes',       $submit,            '');
     if (isroom($res{id})) {
       # This is a room booking.
-      $notesheading = 'Contact Information (name, address, phone number) for Group Contact Person, and any other Notes';
+      $notesheading = 'Contact Information (name, address, phone number) for Group Contact Person, and any other Notes'; # TODO: make this configurable
+      my (@equip) = sort { ($$a{sortnum}||0) <=> ($$b{sortnum}||0) } map {
+        getrecord('resched_equipment', $$_{equipment});
+      } grep { not $$_{flags} =~ /X/ } findrecord('resched_resource_equipment', 'resource', $res{id});
       ($submitbeforenotes, $submitafternotes) = ('', $submit);
-      my %value = map {
-        ($input{$_}) ? ( $_ => qq[ value="$input{$_}"]) : ()
-      } qw(participants chairs tables anythingelse);
-      my %ischecked = map {
-        ($input{$_}) ? ( $_ => ' checked="checked"' ) : ()
-      } qw(coffee nuker fridge meal
-             podium dryboard
-             tv screen overhead slides projector);
+      my (%value, %ischecked, %isno, @cat, %cat, %catyn);
+      for my $e (@equip) {
+        if ($$e{fieldtype} eq 'checkbox') {
+          $ischecked{$$e{id}} = ($input{qq[equip$$e{id}]}) ? ' checked="checked"' : '';
+        } elsif ($$e{fieldtype} eq 'radiobool') {
+          $ischecked{$$e{id}} = ($input{qq[equip$$e{id}]}) ? ' checked="checked"' : '';
+          $isno{$$e{id}}      = ($input{qq[equip$$e{id}]}) ? '' : ' checked="checked"';
+        } elsif ($$e{fieldtype} eq 'text') {
+          my $val = encode_entities($input{qq[equip$$e{id}]});
+          $value{$$e{id}}     = $val ? qq[ value="$val"] : '';
+        }
+        my $cat = $$e{category};
+        if (not ref $cat{$cat}) {
+          push @cat, $cat;
+          $cat{$cat} = [];
+        }
+        if ($$e{flags} =~ /H/) {
+          $catyn{$cat} = $e;
+        } else {
+          push @{$cat{$cat}}, $e;
+        }
+      }
+      my $eqform = sub { my ($e) = @_;
+                         my $cat = $$e{category};
+                         my $onclick = '';
+                         my %clear = ( checkbox  => [qq[document.getElementById('equip], qq[').checked=false;]],
+                                       radiobool => [qq[document.getElementById('equip], qq[no').checked=true;]],
+                                       text      => [qq[document.getElementById('equip], qq[').value='';]],
+                                     );
+                         my %set   = ( checkbox  => [qq[document.getElementById('equip], qq[').checked=true;]],
+                                       radiobool => [qq[document.getElementById('equip], qq[yes').checked=true;]],
+                                       text      => ['',''], # Not Recommended: using text field for the catyn does not make sense; it cannot be autofilled.
+                                     );
+                         if ($$e{flags} =~ /H/) {
+                           $onclick = qq[ onChange="] . (join ' ', map { my $e = $_;
+                                                                       $clear{$$e{fieldtype}}[0] . $$e{id} . $clear{$$e{fieldtype}}[1]
+                                                                     } @{$cat{$cat}}) . '"';
+                         } elsif ($catyn{$cat}) {
+                           $onclick = qq( onChange="$set{$catyn{$cat}{fieldtype}}[0]$catyn{$cat}{id}$set{$catyn{$cat}{fieldtype}}[1]");
+                         }
+                         my $ungroup = ($$e{flags} =~ /G/) ? '' : qq[</div><div>&nbsp;</div>\n<div>                  ];
+                         my $comment = $$e{pubcomment} ? (qq[ <span class="equipbookingcomment">] . encode_entities($$e{pubcomment}) . qq[</span>]) : '';
+                         if ($$e{fieldtype} eq 'radiobool') {
+                           my $isyes = $$e{dfltval} ? ' checked="checked"' : '';
+                           my $isno  = $$e{dfltval} ? '' : ' checked="checked"';
+                           my $addtoyes = ''; #if ($$e{flags} =~ /H/) { $addtoyes = " (" . encode_entities($$e{label}) . ")" if $$e{label} }
+                           my $yesclick = ($$e{flags} =~ /H/) ? '' : $onclick;
+                           my $noclick  = ($$e{flags} =~ /H/) ? $onclick : '';
+                           return qq[$ungroup<span class="radiobool"><!-- eid: $$e{id} -->\n               ]
+                             . qq[<span class="nobr"><input type="radio" name="equip$$e{id}" value="1" id="equip$$e{id}yes"$isyes$yesclick /> <label for="equip$$e{id}yes">Yes$addtoyes</label></span>\n               ]
+                             . qq[<span class="nobr"><input type="radio" name="equip$$e{id}" value="0" id="equip$$e{id}no"$isno$noclick />    <label for="equip$$e{id}no">No</label></span>$comment</span>\n];
+                         } elsif ($$e{fieldtype} eq 'checkbox') {
+                           my $checked = $$e{dfltval} ? ' checked="checked"' : '';
+                           my $label   = encode_entities($$e{label});
+                           return qq[$ungroup<span class="nobr rightpad"><input type="checkbox" name="equip$$e{id}" id="equip$$e{id}"$checked$onclick /> <label for="equip$$e{id}">$label</label>$comment</span>]
+                         } elsif ($$e{fieldtype} eq 'text') {
+                           my $label   = encode_entities($$e{label});
+                           my $value   = encode_entities($$e{dfltval});
+                           my $size    = ($$e{flags} =~ /N/) ? 4 : 20;
+                           return qq[$ungroup<label for="equip$$e{id}">$label</label> <input type="text" size="$size" name="equip$$e{id}" id="equip$$e{id}" value="$value"$onclick />$comment]
+                         } else {
+                           warn "newbooking(): unhandled equipment field type: '$$e{fieldtype}' (equipment #$$e{id}).";
+                           return qq[$ungroup<!-- unhandled equipment field type: '$$e{fieldtype}' -->$comment];
+                         }
+      };
+      my $equipmentfields = join "\n", map {
+        my $c = $_;
+        my $catyn = '';
+        if (ref $catyn{$c}) {
+          $catyn = $eqform->($catyn{$c});
+        }
+        qq[<div class="category"><div><strong>$c:</strong> $catyn<div><!-- ] . @{$cat{$c}} . qq[ -->&nbsp;</div></div>
+             <div>] . (join "\n             ", map { $eqform->($_); } @{$cat{$c}}) . qq[</div>
+           </div>]
+      } @cat;
       $roombookingfields = qq[
   <div class="roombooking">
       <p>Number of Participants:  <input name="participants" type="text" size="4" $value{participants} /></p>
-      <div class="category">
-             <div><strong>Kitchen Use:</strong>
-               <span class="nobr"><input type="radio" name="kitchenuse" value="Yes" />Yes</span>
-               <span class="nobr"><input type="radio" name="kitchenuse" value="No" checked="checked" onClick="document.bookingform.coffee.checked=false; document.bookingform.nuker.checked=false; document.bookingform.fridge.checked=false; document.bookingform.meal.checked=false; " />No</span>
-               </div><div>&nbsp;</div>
-           <div>
-             <nobr class="rightpad"><input type="checkbox" name="coffee" onClick="document.bookingform.kitchenuse[0].checked=true;" />Coffee&nbsp;Pots</span>
-             <nobr class="rightpad"><input type="checkbox" name="nuker"  onClick="document.bookingform.kitchenuse[0].checked=true;" />Microwave</span>
-             <nobr class="rightpad"><input type="checkbox" name="fridge" onClick="document.bookingform.kitchenuse[0].checked=true;" />Refrigerator</span>
-                              <span class="nobr"><input type="checkbox" name="meal"   onClick="document.bookingform.kitchenuse[0].checked=true;" />Meal</span>
-           </div>
-      </div>
-      <div class="category"><div><strong>Equipment Requirements:</strong>
-               <span class="nobr"><input type="radio" name="ourequipment" value="Yes" />Yes (Our Equipment)</span>
-               <span class="nobr"><input type="radio" name="ourequipment" value="No" checked="checked" onClick="document.bookingform.chairs.value=0; document.bookingform.tables.value=0; document.bookingform.podium.checked=false; document.bookingform.dryboard.checked=false; document.bookingform.tv.checked=false; document.bookingform.screen.checked=false; document.bookingform.overhead.checked=false; document.bookingform.slides.checked=false; document.bookingform.projector.checked=false; document.bookingform.anythingelse.value='';" />No</span>
-             </div><div>&nbsp;</div>
-          <div><!-- Furniture -->
-             <nobr class="rightpad"># of Chairs: <input type="text" name="chairs" value="0" size="3" $value{chairs} onClick="document.bookingform.ourequipment[0].checked=true;" /></span>
-             <span class="nobr"># of Additional Tables:       <input type="text" name="tables" value="0" size="3" $value{tables} onClick="document.bookingform.ourequipment[0].checked=true;" /></span>
-                   <span class="nobr">(The four tables are always provided.)</span>
-          </div><div>&nbsp;</div>
-          <div>
-             <nobr class="rightpad"><input type="checkbox" name="podium" $ischecked{podium}  onClick="document.bookingform.ourequipment[0].checked=true;" />Podium</span>
-             <span class="nobr"><input type="checkbox" name="dryboard" $ischecked{dryboard} onClick="document.bookingform.ourequipment[0].checked=true;" />Dry Erase Board</span>
-          </div><div>&nbsp;</div>
-          <div><!-- A/V Stuff -->
-             <nobr class="rightpad"><input type="checkbox" name="tv"        $ischecked{tv}        onClick="document.bookingform.ourequipment[0].checked=true;" />TV/VCR</span>
-             <nobr class="rightpad"><input type="checkbox" name="screen"    $ischecked{screen}    onClick="document.bookingform.ourequipment[0].checked=true;" />Screen</span>
-             <nobr class="rightpad"><input type="checkbox" name="overhead"  $ischecked{overhead}  onClick="document.bookingform.ourequipment[0].checked=true;" />Overhead&nbsp;Projector</span>
-             <span class="nobr"><input                  type="checkbox" name="projector" $ischecked{projector} onClick="document.bookingform.ourequipment[0].checked=true;" />Projector for computer or VCR</span>
-          </div><div>&nbsp;</div>
-          <div>Anything Else? <input type="text" size="30" name="anythingelse" $value{anythingelse} onClick="document.bookingform.ourequipment[0].checked=true;" /></div>
-      </div>
+      $equipmentfields]
+          . qq[
       <div class="category"><div><strong>Meeting Room Policy:</strong></div>
            <div><input type="radio" name="policyhave" value="Yes" id="policyhaveyes" />
                       <label for="policyhaveyes">Already have our policy on file.</label></div>
@@ -1068,7 +1141,7 @@ sub newbooking {
                        </tr>
                        <tr id="insertmorelisteddateshere" />
                    </tbody></table>
-                   <input type="button" value="Add Another Date" onclick= "augmentdatelist('].($when->year).q[');"/>
+                   <input type="button" value="Add Another Date" onclick= "augmentdatelist('].($when->year).qq[');"/>
                    <p />
                </span>
        </div>
