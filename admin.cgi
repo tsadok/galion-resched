@@ -29,6 +29,15 @@ my %schflag = (
                booknow         => [ undef, 'BookNow',       ''],
                alwaysbooknow   => [ undef, 'AlwaysBookNow', ''],
               );
+my %schflagflag = ( # TODO: add a flag for always suppressing this flag in day and interval schedules.
+                   A => ['A', 'Aux-Schedule',      "List hours with this flag on the main schedule, but separate them at the bottom of each day."],
+                   D => ['D', 'Disabled-Flag',     "Do not allow user to change whether this flag is assigned to hours."],
+                   O => ['O', 'Occasion-Flag',     "This flag is only relevant to occasion hours (not regular hours)."],
+                   P => ['P', 'Partial-Exception', "For occasion hours, treat hours with this flag as only partial exceptions, i.e., they do not entirely replace that day's regular hours."],
+                   R => ['R', 'Reghours-Flag',     "This flag is only relevant to regular hours (not occasion hours)."],
+                   S => ['S', 'Separate-Schedule', "List hours with this flag on a separate schedule, not on the main schedule."],
+                   X => ['X', 'Cancel-Hours',      "Treat hours with this flag as canceled or deleted."],
+                  );
 my %equipflag = (
                  G => [ 'G', 'GroupUp',   'Allow this equipment item to be listed on the same line with the previous one (in  booking forms).'],
                  H => [ 'H', 'Headlabel', 'The category heading itself is the label for this one.  (If radiobool, the equipment label will be added to the Yes label.  There can only be one of these per category, and it should have the lowest sortnum in the category.)'],
@@ -58,6 +67,8 @@ if ($auth::user) {
       ($notice, $title) = schupdate();
     } elsif ($input{action} eq 'createschedule') {
       ($notice, $title) = schcreate();
+    } elsif ($input{action} eq 'schflaglist') {
+      ($notice, $title) = schflaglist();
     } elsif ($input{action} eq 'listusers') {
       ($notice, $title) = userlist();
     } elsif ($input{action} eq 'edituser') {
@@ -87,6 +98,35 @@ if ($auth::user) {
   print include::standardoutput('Authentication Needed',
                                 "<p>In order to access this page you need to log in.</p>",
                                 $ab, $input{usestyle});
+}
+
+sub schflaglist {
+  my @f = map {
+    my $f   = $_;
+    my $fc  = encode_entities($$f{flagchar});
+    my $sd  = encode_entities($$f{shortdesc});
+    my $ld  = encode_entities($$f{longdesc});
+    my $obs = $$f{obsolete} ? ' checked="checked"' : '';
+    my $flg = join "\n               ", map {
+      my $char = $_;
+      my $checked = ($$f{flags} =~ $char) ? ' checked="checked"' : "";
+      my $label   = encode_entities($schflagflag{$char}[0]) . '&nbsp;&mdash; '
+        . qq[<abbr title="] . encode_entities($schflagflag{$char}[2]) . qq[">]
+        . encode_entities($schflagflag{$char}[1]) . qq[</abbr>];
+      qq[<div><input type="checkbox" id="flag${char}$$f{id}" name="flag${char}$$f{id}"$checked />
+                       <label for="flag${char}$$f{id}">$label</label></div>]
+    } sort { $a cmp $b } keys %schflagflag;
+    qq[<tr><input type="hidden" name="flagid$$f{id}" value="$$f{id}" />
+           <td><input type="text" size="1"  id="flagchar$$f{id}"  name="flagchar$$f{id}"  value="$fc" /></td>
+           <td><input type="text" size="12" id="shortdesc$$f{id}" name="shortdesc$$f{id}" value="$sd" /></td>
+           <td><textarea rows="3" cols="20" id="longdesc$$f{id}"  name="longdesc$$f{id}">$ld</textarea></td>
+           <td><div class="ilb box">$flg</div></td></tr>]
+  } getrecord('resched_staffsch_flag');
+  return qq[<table><thead>
+     <tr></tr>
+  </thead><tbody>
+     ] . (join "\n     ", @f) . qq[
+  </tbody></table>];
 }
 
 sub updaterescolors {
@@ -763,6 +803,8 @@ sub usersidebar {
   my $hideusers    = ($input{action} =~ /user/)   ? ''  : ' style="display: none;"';
   my $expandipauth = ($input{action} =~ /ipauth/) ? '-' : '+';
   my $hideipauth   = ($input{action} =~ /ipauth/) ? ''  : ' style="display: none;"';
+  my $expandflags  = ($input{action} =~ /flags/)  ? '-' : '+';
+  my $hideflags    = ($input{action} =~ /flags/)  ? ''  : ' style="display: none;"';
   return qq[
   <div class="sidebar">
      <div><div><strong><span onclick="toggledisplay('sbreslist','sbresmark');" id="sbresmark" class="expmark">-</span>
@@ -779,6 +821,12 @@ sub usersidebar {
           <div id="sbschlist"><ul>
              <li><a href="admin.cgi?action=schlist&amp;$persistentvars">List Existing</a></li>
              <li><a href="admin.cgi?action=schnew&amp;$persistentvars">Create New</a></li>
+             </ul></div>
+          </div>
+     <div><div><strong><span onclick="toggledisplay('sbflglist', 'sbflgmark');" id="sbflgmark" class="expmark">$expandflags</span>
+                       <span onclick="toggledisplay('sbflglist', 'sbflgmark', 'expand');">Flags:</span></strong></div>
+          <div id="sbflglist"$hideflags><ul>
+               <li><a href="admin.cgi?action=schflaglist&amp;$persistentvars">List Schedule Flags</a></li>
              </ul></div>
           </div>
      <div><div><strong><span onclick="toggledisplay('sbusrlist','sbusrmark');" id="sbusrmark" class="expmark">$expandusers</span>
