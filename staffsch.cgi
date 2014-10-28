@@ -1222,7 +1222,7 @@ sub formatoccasion {
   $arg{suppressflag} ||= +{}; # No stupid warning
   my $flags = $arg{suppressflags} ? ''
     : join ' ', map { my $fc = $_;
-                      "<!-- $_ -->" . formatflag(grep { $$_{flagchar} eq $fc
+                      "<!-- $_ -->" . formatflag(grep { ($$_{flagchar} eq $fc) and not ($$_{flags} =~ /H/)
                                                       } findrecord('resched_staffsch_flag', 'flagchar', $fc))
                     } grep { (not /A/) and not ${$arg{suppressflag}}{$_} } split //, $$or{flags};
   my $name = '';

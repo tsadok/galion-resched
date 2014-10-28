@@ -29,9 +29,10 @@ my %schflag = (
                booknow         => [ undef, 'BookNow',       ''],
                alwaysbooknow   => [ undef, 'AlwaysBookNow', ''],
               );
-my %schflagflag = ( # TODO: add a flag for always suppressing this flag in day and interval schedules.
+my %schflagflag = (
                    A => ['A', 'Aux-Schedule',      "List hours with this flag on the main schedule, but separate them at the bottom of each day."],
                    D => ['D', 'Disabled-Flag',     "Do not allow user to change whether this flag is assigned to hours."],
+                   H => ['H', 'Hidden-Flag',       "Do not show this flag on day/week/month schedules."],
                    O => ['O', 'Occasion-Flag',     "This flag is only relevant to occasion hours (not regular hours)."],
                    P => ['P', 'Partial-Exception', "For occasion hours, treat hours with this flag as only partial exceptions, i.e., they do not entirely replace that day's regular hours."],
                    R => ['R', 'Reghours-Flag',     "This flag is only relevant to regular hours (not occasion hours)."],
@@ -122,11 +123,13 @@ sub schflaglist {
            <td><textarea rows="3" cols="20" id="longdesc$$f{id}"  name="longdesc$$f{id}">$ld</textarea></td>
            <td><div class="ilb box">$flg</div></td></tr>]
   } getrecord('resched_staffsch_flag');
-  return qq[<table><thead>
-     <tr></tr>
+  return qq[<div class="h">Schedule Flags:</div>
+  <table><thead>
+     <tr><th>Flag Char<a href="#flagcharnote">*</a></th><th>Flag Name</th><th>Flag Description</th><th>Flag Features (<q>Flag Flags</q>)</th></tr>
   </thead><tbody>
      ] . (join "\n     ", @f) . qq[
-  </tbody></table>];
+  </tbody></table>
+  <div class="explan"><a name="flagcharnote">*&nbsp;&mdash; When assigning flag characters, remember that lowercase letters are specifically reserved for per-site use.  Choosing lowercase letters for your flag characters should keep you from having any flag-character conflicts when upgrading to future versions of the software.</a></div>];
 }
 
 sub updaterescolors {

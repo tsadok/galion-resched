@@ -44,6 +44,8 @@ Version 0.9.7:
     are shown with their auxiliary-schedule flag suppressed,
     because it's redundant with the auxiliary-schedule subheading.
     To get back the old behavior, set the new config variable to 1.
+  * Added support for "hidden" schedule flags, i.e., ones that don't
+    get listed on day/week/month schedules.
   * The admin interface now has a way to list schedule flags, and
     the schedule flag flags (i.e., the flags that go on the schedule
     flag records themselves) are now documented as to what they mean.
