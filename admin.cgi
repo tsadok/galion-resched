@@ -101,7 +101,168 @@ if ($auth::user) {
                                 $ab, $input{usestyle});
 }
 
+sub contradictoryscheduleflags {
+  my ($flags, $sdesc, $blank) = @_;
+  my $warn;
+  my $error;
+  $blank ||= 'as they were';
+  if (($flags =~ /O/) and ($flags =~ /R/)) {
+    $error .= qq[<div class="error"><div><strong>Warning: Incompatible Flag Features</strong> ($sdesc)</div>
+           A flag cannot be specific to regular hours and also be specific to special-occasion hours.
+           These are incompatible features, because they have opposite meanings.
+           I have left your flag features $blank for now (for the $sdesc flag).</div>\n];
+  } elsif (($flags =~ /A/) and ($flags =~ /S/)) {
+    $error .= qq[<div class="error"><div><strong>Warning: Incompatible Flag Features</strong> ($sdesc)</div>
+           A flag cannot indicate an auxiliary schedule and also indicate a separate schedule.
+           These are incompatible features, because one implies that hours with this flag are
+           shown when showing the main schedule, and the other implies that they are not shown
+           when showing the main schedule, which is a contradiction.
+           I have left your flag features $blank for now (for the $sdesc flag).</div>\n];
+  } elsif (($flags =~ /P/) and not ($flags =~ /O/)) {
+    $warn .= qq[<div class="error"><div><strong>Warning: Incompatible Flag Features</strong> ($sdesc)</div>
+           A flag that indicates a partial exception must be specific to special-occasion hours,
+           because only special-occasion hours can indicate exceptions to the regular schedule.
+           I have gone ahead and saved your flag features for now (for the $sdesc flag), but you really should fix this.</div>\n];
+
+  }
+  return $error, $warn;
+}
+
+sub savescheduleflags {
+  my @warning;
+  for my $fid (map { /^flagid(\d+)/; $1; } grep { /^flagid\d+/ } keys %input) {
+    my $f = getrecord('resched_staffsch_flag', $fid);
+    if (ref $f) {
+      my ($fchar) = $input{qq[flagchar$fid]} =~ /^(\w)/; $fchar ||= $$f{flagchar};
+      my ($sdesc) = $input{qq[shortdesc$fid]} || $$f{shortdesc};
+      my ($ldesc) = $input{qq[longdesc$fid]}  || $$f{longdesc};
+      my ($flags) = join '', map { $schflagflag{$_}[0]
+                                 } sort { $a cmp $b } grep { $input{"flag" . $_ . $fid} } keys %schflagflag;
+      $fchar ||= subscript(($sdesc || $ldesc || $fid), 1, 1);
+      if ((not $fchar) or (not $sdesc) or (not $ldesc)) {
+        my @empty;
+        push @empty, "Flag Char" if not $fchar;
+        push @empty, "Flag Name" if not $sdesc;
+        push @empty, "Flag Description" if not $ldesc;
+        my $plural = (1 < scalar @empty) ? "s" : '';
+        push @warning, qq[<div class="error"><div><strong>Warning: Mandatory Field</strong></div>
+           The following field$plural cannot be left blank (so I have left the old value$plural for now):]
+            . (join ", ", @empty) . qq[</div>];
+      }
+      if ($fchar) {
+        # Check for duplicates;
+        my @dupe = grep { $$_{id} ne $fid } grep { $$_{flagchar} eq $fchar # needed because the DB may do case-insensitive match
+                                                 } findrecord('resched_staffsch_flag', 'flagchar', $fchar);
+        # But skip duplicates we are about to rectify:
+        my %assigned;
+        @dupe = grep {
+          my $thisdupe = $_;
+          my %seen;
+          my $dupecheck;
+          $dupecheck = sub {
+            my ($d) = @_;
+            my ($ndfc) = $input{qq[flagchar$$d{id}]} =~ /(\w)/;
+            if ($ndfc ne $$d{flagchar}) {
+              # We either have changed or are about to change the flag character on this dupe.  But can that change succeed?
+              if ($assigned{$ndfc}) {
+                return 1;
+              } elsif ($ndfc eq $$f{flagchar}) {
+                # We're swapping, that's fine:
+                $assigned{$ndfc}++;
+                return 0;
+              } elsif ($seen{$ndfc}) {
+                return 1;
+              } else {
+                $seen{$ndfc}++;
+                my @conflict = findrecord('resched_staffsch_flag', 'flagchar', $ndfc);
+                for my $c (@conflict) {
+                  if ($dupecheck->($c)) {
+                    return 1;
+                  } else {
+                    $assigned{$ndfc}++;
+                  }
+                }
+                return 0;
+              }
+            } else {
+              # We're not even planning to change the dupe, so it clearly remains a dupe:
+              return 1;
+            }
+          };
+            $dupecheck->($thisdupe);
+        } @dupe;
+        if (scalar @dupe) {
+          my $name = $sdesc || $$f{shortdesc};
+          push @warning, qq[<div class="error"><div><strong>Error: Duplicate Flag Character</strong></div>
+           For the $name flag, your new flag character ($fchar) has not been saved, because it is a duplicate.
+           Each flag must have a unique flag character, for technical reasons.  Otherwise the software would
+           get them confused.</div>];
+        } else {
+          $$f{flagchar}  = $fchar || $$f{flagchar};
+        }
+      }
+      $$f{shortdesc} = $sdesc if $sdesc;
+      $$f{longdesc}  = $ldesc if $ldesc;
+      my ($flagerror, $flagwarning) = contradictoryscheduleflags($flags, $sdesc);
+      if ($flagerror) {
+        push @warning, $flagerror;
+        push @warning, $flagwarning if $flagwarning;
+      } else {
+        push @warning, $flagwarning if $flagwarning;
+        $$f{flags}     = $flags;
+      }
+      updaterecord('resched_staffsch_flag', $f);
+    } else {
+      push @warning, qq[<div class="warning"><div><strong>Warning: Failed To Update Flag</strong></div>
+          Flag #$fid could not be updated, because its record could not be located in the database.</div>];
+    }
+  }
+  if ($input{shortdescnew} or $input{longdescnew} or $input{flagcharnew}) {
+    my $newf = +{ shortdesc => $input{shortdescnew},
+                  longdesc  => $input{longdescnew},
+                };
+    ($$newf{flagchar}) = $input{flagcharnew} =~ /(\w)/;
+    if (not $$newf{flagchar}) {
+      push @warning, qq[<div class="error"><div><strong>Error: invalid flag character</strong></div>
+        The flag character is necessary (for technical reasons) and
+        must be a character that can be part of a word, such as a
+        letter, number, or underscore.  Your new flag was not saved,
+        because you did not specify a valid flag character.</div>];
+    } elsif (findrecord('resched_staffsch_flag', 'flagchar', $$newf{flagchar})) {
+      push @warning, qq[<div class="error"><div><strong>Error: duplicate flag character</strong></div>
+        Your new flag has not been saved because its flag character is a duplicate for an already existing staff schedule flag.
+        For technical reasons, each flag must have a unique flag character.  Note that the flag character is a single character;
+        if you type more than one character in the flag character field, only the first character is used.</div>];
+    } else {
+      if ($$newf{flagchar} ne lc $$newf{flagchar}) {
+        push @warning, qq[<div class="error"><div><strong>Warning: non-lowercase flag character</strong></div>
+        Your new flag has been saved with a non-lowercase flag character.  This could become a problem later if
+        you upgrade to a new version of the software that happens to ship with a pre-defined flag that uses
+        the character you chose.  For this reason, lowercase letters as flag characters are specifically
+        reserved for flags you create.  If you change your custom flags to use lowercase flag characters,
+        they won't cause problems if you upgrade later.  For now, your new flag has been saved with the
+        flag character you specified, but you can change it.  This is easiest to do now, before you or your
+        users create any schedule records that use the flag.</div>];
+      }
+      my $newflags = join '', map { $schflagflag{$_}[0]
+                                  } sort { $a cmp $b } grep { $input{"flag" . $_ . "new"} } keys %schflagflag;
+      my ($flagerror, $flagwarning) = contradictoryscheduleflags($newflags, qq[the new flag ($$newf{shortdesc})]);
+      if ($flagerror) {
+        push @warning, $flagerror;
+        push @warning, $flagwarning if $flagwarning;
+      } else {
+        push @warning, $flagwarning if $flagwarning;
+        $$newf{flags} = $flags;
+      }
+      addrecord('resched_staffsch_flag', $newf);
+    }
+  }
+
+  return join "\n", @warning;
+}
+
 sub schflaglist {
+  my ($saveresult) = $input{savechanges} ? savescheduleflags() : '';
   my @f = map {
     my $f   = $_;
     my $fc  = encode_entities($$f{flagchar});
@@ -111,8 +272,8 @@ sub schflaglist {
     my $flg = join "\n               ", map {
       my $char = $_;
       my $checked = ($$f{flags} =~ $char) ? ' checked="checked"' : "";
-      my $label   = encode_entities($schflagflag{$char}[0]) . '&nbsp;&mdash; '
-        . qq[<abbr title="] . encode_entities($schflagflag{$char}[2]) . qq[">]
+      my $label   = #encode_entities($schflagflag{$char}[0]) . '&nbsp;&mdash; ' .
+          qq[<abbr title="] . encode_entities($schflagflag{$char}[2]) . qq[">]
         . encode_entities($schflagflag{$char}[1]) . qq[</abbr>];
       qq[<div><input type="checkbox" id="flag${char}$$f{id}" name="flag${char}$$f{id}"$checked />
                        <label for="flag${char}$$f{id}">$label</label></div>]
@@ -123,13 +284,34 @@ sub schflaglist {
            <td><textarea rows="3" cols="20" id="longdesc$$f{id}"  name="longdesc$$f{id}">$ld</textarea></td>
            <td><div class="ilb box">$flg</div></td></tr>]
   } getrecord('resched_staffsch_flag');
-  return qq[<div class="h">Schedule Flags:</div>
+  my $newflags = join "\n               ", map {
+      my $char = $_;
+      my $label   = #encode_entities($schflagflag{$char}[0]) . '&nbsp;&mdash; ' .
+        qq[<abbr title="] . encode_entities($schflagflag{$char}[2]) . qq[">]
+        . encode_entities($schflagflag{$char}[1]) . qq[</abbr>];
+      qq[<div><input type="checkbox" id="flag${char}new" name="flag${char}new" />
+                       <label for="flag${char}new">$label</label></div>]
+    } sort { $a cmp $b } keys %schflagflag;
+  my $saveword = (scalar @f) ? 'Save Changes' : 'Save';
+  my $fcnote   = qq[<a href="#flagcharnote">*</a>];
+  return qq[$saveresult<form>
+  <div class="h">Schedule Flags:</div>
+  <input type="hidden" name="action"      value="schflaglist" />
+  <input type="hidden" name="savechanges" value="yes" />
   <table><thead>
-     <tr><th>Flag Char<a href="#flagcharnote">*</a></th><th>Flag Name</th><th>Flag Description</th><th>Flag Features (<q>Flag Flags</q>)</th></tr>
+     <tr><th>Flag Char$fcnotelink</th><th>Flag Name</th><th>Flag Description</th><th>Flag Features (<q>Flag Flags</q>)</th></tr>
   </thead><tbody>
      ] . (join "\n     ", @f) . qq[
+     <tr><th colspan="2">Add New Schedule Flag:</th></tr>
+     <tr><td><input type="text" size="1"  id="flagcharnew"  name="flagcharnew" />$fcnote</td>
+         <td><input type="text" size="12" id="shortdescnew" name="shortdescnew" /></td>
+         <td><textarea rows="3" cols="20" id="longdescnew"  name="longdescnew"></textarea></td>
+         <td><div class="ilb box">$newflags</div></td></tr>
   </tbody></table>
-  <div class="explan"><a name="flagcharnote">*&nbsp;&mdash; When assigning flag characters, remember that lowercase letters are specifically reserved for per-site use.  Choosing lowercase letters for your flag characters should keep you from having any flag-character conflicts when upgrading to future versions of the software.</a></div>];
+  <div class="p"><input type="submit" value="$saveword" /></div>
+  <hr />
+  <div class="explan"><a name="flagcharnote">*&nbsp;&mdash; When assigning flag characters, remember that lowercase letters are specifically reserved for per-site use.  Choosing lowercase letters as the flag characters for your custom flags should keep you from having any flag-character conflicts when upgrading to future versions of the software.  Also note that if two flags have the same flag character, strange consequences will ensue (basically, the software will get the two flags confused), so assign a <strong>unique</strong> flag character for each flag.</a></div>
+  </form>];
 }
 
 sub updaterescolors {
