@@ -1316,6 +1316,7 @@ sub updatestaff {
   for my $f (grep { not $$_{obsolete} } getrecord('resched_staff_flag')) {
     $$sr{flags} .= $$f{flagchar} if $input{qq[flag$$f{flagchar}]};
   }
+  $$sr{userid} = include::getnum('userid');
   my $urec = getrecord('users', $$sr{userid});
   return qq[<div class="error"><div class="h">Error: No Such Account</div>
         You specified that this staff member has user account ID '$$sr{userid}',
@@ -1580,7 +1581,12 @@ sub usersidebar {
                                                                         } grep { $input{$_}
                                                                                } keys %input;
   #warn "Preserving Variables: $preserve";
-  my $stylesec = include::sidebarstylesection($preserve, 'staffsch.cgi');
+  my $stylesec  = include::sidebarstylesection($preserve, 'staffsch.cgi');
+  my @wecanedit = findrecord('resched_staff', 'userid', $user{id});
+  my $editsch   = (1 == scalar @wecanedit)
+    ? qq[<div><a href="staffsch.cgi?action=editstaffhours&amp;staffid=$wecanedit[0]{id}&amp;$persistentvars">My Schedule</a></div>]
+    : (getvariable('resched', 'staff_schedule_show_redundant_change_link')
+       ? qq[<div><a href="staffsch.cgi?action=liststaff&amp;$persistentvars">Change Staff Schedules</a></div>] : '');
   return qq[<div class="sidebar">
      <div class="h sidebarsec">Schedules:</div>
        $tflines
@@ -1588,6 +1594,7 @@ sub usersidebar {
   <div class="sidebar">
      <div class="h sidebarsec">Staff:</div>
        <hr />
+       $editsch
        <div><a href="staffsch.cgi?action=liststaff&amp;$persistentvars">List Staff</a></div>
        $addstaff
        $editcolor

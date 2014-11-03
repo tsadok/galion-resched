@@ -50,6 +50,13 @@ Version 0.9.7:
     and the schedule flag features (i.e., the flags that go on the
     schedule flag records themselves) are now documented as to what
     they mean.
+  * Fixed a bug wherein the userid (login) of staff members for
+    staff scheduling purposes was not being updated when it should be.
+  * The sidebar will now show a "My Schedule" link (in the staff
+    scheduling section) if there is exactly one staff schedule the
+    current user can edit.  Otherwise, a new config option controls
+    whether a redundant "Change Staff Schedules" link will be shown,
+    pointing to the list of staff.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

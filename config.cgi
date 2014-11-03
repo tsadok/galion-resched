@@ -147,6 +147,11 @@ my %cfgvar =
                                        description => 'If true, the resource scheduling sidebar contains a link to the staff schedule facility.',
                                        sortkey     => 2000,
                                       },
+   staff_schedule_show_redundant_change_link => +{
+                                                  default     => 0,
+                                                  description => 'If true, the staff schedule section in the sidebar will have an "edit schedule" link even if this is technically redundant.',
+                                                  sortkey     => 2003,
+                                                 },
    staff_schedule_lax_security => +{
                                     default     => 0,
                                     description => 'If true, anyone who can log in can edit staff and staff schedule records.',
