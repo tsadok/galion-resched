@@ -611,7 +611,7 @@ sub updateoccasionhours {
         } else {
           return qq[<div class="error">Sorry, I'm not sure how many times to schedule that.<!-- recurstyle '$input{recurstyle}', recurtype '$input{recurtype}', debug '$debugrecur' --></div>];
         }
-        #warn "[done with recur: $debugrecur]";
+        warn "[done with recur: $debugrecur]" if $debug;
       }
     }
   }
