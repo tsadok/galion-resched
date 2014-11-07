@@ -57,6 +57,11 @@ Version 0.9.7:
     current user can edit.  Otherwise, a new config option controls
     whether a redundant "Change Staff Schedules" link will be shown,
     pointing to the list of staff.
+  * Resource scheduling now actually uses the background colors you
+    specify for each resource.  The old hardcoded resource background
+    colors have been removed from the included stylesheets.  You may
+    want to remove them from any custom stylesheets you have added
+    as well, just to keep things tidy.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

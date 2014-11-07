@@ -1503,7 +1503,9 @@ sub doview {
     push @thead, ("<tr>".( join '',
                            map {
                              "<!-- res: @res -->".join'', map {
-                               qq[<th class="res$res{$_}{id}"><a href="./?view=$res{$_}{id}&amp;year=$input{year}&amp;month=$input{month}&amp;mday=$input{mday}&amp;]. persist(undef, ['magicdate']) .qq[">$res{$_}{name}</a></th>]} @res
+                               my $r = $_;
+                               my $s = bookingstyle($res{$r}{bgcolor});
+                               qq[<th class="res$res{$r}{id}"$s><a href="./?view=$res{$r}{id}&amp;year=$input{year}&amp;month=$input{month}&amp;mday=$input{mday}&amp;]. persist(undef, ['magicdate']) .qq[">$res{$r}{name}</a></th>]} @res
                            } @dt
                          )."<!-- dt: @dt --></tr>\n");
     my $maxnts; # Each iteration of the loop below calculates an $nts
@@ -1750,7 +1752,8 @@ sub doview {
               my $class = ($$c{tdcontent}[$r] =~ /\(closed\)/) ? qq[ class="closed"] : qq[ class="res$$c{res}{id}"];
               if ($$c{ssmoffset}) {
                 $$c{tdcontent}[$r] =~ s!(\d+[:]\d+[:]\d+)!dectime($1,$gcf,$$c{tdrowspan}[0])!eg; }
-              return qq[<td rowspan="$$_{tdrowspan}[$row]"$class>$$_{tdcontent}[$row]</td>\n              ];
+              my $style = bookingstyle($$c{res}{bgcolor});
+              return qq[<td rowspan="$$_{tdrowspan}[$row]"$class$style>$$_{tdcontent}[$row]</td>\n              ];
             }->($_, $row)
               : "<!-- no tdcontent -->"
         } @col)
