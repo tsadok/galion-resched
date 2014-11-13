@@ -651,8 +651,8 @@ sub occasionhoursform {
        <div class="ilb"><label for="starttime${n}_datetime_day">From</label> $start</div>
        <div class="ilb"><label for="endtime${n}_datetime_day">To</label> $end</div>
        <div class="ilb">$locsel</div>
-       <div class="ilb">$flags</div>
-       <div class="ilb"><label for="occsncomment$n">Comment:</label> <input type="text" size="30" name="occsncomment$n" id="occsncomment$n" value="$comment" /></div>
+       <div class="ilb hoursinstanceflags">$flags</div>
+       <div class="ilb hoursinstancecomment"><label for="occsncomment$n">Comment:</label> <input type="text" size="30" name="occsncomment$n" id="occsncomment$n" value="$comment" /></div>
     </div>
        </div>];
 }
@@ -989,7 +989,7 @@ sub reghoursform {
     (not $$_{obsolete}) or ($dbnow lt $$_{obsolete})
   } getrecord('resched_staffsch_flag');
   return qq[<div class="reghoursinstance"><!-- [rh$$r{id}/$n/$dbg] -->
-       <div class="ilb">$idfield
+       <div class="ilb hoursinstancedetails">$idfield
          <div class="ilb">
             <div class="dowsel ilb">$dowsel</div>
             <div class="locsel ilb">$locsel</div></div>
@@ -1001,9 +1001,9 @@ sub reghoursform {
                  <nobr><input type="text" size="2" name="endhour$n"   id="endhour$n"   value="$endhour"   /><label for="endmin$n">:</label><input   type="text" size="2" name="endmin$n"    id="endmin$n"    value="$endmin" />
                        <select name="endpm$n"><option value="0">am</option><option value="1"$endpm>pm</option></select></nobr></div>
             </div>
-         <div class="ilb">$flags</div>
+         <div class="ilb hoursinstanceflags">$flags</div>
        </div>
-       <div class="ilb">
+       <div class="ilb hoursinstanceeffectiverange">
          <div class="ilb">effective $effective</div>
          <div class="ilb">$obsolete</div>
        </div><!-- {rh$$r{id}/$n/$dbg} -->
