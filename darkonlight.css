@@ -334,6 +334,16 @@ form.staffscheduleform .occasionhoursinstance {
   margin-bottom:        12pt;
   padding-bottom:       6pt;
 }
+form.staffscheduleform .occasionhoursinstance .multiday {
+  border:               3pt outset #FFCCCC;
+  padding:              2pt;
+  background-color:     #FFCCCC;
+}
+form.staffscheduleform .occasionhoursinstance .multiday:before {
+  content:              "Multi-Day: ";
+  font-weight:          bold;
+  color:                #660000;
+}
 form.staffscheduleform div.addmore {
   margin-top:           1em;
   margin-bottom:        0.75em;

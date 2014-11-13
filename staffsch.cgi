@@ -644,9 +644,10 @@ sub occasionhoursform {
   my $comment   = encode_entities($$r{comment});
   my $next      = $n + 1;
   my $flags     = occasionflagcheckboxes($n, ($$r{flags} || ''));
+  my $multiday  = ($enddt->ymd() ne $startdt->ymd()) ? ' multiday' : '';
   # fields: id, staffid, starttime, endtime, location, flags
   return qq[<div class="occasionhoursinstance">
-    <div class="ilb">$idfield
+    <div class="ilb$multiday">$idfield
        <input type="hidden" name="occasion$n" value="occasion$n" />
        <div class="ilb"><label for="starttime${n}_datetime_day">From</label> $start</div>
        <div class="ilb"><label for="endtime${n}_datetime_day">To</label> $end</div>
