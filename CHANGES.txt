@@ -62,6 +62,8 @@ Version 0.9.7:
     colors have been removed from the included stylesheets.  You may
     want to remove them from any custom stylesheets you have added
     as well, just to keep things tidy.
+  * Fixed long-standing limitation wherein you could only log out
+    from index.cgi
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

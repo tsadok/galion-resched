@@ -246,11 +246,10 @@ sub authbox {
     # User is logged in already.  Display logout option and whatever the callback returns (if any):
     my $more = "";
     if ($callback) { $more = $callback->($auth::user); }
-    my $uri = "http://$ENV{HTTP_HOST}$ENV{SCRIPT_NAME}";
     my $href = (-e 'user.cgi') ? qq[ href="user.cgi?user=$auth::user"] : '';
     return qq[<div class="authbox">$status
        <div>$loggedin <a$href>$calltheuser</a>.</div>
-       <div><a href="$uri?AUTH_logout=$auth::user">Log Out</a></div>
+       <div><a href="index.cgi?AUTH_logout=$auth::user">Log Out</a></div>
        $more</div>];
   } else {
     # User is not logged in currently.  Display login form.
