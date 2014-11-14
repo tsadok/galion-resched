@@ -66,7 +66,10 @@ Version 0.9.7:
     from index.cgi
   * Added the resched_days_closed table to the database.  The
     markdaysclosed() routine now inserts records into it, in
-    addition to booking the resources closed.
+    addition to booking the resources closed.  When viewing staff
+    schedules for an interval (day/week/month/etc), days closed
+    are now prominently marked as such at the top of the day,
+    along with the reason given.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

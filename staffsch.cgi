@@ -179,6 +179,9 @@ sub showinterval {
     if ($closed{$dt->dow() % 7}) {
       push @day, qq[<!-- always closed on ] . ($dt->day_abbr()) . qq[ -->];
     } else {
+      my $cu = $dt->clone()->add( hours => 20 );
+      my ($closedrec) = finddateoverlap('resched_days_closed', 'whenclosed', 'closeduntil', $dt, $cu);
+      my $closed = (ref $closedrec) ? qq[<div class="dayclosed"><span class="dayclosedlabel">Closed:</span> <span class="dayclosedreason">$$closedrec{reason}</span></div>] : qq[<!-- not closed: [$wc] - [$cu] -->];
       my $dow  = $dt->day_abbr();
       my $mon  = $dt->month_abbr();
       my $mday = include::htmlordinal($dt->mday());
@@ -277,6 +280,7 @@ sub showinterval {
                     <div class="h scheduledate"><span class="scheduledatedow">$dow</span><span class="punctuation">,</span>
                              <span class="scheduledatemonth">$mon</span>
                              <span class="scheduledatemday">$mday</span></div>
+                    $closed
                     $items
                     </div>];
     }

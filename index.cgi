@@ -752,7 +752,7 @@ sub markdaysclosed {
       addrecord('resched_days_closed', +{ whenclosed  => DateTime::Format::ForDB($wc),
                                           closeduntil => DateTime::Format::ForDB($cu),
                                           reason      => encode_entities($input{notes}),
-                                          user        => $$user{id},
+                                          user        => $user{id},
                                         });
       push @dc, $wc;
     }}

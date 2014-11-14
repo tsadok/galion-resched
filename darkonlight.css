@@ -374,6 +374,21 @@ div.staffscheduleday div.scheduledate {
   margin-bottom:        3px;
 }
 
+div.staffscheduleday div.dayclosed {
+  font-size:            1.2em;
+  padding-top:          0.5em;
+  padding-bottom:       0.5em;
+  margin-top:           0.5em;
+  margin-bottom:        1em;
+}
+div.staffscheduleday div.dayclosed .dayclosedlabel {
+  font-weight:          bold;
+  display:              block;
+}
+div.staffscheduleday div.dayclosed .dayclosedreason {
+  font-style:           italic;
+}
+
 div.staffscheduletoday {
   border:               3pt solid black;
   background-color:     #FFFFFF;

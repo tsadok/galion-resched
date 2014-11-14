@@ -380,6 +380,22 @@ div.staffscheduleday {
   padding:              0.5em;
   border-radius:        1em;
 }
+
+div.staffscheduleday div.dayclosed {
+  font-size:            1.2em;
+  padding-top:          0.5em;
+  padding-bottom:       0.5em;
+  margin-top:           0.5em;
+  margin-bottom:        1em;
+}
+div.staffscheduleday div.dayclosed .dayclosedlabel {
+  font-weight:          bold;
+  display:              block;
+}
+div.staffscheduleday div.dayclosed .dayclosedreason {
+  font-style:           italic;
+}
+
 div.staffscheduletoday {
   border:               3pt solid black;
   background-color:     #666666;
