@@ -285,6 +285,18 @@ $db->prepare(
      )->execute();
 
 $db->prepare(
+     "CREATE TABLE IF NOT EXISTS
+      resched_days_closed (
+          id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
+          whenclosed  datetime,
+          closeduntil datetime,
+          reason      tinytext,
+          comments    text,
+          user        integer,
+          flags       tinytext
+      )")->execute();
+
+$db->prepare(
     "CREATE TABLE IF NOT EXISTS
      resched_staff (
           id        INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,

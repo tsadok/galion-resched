@@ -726,12 +726,35 @@ sub markdaysclosed {
   my @dc;
   for my $n (1..10) {
     if ($input{'year'.$n} and $input{'month'.$n} and $input{'mday'.$n}) {
-      push @dc, DateTime->new(
-                              year    => $input{'year'.$n},
-                              month   => $input{'month'.$n},
-                              day     => $input{'mday'.$n},
-                              hour    => 8, # This gets overridden below, based on schedule.
+      my $dt = DateTime->new(
+                             year    => $input{'year'.$n},
+                             month   => $input{'month'.$n},
+                             day     => $input{'mday'.$n},
+                            );
+      my %ot = include::openingtimes();
+      my ($hour, $minute) = @{$ot{$dt->dow()} || [ 8, 0]};
+      my $wc = DateTime->new(
+                             year    => $dt->year(),
+                             month   => $dt->month(),
+                             day     => $dt->day(),
+                             hour    => $hour,   # This gets overridden below, based on schedule.
+                             minute  => $minute, # ditto.
+                            );
+      my %ct = include::closingtimes();
+      my ($hour, $minute) = @{$ct{$dt->dow()} || [ 18, 0]};
+      my $cu = DateTime->new(
+                             year    => $dt->year(),
+                             month   => $dt->month(),
+                             day     => $dt->day(),
+                             hour    => $hour,   # This gets overridden below, based on schedule.
+                             minute  => $minute, # ditto.
                              );
+      addrecord('resched_days_closed', +{ whenclosed  => DateTime::Format::ForDB($wc),
+                                          closeduntil => DateTime::Format::ForDB($cu),
+                                          reason      => encode_entities($input{notes}),
+                                          user        => $$user{id},
+                                        });
+      push @dc, $wc;
     }}
   $input{untilhour} = 20; $input{untilmin}  = 30; # TODO: closing times should NOT be hardcoded.
   my @resource = getrecord('resched_resources');
