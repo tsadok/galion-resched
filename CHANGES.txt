@@ -70,6 +70,8 @@ Version 0.9.7:
     schedules for an interval (day/week/month/etc), days closed
     are now prominently marked as such at the top of the day,
     along with the reason given.
+  * Added a config option to suppress listing of staff hours
+    on closed dates.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

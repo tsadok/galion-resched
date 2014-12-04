@@ -275,7 +275,8 @@ sub showinterval {
         }
         @item = sort { $$a[3] cmp $$b[3] or $$a[1] cmp $$b[1] or $$a[2] cmp $$b[2] } @item;
       }
-      my $items = join "\n         ", map { $$_[0] } @item;
+      my $items = ((ref $closedrec) and getvariable('resched', 'staff_schedule_suppress_hours_when_closed')) ? '<!-- no staff hours because closed -->'
+        : join "\n         ", map { $$_[0] } @item;
       push @day, qq[<div class="ilb staffscheduleday$tday">
                     <div class="h scheduledate"><span class="scheduledatedow">$dow</span><span class="punctuation">,</span>
                              <span class="scheduledatemonth">$mon</span>

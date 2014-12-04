@@ -177,6 +177,11 @@ my %cfgvar =
                                           description => 'If true, the location field for staff schedule records will not be used at all.',
                                           sortkey     => 2070,
                                          },
+   staff_schedule_suppress_hours_when_closed => +{
+                                                  default     => 0,
+                                                  description => 'If true, staff hours will not be shown on closed dates.',
+                                                  sortkey     => 2075,
+                                                 },
    staff_schedule_show_redundant_flags => +{
                                             default     => 0,
                                             description => 'If true, list flags that may be redundant, e.g., an auxiliary-schedule flag on the auxiliary schedule.',
