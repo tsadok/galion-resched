@@ -409,7 +409,10 @@ sub showprogram {
       }}
     if ($input{sortby} eq 'num') {
       # Nothing to do: they are already in this order.
+    } elsif ($input{sortby} eq 'lastname') {
+      @signup = sortbylastname(@signup);
     } else {
+      # TODO: add a config variable to control this.  For now:
       @signup = sortbylastname(@signup);
     }
     my $enddt = DateTime::From::MySQL($$prog{endtime});
@@ -472,7 +475,9 @@ $notes
     <input type="hidden" name="action" value="dosignup" />
     <input type="hidden" name="dummyvar" value="thisdoesnothing" />
     <table class="table signupsheet"><thead>
-      <tr><td class="numeric"><a title="Click here to sort by this column." href="program-signup.cgi?action=showprogram&amp;program=$input{program}&amp;sortby=num&amp;$persistentvars&amp;showcanceled=$input{showcanceled}">#</a></td><td>Attender</td><td>Phone</td><td>Flags</td><td>Comments</td></tr>
+      <tr><td class="numeric"><a title="Click here to sort by this column." href="program-signup.cgi?action=showprogram&amp;program=$input{program}&amp;sortby=num&amp;$persistentvars&amp;showcanceled=$input{showcanceled}">#</a></td>
+          <td><a title="Click here to sort by last name." href="program-signup.cgi?action=showprogram&amp;program=$input{program}&amp;sortby=lastname&amp;$persistentvars&amp;showcanceled=$input{showcanceled}">Attender</a></td>
+          <td>Phone</td><td>Flags</td><td>Comments</td></tr>
     </thead><tbody>
       ]. $existingsignups . $waitlistnote . $waitlistsignups . $newsignup . qq[
     </tbody></table>

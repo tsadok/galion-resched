@@ -72,6 +72,11 @@ Version 0.9.7:
     along with the reason given.
   * Added a config option to suppress listing of staff hours
     on closed dates.
+  * When viewing a program signup list, the Attender column header
+    is now a link, to sort by last name.  (Sorting by last name is
+    the default, but now there's an explicit link to go back to it,
+    in case you've sorted by something else.  This is preparatory
+    work for making the default configurable.)
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from
