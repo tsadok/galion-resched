@@ -217,6 +217,7 @@ sub updateprogram {
     $$prog{flags}         = join '', map { $input{"flag" . $_} ? $_ : '' } keys %programflag;
     $$prog{notes}         = encode_entities($input{notes});
     $$prog{title}         = encode_entities($input{title});
+    $$prog{defaultsort}   = encode_entities($input{defaultsort}); # Invalid values will cause it to fall back to the default.
     ($$prog{signuplimit}) = $input{signuplimit}    =~ /(\d+)/;
     my ($catid)           = $input{category} =~ /(\d+)/;
     my $category          = getrecord('resched_program_category', $catid);
