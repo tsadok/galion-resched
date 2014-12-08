@@ -169,7 +169,7 @@ sub programform {
   my $limitsize = ($$record{limit} >= 100) ? 6 : 4;
   my $notesrows = 3 + int((length $$record{notes}) / 50); $notesrows = 10 if $notesrows > 10;
   my $dfsort    = include::orderedoptionlist('defaultsort', \@dfltsort,
-                                             ($$record{defaultsort} || 'num'), # TODO:  have a config variable to change the site-wide default -- here and in showprogram().
+                                             ($$record{defaultsort} || getvariable('resched', 'program_signup_default_sort') || 'num'),
                                             );
   return qq[<form action="program-signup.cgi" method="post">\n  $hiddenpersist
   $hidden
@@ -416,8 +416,8 @@ sub showprogram {
         $$w{num} = 'W' . sprintf $digits, $$w{num};
         unshift @waitlist, $w;
       }}
-    my $sortorder = $input{sortby} || $$prog{defaultsort} || 'num'; # TODO: implement a config variable to change the site-wide default.  Here and in programform()
-    # Any values of sortby that are handled here should also be listed in %dfltsort in programform().
+    my $sortorder = $input{sortby} || $$prog{defaultsort} || getvariable('resched', 'program_signup_default_sort') || 'num';
+    # Any values of sortby that are handled here should also be listed in %dfltsort in programform() and documented in config.cgi under program_signup_default_sort.
     if ($sortorder eq 'num') {
       # Nothing to do: they are already in this order.
     } elsif ($sortorder eq 'lastname') {

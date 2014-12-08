@@ -126,6 +126,11 @@ my %cfgvar =
                                      description => 'By default, how many people can sign up for any given one of your programs.  This can still be changed on a per-program basis, but new programs get this value if you do not change it.  0 means no limit.  The fire-safety capacity of your primary meeting room makes a good value here.',
                                      sortkey     => 713,
                                     },
+   program_signup_default_sort => +{
+                                    default     => 'num',
+                                    description => 'Order in which program signup lists are shown by default.  This can be overridden for individual programs, which in turn can be overridden by clicking a different column header to sort by that column.  "num" means sort numerically; "lastname" means sort by last name.',
+                                    sortkey     => 715,
+                                   },
 
    normal_name_order => +{
                           default     => 0,
