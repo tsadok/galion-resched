@@ -383,7 +383,7 @@ sub showprogram {
   my $when = include::datewithtwelvehourtime(DateTime::From::MySQL($$prog{starttime}));
   my $cancelednote = '<!-- no canceled signups -->';
   if ($prog) {
-    my @signup = sort { $$a{id} <=> $$b{id} } findrecord('resched_program_signup', 'program_id', $id);
+    my @signup = findrecord('resched_program_signup', 'program_id', $id);
     if (not $input{showcanceled}) {
       my @c = grep { $$_{flags} =~ /X/ } @signup;
       if (scalar @c) {
@@ -420,7 +420,7 @@ sub showprogram {
     my $sortorder = $input{sortby} || $$prog{defaultsort} || getvariable('resched', 'program_signup_default_sort') || 'num';
     # Any values of sortby that are handled here should also be listed in %dfltsort in programform() and documented in config.cgi under program_signup_default_sort.
     if ($sortorder eq 'num') {
-      # Nothing to do: they are already in this order.
+      @signup = sort { $$a{id} <=> $$b{id} } @signup;
     } elsif ($sortorder eq 'lastname') {
       @signup = sortbylastname(@signup);
     } else {
