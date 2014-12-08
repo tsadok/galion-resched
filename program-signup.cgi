@@ -135,6 +135,10 @@ sub dateform {
 sub programform {
   my ($record) = @_;
   my ($categoryform, $untilform, $startdateform, $hidden);
+  my @dfltsort = ( # Values here must be kept in sync with what showprogram() knows how to handle.
+                  [num      => 'Sort sign-up list numerically.'],
+                  [lastname => 'Sort sign-up list by last name.'],
+                 );
   my @category   = grep { not ($$_{flags} =~ /X/) } getrecord('resched_program_category');
   my %category   = map { $$_{id} => $$_{category} } @category;
   my @defaultcategory = map { $$_{id} } grep { $$_{flags} =~ /D/ } @category;
@@ -164,6 +168,9 @@ sub programform {
   }
   my $limitsize = ($$record{limit} >= 100) ? 6 : 4;
   my $notesrows = 3 + int((length $$record{notes}) / 50); $notesrows = 10 if $notesrows > 10;
+  my $dfsort    = orderedoptionlist('defaultsort', \@dfltsort,
+                                    ($$record{defaultsort} || 'num'), # TODO:  have a config variable to change the site-wide default -- here and in programform().
+                                    );
   return qq[<form action="program-signup.cgi" method="post">\n  $hiddenpersist
   $hidden
   <table class="dbrecord">
@@ -182,6 +189,8 @@ sub programform {
      <tr><th><label for="limit">Limit:</label></th>
          <td><input type="text" id="signuplimit" name="signuplimit" size="$limitsize" value="$$record{signuplimit}" />
              <span class="explan">(0 means no limit.)</span></td></tr>
+     <tr><th><label for="defaultsort">Sort:</label></th>
+         <td>$dfsort</td></tr>
      <tr><th><label>Flags:</label></th>
          <td>] . flagcheckboxes($$record{flags}, \%programflag) . qq[</td></tr>
      <tr><th><label for="programnotes">Notes:</label></th>
@@ -407,6 +416,7 @@ sub showprogram {
         $$w{num} = 'W' . sprintf $digits, $$w{num};
         unshift @waitlist, $w;
       }}
+    # Any values of sortby that are handled here should also be listed in %dfltsort in programform().
     if ($input{sortby} eq 'num') {
       # Nothing to do: they are already in this order.
     } elsif ($input{sortby} eq 'lastname') {

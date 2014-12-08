@@ -268,6 +268,7 @@ $db->prepare(
           endtime     datetime,
           signuplimit integer,
           flags       tinytext,
+          defaultsort tinytext,
           notes       longtext
      )"
      )->execute();
