@@ -136,8 +136,8 @@ sub programform {
   my ($record) = @_;
   my ($categoryform, $untilform, $startdateform, $hidden);
   my @dfltsort = ( # Values here must be kept in sync with what showprogram() knows how to handle.
-                  [num      => 'Sort sign-up list numerically.'],
-                  [lastname => 'Sort sign-up list by last name.'],
+                  [ num      => 'Sort sign-up list numerically.'  ],
+                  [ lastname => 'Sort sign-up list by last name.' ],
                  );
   my @category   = grep { not ($$_{flags} =~ /X/) } getrecord('resched_program_category');
   my %category   = map { $$_{id} => $$_{category} } @category;
@@ -168,9 +168,9 @@ sub programform {
   }
   my $limitsize = ($$record{limit} >= 100) ? 6 : 4;
   my $notesrows = 3 + int((length $$record{notes}) / 50); $notesrows = 10 if $notesrows > 10;
-  my $dfsort    = orderedoptionlist('defaultsort', \@dfltsort,
-                                    ($$record{defaultsort} || 'num'), # TODO:  have a config variable to change the site-wide default -- here and in programform().
-                                    );
+  my $dfsort    = include::orderedoptionlist('defaultsort', \@dfltsort,
+                                             ($$record{defaultsort} || 'num'), # TODO:  have a config variable to change the site-wide default -- here and in showprogram().
+                                            );
   return qq[<form action="program-signup.cgi" method="post">\n  $hiddenpersist
   $hidden
   <table class="dbrecord">
@@ -416,14 +416,14 @@ sub showprogram {
         $$w{num} = 'W' . sprintf $digits, $$w{num};
         unshift @waitlist, $w;
       }}
+    my $sortorder = $input{sortby} || $$prog{defaultsort} || 'num'; # TODO: implement a config variable to change the site-wide default.  Here and in programform()
     # Any values of sortby that are handled here should also be listed in %dfltsort in programform().
-    if ($input{sortby} eq 'num') {
+    if ($sortorder eq 'num') {
       # Nothing to do: they are already in this order.
-    } elsif ($input{sortby} eq 'lastname') {
+    } elsif ($sortorder eq 'lastname') {
       @signup = sortbylastname(@signup);
     } else {
-      # TODO: add a config variable to control this.  For now:
-      @signup = sortbylastname(@signup);
+      warn "Unsupported sort order: $sortorder";
     }
     my $enddt = DateTime::From::MySQL($$prog{endtime});
     my ($newsignup, $submitbutton);
