@@ -383,7 +383,7 @@ $db->prepare(
      )->execute();
 my @schflag = getrecord('resched_staffsch_flag');
 if (not scalar @schflag) {
-    addrecord('resched_staffsch_flag', +{ flagchar => 'A', shortdesc => 'All Day',      longdesc => 'Starting and ending times are moot on this date.', });
+    addrecord('resched_staffsch_flag', +{ flagchar => 'A', shortdesc => 'All Day',      longdesc => 'Starting and ending times are moot on this date.', flags => 'L', });
     addrecord('resched_staffsch_flag', +{ flagchar => 'C', shortdesc => 'reCur',        longdesc => 'Created by recurring-event logic.', flags => 'D'});
     addrecord('resched_staffsch_flag', +{ flagchar => 'P', shortdesc => 'Plus-Regular', longdesc => 'This is in addition to (not replacing) regular hours.', flags => 'PO', });
     addrecord('resched_staffsch_flag', +{ flagchar => 'X', shortdesc => 'X-Cancel',     longdesc => 'These special hours are canceled', flags => 'OX', });

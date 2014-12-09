@@ -1211,13 +1211,18 @@ sub formatreghours {
   }
   my $time = '';
   if (not $arg{suppresstime}) {
-    my $fromtime = qq[$$rr{starthour}:$$rr{startmin}];
-    my $endtime  = qq[$$rr{endhour}:$$rr{endmin}];
-    $time  = qq[<nobr>] . include::twelvehourtime($fromtime) . qq[<!-- $fromtime --></nobr>];
-    $time .= '-' . qq[<nobr>] . include::twelvehourtime($endtime) . qq[<!-- $endtime --></nobr>]
-      if not $arg{suppressendtime};
-    if ($time =~ /am.*am|pm.*pm/) {
-      $time =~ s/\s?[ap]m//;
+    my $allday = join '|', map { $$_{flagchar} } searchrecord('resched_staffsch_flag', 'flags', 'L');
+    if ($allday and ($$rr{flags} =~ /$allday/)) {
+      $time = 'all&nbsp;day';
+    } else {
+      my $fromtime = qq[$$rr{starthour}:$$rr{startmin}];
+      my $endtime  = qq[$$rr{endhour}:$$rr{endmin}];
+      $time  = qq[<nobr>] . include::twelvehourtime($fromtime) . qq[<!-- $fromtime --></nobr>];
+      $time .= '-' . qq[<nobr>] . include::twelvehourtime($endtime) . qq[<!-- $endtime --></nobr>]
+        if not $arg{suppressendtime};
+      if ($time =~ /am.*am|pm.*pm/) {
+        $time =~ s/\s?[ap]m//;
+      }
     }
   }
   return join ' ', grep { $_ } $dow, $name, $where, $date, $time, $flags;
@@ -1253,7 +1258,8 @@ sub formatoccasion {
   if (not $arg{suppressendtime}) {
     $time .= '&mdash;' . include::twelvehourtimefromdt($edt) . '<!-- ' . $edt->hms() . ' -->';
   }
-  if ($$or{flags} =~ /A/) {
+  my $allday = join '|', map { $$_{flagchar} } searchrecord('resched_staffsch_flag', 'flags', 'L');
+  if ($allday and ($$or{flags} =~ /$allday/)) {
     $time = 'all&nbsp;day';
   }
   my $location = '';

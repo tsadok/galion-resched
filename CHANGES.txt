@@ -82,6 +82,21 @@ Version 0.9.7:
     database in order to use it.)  This field can be used to
     cause the signup lists for some programs to default to a
     different sort order than others.
+  * Generalized the all-day flag mechanism for staff schedules,
+    so that sites can define which flags create all-day hours.
+    Previously, any flag with a flag character of "A" was treated
+    as an all-day flag.  This was hardcoded, and create-tables.pl
+    created an All Day flag in resched_staffsch_flag with that
+    flag character for the purpose.  Now, if resched_staffsch_flag
+    contains any records with the L flag, the flag characters on
+    those records will work, whatever they are.  Existing sites may
+    need to add the L (all-day) flag to their A (all-day) flag in the
+    resched_staffsch_flag table.  For new installations, this is
+    done automatically by create-tables.pl.
+  * As part of the flag generalization, all-day hours now work
+    for regularly scheduled hours just as for occasions.  (If
+    a site wants to restrict an all-day flag to occasion hours
+    only, mark it as O.  Similarly, R for Regular only.)
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

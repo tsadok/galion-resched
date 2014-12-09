@@ -33,6 +33,7 @@ my %schflagflag = (
                    A => ['A', 'Aux-Schedule',      "List hours with this flag on the main schedule, but separate them at the bottom of each day."],
                    D => ['D', 'Disabled-Flag',     "Do not allow user to change whether this flag is assigned to hours."],
                    H => ['H', 'Hidden-Flag',       "Do not show this flag on day/week/month schedules."],
+                   L => ['L', 'All-Day',           "Hours with this flag are for the entire day; do not list start and end times."],
                    O => ['O', 'Occasion-Flag',     "This flag is only relevant to occasion hours (not regular hours)."],
                    P => ['P', 'Partial-Exception', "For occasion hours, treat hours with this flag as only partial exceptions, i.e., they do not entirely replace that day's regular hours."],
                    R => ['R', 'Reghours-Flag',     "This flag is only relevant to regular hours (not occasion hours)."],
