@@ -408,6 +408,15 @@ div.staffscheduletoday > div.scheduledate > span.punctuation {
   display:              none;
 }
 
+div.staffscheduleday .multidayoccasion {
+  border:               2pt inset #66FFF2;
+  background-color:     #66FFF2;
+}
+div.staffscheduleday .multidayoccasion .staffschname {
+  border:               2pt inset #66FFF2;
+}
+
+
 div.staffscheduleweek {
   margin-top:           1em;
   margin-bottom:        1em;

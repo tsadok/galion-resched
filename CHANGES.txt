@@ -97,6 +97,13 @@ Version 0.9.7:
     for regularly scheduled hours just as for occasions.  (If
     a site wants to restrict an all-day flag to occasion hours
     only, mark it as O.  Similarly, R for Regular only.)
+  * Added styling for multi-day occasions in the three official
+    stylesheets, to make it more obvious when a staff schedule
+    item spans multiple days.  This should help reduce confusion
+    over "but I don't have that scheduled on that day", especially
+    when the ending year is a typo.  I'd previously added styling
+    when editing the schedule, but now showinterval() has some too.
+  * 
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

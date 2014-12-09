@@ -419,6 +419,17 @@ div.staffscheduleday div.scheduledate {
   border-bottom:        1px solid white;
   margin-bottom:        3px;
 }
+
+
+div.staffscheduleday .multidayoccasion {
+  border:               2pt inset #294D4A;
+  background-color:     #294D4A;
+}
+div.staffscheduleday .multidayoccasion .staffschname {
+  border:               2pt inset #294D4A;
+}
+
+
 div.staffscheduleweek {
   margin-top:           1em;
   margin-bottom:        1em;

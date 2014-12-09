@@ -1242,6 +1242,7 @@ sub formatoccasion {
   }
   my $sdt = DateTime::From::MySQL($$or{starttime});
   my $edt = DateTime::From::MySQL($$or{endtime});
+  my $class = ($sdt->ymd() ne $edt->ymd()) ? qq[occasion multidayoccasion] : 'occasion';
   my $date = '';
   if (not $arg{suppressdate}) {
     $date = $sdt->month_abbr() . '&nbsp;' . include::htmlordinal($sdt->mday());
@@ -1268,9 +1269,9 @@ sub formatoccasion {
   }
   my $comment = $arg{suppresscomment} ? "" : (qq[<span class="comment occasioncomment">] . encode_entities($$or{comment}) . qq[</span>]);
   my $when = qq[<abbr title="from ] . $sdt->ymd() . ' at ' . $sdt->hms() . ' to ' . $edt->ymd() . ' at' . $edt->hms() . qq[">$date$time</abbr>];
-  return "<!-- format_occasion -->" . join " ", grep { $_ } $when, $name, $location, $comment, $flags
+  return qq[<div class="$class">] . (join " ", grep { $_ } $when, $name, $location, $comment, $flags) . "</div>"
     if $arg{datefirst};
-  return "<!-- format_occasion -->" . join " ", grep { $_ } $name, $location, $comment, $flags, $when;
+  return qq[<div class="$class"><!-- format_occasion -->] . (join " ", grep { $_ } $name, $location, $comment, $flags, $when) . "</div>";
 }
 
 sub formatshortname {

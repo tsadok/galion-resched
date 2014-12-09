@@ -1,12 +1,4 @@
 Desired Changes:
- * Improve the staff-scheduling interface by making it more obvious
-   when an occasion spans multiple days (or weeks, or months...), and
-   maybe make it slightly harder to do that accidentally.  The ability
-   to span multiple days is important, because people do stuff like
-   go on vacation for three weeks; but if a typo puts the wrong year
-   in the ending-date field for a booking that should be one day,
-   the entire schechule instantly becomes nonsense, and currently
-   it is not particularly easy to see what went wrong.
  * The admin interface should have the ability to edit
    IP authentication settings.
  * When editing staff schedule hours (either regular or occasion),
