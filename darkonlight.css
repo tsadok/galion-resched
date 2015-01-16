@@ -469,6 +469,18 @@ div.staffscheduleday div.altschedulename {
   margin-bottom:        0.4em;
 }
 
+div.altschedule {
+  padding-bottom:       0.5em;
+}
+div.staffschedauxres {
+  color:                black;
+}
+div.staffschedauxres .resbooking {
+  border-top:           1pt dotted;
+  margin-top:           3pt;
+  padding-top:          3pt;
+}
+
 .ilb { 
   display:              inline-block;
 }

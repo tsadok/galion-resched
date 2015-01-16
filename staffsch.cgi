@@ -277,12 +277,31 @@ sub showinterval {
       }
       my $items = ((ref $closedrec) and getvariable('resched', 'staff_schedule_suppress_hours_when_closed')) ? '<!-- no staff hours because closed -->'
         : join "\n         ", map { $$_[0] } @item;
+      my $resaux = '';
+      for my $res (grep { $$_{flags} =~ /S/ } getrecord('resched_resources')) {
+        my $resname = $$res{name}    || "Resource $$res{id}";
+        my $bgrec   = $$res{bgcolor} ? (scalar getrecord('resched_booking_color', $$res{bgcolor})) : undef;
+        my $css     = $input{usestyle} || 'lowcontrast';
+        my %bgfn    = ( darkonlight => 'lightbg', lightondark => 'darkbg', 'lowcontrast' => 'lowcontrastbg');
+        my $resbg   = (ref $bgrec) ? $$bgrec{$bgfn{$css}} : 'inherit';
+        my @booking = finddateoverlap('resched_bookings', 'fromtime', 'until', $dt, $dt->clone()->add( days => 1 ), 'resource', $$res{id});
+        if (scalar @booking) {
+          $resaux .= qq[<div class="altschedule staffschedauxres" style="background-color: $resbg;">
+             <div class="altschedulename">$resname</div>
+          ] . (join "\n          ", map {
+            my $booking   = $_;
+            my $fromtime  = include::twelvehourtimefromdt(DateTime::From::MySQL($$booking{fromtime}));
+            qq[<div class="resbooking"><span class="bookedfor">$$booking{bookedfor}</span> <span class="fromtime">$fromtime</span></div>];
+          } @booking) . qq[</div>];
+        }
+      }
       push @day, qq[<div class="ilb staffscheduleday$tday">
                     <div class="h scheduledate"><span class="scheduledatedow">$dow</span><span class="punctuation">,</span>
                              <span class="scheduledatemonth">$mon</span>
                              <span class="scheduledatemday">$mday</span></div>
                     $closed
                     $items
+                    $resaux
                     </div>];
     }
     $dt = $dt->add( days => 1 );
