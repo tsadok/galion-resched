@@ -241,6 +241,11 @@ table.monthcal div.calmdaynum {
   background-color:    #99AAAA;
 }
 
+table.settingstable th,
+table.settingsform th {
+  text-align:          left;
+}
+
 table.formtable td {
   padding-bottom:      0.2em;
 }

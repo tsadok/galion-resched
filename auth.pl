@@ -220,13 +220,15 @@ sub authbox {
   if ((not $auth::user) and $authbyip) {
     # User is not logged in, but we can authenticate by IP:
     $auth::user = $$authbyip{user};
-    $loggedin = 'Hi, you must be';
-    # But we don't set a cookie or anything for this kind of auth.
-    # We do need certain things from the user record...
-    $status .= "<!-- Authenticating by IP address:  $ENV{REMOTE_ADDR} => $auth::user -->\n";
-    my $r = getrecord('users',$auth::user);
-    $calltheuser = $$r{nickname} or $$r{firstname} or $$r{fullname} or $$r{username};
-    $status .= "<!-- Calling the user $calltheuser -->\n";
+    if ($auth::user) {
+      $loggedin = 'Hi, you must be';
+      # But we don't set a cookie or anything for this kind of auth.
+      # We do need certain things from the user record...
+      $status .= "<!-- Authenticating by IP address:  $ENV{REMOTE_ADDR} => $auth::user -->\n";
+      my $r = getrecord('users',$auth::user);
+      $calltheuser = $$r{nickname} or $$r{firstname} or $$r{fullname} or $$r{username};
+      $status .= "<!-- Calling the user $calltheuser -->\n";
+    }
   }
 
 

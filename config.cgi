@@ -266,7 +266,7 @@ sub configform {
   return qq[<form id="configform" action="config.cgi" method="POST">
     $hiddenpersist
     <input type="hidden" name="action" value="save" />
-    <table class="configtable"><tbody>] . (join "\n", map {
+    <table class="configtable settingsform"><tbody>] . (join "\n", map {
       my $var = $_;
       my $value = ${$cfgvar{$var}}{value};
       my $inputelt = ${$cfgvar{$var}}{multiline}

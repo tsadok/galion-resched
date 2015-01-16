@@ -233,6 +233,12 @@ table.eventlist th {
   background-color:    #CCEEEE;
   border:              1px solid #223333;
 }
+
+table.settingstable th,
+table.settingsform th {
+  text-align:          left;
+}
+
 table.formtable td {
   padding-bottom:      0.2em;
 }

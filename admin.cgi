@@ -85,6 +85,14 @@ if ($auth::user) {
       ($notice, $title) = updaterescolors();
     } elsif ($input{action} eq 'equipment') {
       ($notice, $title) = equipment();
+    } elsif ($input{action} eq 'ipauthlist') {
+      ($notice, $title) = ipauthlist();
+    } elsif ($input{action} eq 'ipauthnew') {
+      ($notice, $title) = ipauthform(+{});
+    } elsif ($input{action} eq 'ipauthedit') {
+      ($notice, $title) = ipauthform(getrecord('auth_by_ip', include::getnum('ipauth_id')));
+    } elsif ($input{action} eq 'ipauthsave') {
+      ($notice, $title) = ipauthsave();
     } else {
       $notice = qq[<p>Welcome to the resource scheduling administration interface.</p>]
     }
@@ -299,7 +307,7 @@ sub schflaglist {
   <div class="h">Schedule Flags:</div>
   <input type="hidden" name="action"      value="schflaglist" />
   <input type="hidden" name="savechanges" value="yes" />
-  <table><thead>
+  <table class="settingsform"><thead>
      <tr><th>Flag Char$fcnotelink</th><th>Flag Name</th><th>Flag Description</th><th>Flag Features (<q>Flag Flags</q>)</th></tr>
   </thead><tbody>
      ] . (join "\n     ", @f) . qq[
@@ -335,7 +343,7 @@ sub editrescolors {
   return qq[<form action="admin.cgi" method="post" class="rescolorsform">
     <input type="hidden" name="action" value="updaterescolors" />
     $hiddenpersist
-    <table class="table formtable"><thead>
+    <table class="table formtable settingsform"><thead>
       <tr><th>Color Name</th><th>Dark BG</th><th>Light BG</th><th>Low-Contrast</th><th>Notes</th></tr>
     </thead><tbody>
       ] . (join "\n      ", map {
@@ -437,7 +445,7 @@ sub userform {
      <input type="hidden" name="action" value="saveuser" />
      $hiddenpersist
      $idfield
-     <table class="table"><tbody>
+     <table class="table settingsform"><tbody>
        <tr><th><label for="username">username:</label></th>
            <td><input type="text" size="20" id="userusername" name="userusername" value="$username" /></td>
            <td class="explan">The username should consist of lowercase letters, with no spaces or other weird characters.
@@ -542,7 +550,7 @@ sub userlist {
     qq[<tr><td><a href="admin.cgi?action=edituser&amp;userid=$$u{id}&amp;$persistentvars">$username</a></td>
            <td>$fullname</td><td>$nickname</td><td>$password</td><td>$flags</td></tr>]
   } getrecord('users');
-  my $content = qq[<table class="userlist table"><thead>
+  my $content = qq[<table class="userlist table settingstable"><thead>
     <tr><th>username</th><th>Full Name</th><th>Nickname</th><th>password</th><th>flags</th></tr>
   </thead><tbody>
     ] . (join "\n    ", @tr) . qq[
@@ -571,7 +579,7 @@ sub reslist {
            <td>$flags</td></tr>]
   } @r;
   return (qq[
-  <table class="table list" id="resourcelist"><thead>
+  <table class="table list settingsform" id="resourcelist"><thead>
      <tr><th>Resource</th><th>Schedule</th><th>Switch With</th><th>Show With</th><th>Combine With</th><th>bg</th><th>Flags and Such</th></tr>
   </thead><tbody>
      ] . (join "\n     ", @row) . qq[</tbody></table>
@@ -646,7 +654,7 @@ sub resform {
   return (qq[<form id="resourceform" action="admin.cgi" method="post">
      $hiddenpersist
      <input type="hidden" name="action" value="$action" />$idfield
-     <table><tbody>
+     <table class="settingsform"><tbody>
        <tr><th><label for="name">Resource Name</label></th>
            <td><input  id="name" name="name" type="text" size="40" value="$$res{name}" /></td>
            <td>Human-readable name for the resource.</td></tr>
@@ -841,7 +849,7 @@ sub equipment {
 <div class="p">When booking a meeting room, the following additional equipment may be offered:</div>
 <form action="admin.cgi" method="post">
 <input type="hidden" name="action" value="equipment" />
-<table class="equipform"><thead>
+<table class="equipform settingsform"><thead>
     <tr><td colspan="2">category</td><td>field type</td><td rowspan="2">booking comment</td><td rowspan="2">admin comment</td><td rowspan="2">flags</td></tr>
     <tr><td class="numeric">sort #</td><td>name/label</td><td>default value</td></tr>
   </thead><tbody>
@@ -914,7 +922,7 @@ sub schform {
      <input type="hidden" name="intervallock"  value="$$sch{intervallock}" />
      <input type="hidden" name="booknow"       value="$$sch{booknow}" />
      <input type="hidden" name="alwaysbooknow" value="$$sch{alwaysbooknow}" />
-     <table><tbody>
+     <table class="settingsform"><tbody>
        <tr><th><label for="schname">Name</label></th>
            <td><input  id="schname" name="name" size="40" value="$$sch{name}" /></td>
            <td>Human-readable name for this schedule, so you can easily keep track of which is which.</td></tr>
@@ -984,6 +992,76 @@ sub schcreate {
   return schform();
 }
 
+sub ipauthsave {
+  my $r = +{};
+  if ($input{ipauth_id}) {
+    $r = getrecord('auth_by_ip', $input{ipauth_id});
+    ref $r or return qq[<div class="error"><div><strong>Error:  Record Not Found</strong></div>
+     I failed to find the IP Authentication record I was looking for (id: <q>$input{ipauth_id}</q>)
+     in the database.  This should not ever happen and probably means you have found a bug in
+     the software.</div>];
+  }
+  $$r{ip}   = $input{ipauth_ip} || $$r{ip};
+  my $uid   = $input{ipauth_user};
+  my $u     = getrecord('users', $uid) if $uid > 0;
+  $$r{user} = $$u{id} if ref $u;
+  updaterecord('auth_by_ip', $r);
+  return ipauthlist();
+}
+
+sub ipauthform {
+  my ($r) = @_;
+  my $idfield  = $$r{id} ? qq[<input type="hidden" name="ipauth_id" value="$$r{id}" />] : '';
+  my $nulluser = +{ id => 0, username => 'nobody', nickname => 'username/password login required'};
+  my $usersel  = include::orderedoptionlist('ipauth_user', +[ map {
+    [ $$_{id}, ($$_{username} . ' (' . ($$_{nickname} || $$_{fullname} || $$_{username}) . ')') ]
+  } ($nulluser, getrecord('users')) ], ($$r{user} || 0));
+  my $ip       = encode_entities($$r{ip});
+  my $saveword = $$r{id} ? 'Save Changes' : 'Add to IP Auth Settings';
+  return qq[<form class="ipauthform">
+  <input type="hidden" name="action" value="ipauthsave" />
+  $idfield
+  $hiddenpersist
+  <table class="form settingsform ipauthform"><tbody>
+      <tr><th><label for="ipauth_ip">IP Address</label></th>
+          <td><input type="text" size="15" id="ipauth_ip" name="ipauth_ip" value="$ip" /></td></tr>
+      <tr><th><label for="ipauth_user">User Account</label></th>
+          <td>$usersel</td></tr>
+      <tr><th>Save</th><td><input type="submit" value="$saveword" /></td></tr>
+  </tbody></table>
+</form>];
+}
+
+sub ipauthlist {
+  my @row = map {
+    my $r = $_;
+    my $u = ($$r{user} > 0)
+      ? getrecord('users', $$r{user})
+      : +{ id       => 0,
+           username => 'nobody',
+           nickname => 'username/password login required',
+         };
+    my $user = qq[<!-- user $$u{id} -->$$u{username} (]
+      . ($$u{nickname} || $$u{fullname} || $$u{username}) . qq[)];
+    qq[<tr><td>$$r{ip}</td><td>$user</td>
+       <td><a href="admin.cgi?action=ipauthedit&amp;ipauth_id=$$r{id}&amp;$persistentvars">Edit auth setting for this IP address</a></td></tr>]
+  } getrecord('auth_by_ip');
+  if (not scalar @row) {
+    push @row, qq[<tr><td colspan="2"><em>[There are currently no IP-address authentications set up.]</em></td></tr>];
+  }
+  return (qq{<div class="p">IP address authentication is less secure than password authentication, but it is more convenient
+and can be reasonable to use on some networks, particularly when there is a firewall separating all of your staff
+systems from the rest of the network.</div>
+<table class="table settingstable ipauthsettingstable"><thead>
+  <tr><th>IP Address</th><th>User</th><th>Edit</th></tr>
+</thead><tbody>
+   } . (join "\n   ", @row) . qq{
+   <tr><td>any other address</td><td colspan="2">username/password authentication required</td></tr>
+</tbody></table>
+<div class="p"><a href="admin.cgi?action=ipauthnew&amp;$persistentvars">Create a new IP authentication setting.</a></div>
+}, 'IP Authentication Settings - Galion ReSched');
+}
+
 sub usersidebar {
   my $expandusers  = ($input{action} =~ /user/)   ? '-' : '+';
   my $hideusers    = ($input{action} =~ /user/)   ? ''  : ' style="display: none;"';
@@ -1025,8 +1103,8 @@ sub usersidebar {
      <div><div><strong><span onclick="toggledisplay('sbipalist','sbipamark');" id="sbipamark" class="expmark">$expandipauth</span>
                        <span onclick="toggledisplay('sbipalist','sbipamark','expand');">IP Auth:</span></strong></div>
           <div id="sbipalist" $hideipauth><ul>
-             <li>List IP Auth Records</li>
-             <li>Create New IP Auth</li>
+             <li><a href="admin.cgi?action=ipauthlist&amp;$persistentvars">List IP Auth Records</a></li>
+             <li><a href="admin.cgi?action=ipauthnew&amp;$persistentvars">Create New IP Auth</a></li>
              </ul></div>
           </div>
      <div><div><strong><span onclick="toggledisplay('sbmsclist','sbmscmark');" id="sbmscmark" class="expmark">-</span>

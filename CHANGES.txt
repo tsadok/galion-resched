@@ -103,7 +103,11 @@ Version 0.9.7:
     over "but I don't have that scheduled on that day", especially
     when the ending year is a typo.  I'd previously added styling
     when editing the schedule, but now showinterval() has some too.
-  * 
+  * Added classes to settings tables and forms, for easier styling.
+    The default stylesheets don't do all that much with this, but
+    the capability is there.
+  * The admin interface now has the ability to create and edit
+    IP auth settings.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

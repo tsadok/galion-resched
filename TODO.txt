@@ -1,6 +1,4 @@
 Desired Changes:
- * The admin interface should have the ability to edit
-   IP authentication settings.
  * When editing staff schedule hours (either regular or occasion),
    there should be a UI for getting ones from a different timeframe.
    The capability is there (sstart_datetime_foo), just needs UI.
