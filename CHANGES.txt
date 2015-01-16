@@ -108,6 +108,9 @@ Version 0.9.7:
     the capability is there.
   * The admin interface now has the ability to create and edit
     IP auth settings.
+  * Added a flag to the resources table that causes any bookings
+    for flagged resources to show up as auxilliary schedules when
+    displaying staff schedules.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from
