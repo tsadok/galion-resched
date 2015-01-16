@@ -18,6 +18,7 @@ our $hiddenpersist  = persist('hidden', [qw(category magicdate)]);
 
 my %resflag = (
                R => ['R', 'Room', 'This resource is a meeting room.'],
+               S => ['S', 'StaffSchAux', 'This resource should be listed as an auxilliary schedule when showing staff schedules.'],
                X => ['X', 'eXclude', 'Exclude this resource from sidebar lists.'],
                requireinitials => [ undef, 'Initials',   'Staff must enter initials when booking this resource.'],
                requirenotes    => [ undef, 'Notes',      'Staff must enter certain notes when booking this resource.'],
@@ -592,7 +593,7 @@ sub resform {
     $res = getrecord('resched_resources', $input{resource} || $input{id});
     ($saveword, $editword, $action) = ('Save Changes', 'Edit Resource', 'updateresource');
   } else {
-    my ($name) = 'Untitled1'; while (findrecord('resched_resources', 'name', $name)) { $name++ }
+    my $name = 'Untitled1'; while (findrecord('resched_resources', 'name', $name)) { $name++ }
     $res = +{ name => $name };
     $saveword = $editword = 'Create Resource';
     $action = 'createresource';
@@ -642,7 +643,10 @@ sub resform {
     my $c = $_;
     my $ecatyn  = '';
     if (ref($ecatyn{$c})) {
-      my ($rre) = findrecord('resched_resource_equipment', 'equipment', $ecatyn{$c}{id}, 'resource', $$res{id});
+      my $rre;
+      if ($$res{id}) {
+        ($rre) = findrecord('resched_resource_equipment', 'equipment', $ecatyn{$c}{id}, 'resource', $$res{id});
+      }
       $rre ||= +{ flags => 'X'};
       my $checked = ($$rre{flags} =~ /X/) ? ' class="uncheckedbox"' : ' checked="checked"';
       $ecatyn  = ref($ecatyn{$c}) ? (qq[<input type="checkbox" id="resequip$ecatyn{$c}{id}" name="resequip$ecatyn{$c}{id}"$checked />]) : '';
