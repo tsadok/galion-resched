@@ -111,6 +111,16 @@ Version 0.9.7:
   * Added a flag to the resources table that causes any bookings
     for flagged resources to show up as auxilliary schedules when
     displaying staff schedules.
+  * Added a createdts field to the resched_staffsch_occasion table,
+    to hold the date and time the record was created.  In the event
+    that someone makes a mistake with the recurring-occasion feature
+    and accidentally enters thousands of unwanted occasion records,
+    this can be used to isolate them (at the SQL level).  Any site
+    upgrading from an earlier version MUST ADD THIS FIELD, or the
+    creation of staff schedule occasion records will fail.
+  * For administrative users (those with the A flag set), the authbox
+    now links your username to your user record.
+  * 
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

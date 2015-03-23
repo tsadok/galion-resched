@@ -500,6 +500,7 @@ sub updateoccasionhours {
       updaterecord('resched_staffsch_occasion', $r);
     } else {
       $debugrecur .= "[uco: new]";
+      $$r{createdts} = $dbnow;
       addrecord('resched_staffsch_occasion', $r);
       my $firstoccasion = getrecord('resched_staffsch_occasion', $db::added_record_id);
       if ($input{recurtype}) {
@@ -576,32 +577,34 @@ sub updateoccasionhours {
         }
         # Now we just read off the startdates using findnext(), calcuate the enddates by adding the duration:
         my $dt = $startdt;
+	my $addrecur = sub { my ($start, $end) = (@_);
+			     addrecord('resched_staffsch_occasion',
+				       +{ staffid   => $$sr{id},
+					  starttime => $start,
+					  endtime   => $end,
+					  location  => $$firstoccasion{location},
+					  flags     => ($$firstoccasion{flags} . 'C'),
+					  comment   => $$firstoccasion{comment},
+					  createdts => $dbnow,
+					});
+			   };
         if ($input{recurtype} eq 'listed') {
           $debugrecur .= '[listed]';
           while (scalar @rdate) {
             $debugrecur .= '[while: ' . (scalar @rdate) . ']';
             $dt = $findnext->($dt);
             $debugrecur .= '[' . (scalar @rdate) . ' left]';
-            addrecord('resched_staffsch_occasion', +{ staffid   => $$sr{id},
-                                                      starttime => DateTime::Format::ForDB($dt->clone()),
-                                                      endtime   => DateTime::Format::ForDB($dt->clone()->add_duration($duration)),
-                                                      location  => $$firstoccasion{location},
-                                                      flags     => ($$firstoccasion{flags} . 'C'),
-                                                      comment   => $$firstoccasion{comment},
-                                                    });
+            $addrecur->(DateTime::Format::ForDB($dt->clone()),
+			DateTime::Format::ForDB($dt->clone()->add_duration($duration)));
+            $debugrecur .= "[id: $db::added_record_id]";
           }
         } elsif ($input{recurstyle} eq 'ntimes') {
           $debugrecur .= '[ntimes]';
           for (1 .. $input{recurtimes}) {
             $debugrecur .= "[for: $_]";
             $dt = $findnext->($dt);
-            addrecord('resched_staffsch_occasion', +{ staffid   => $$sr{id},
-                                                      starttime => DateTime::Format::ForDB($dt->clone()),
-                                                      endtime   => DateTime::Format::ForDB($dt->clone()->add_duration($duration)),
-                                                      location  => $$firstoccasion{location},
-                                                      flags     => ($$firstoccasion{flags} . 'C'),
-                                                      comment   => $$firstoccasion{comment},
-                                                    });
+	    $addrecur->(DateTime::Format::ForDB($dt->clone()),
+			DateTime::Format::ForDB($dt->clone()->add_duration($duration)));
             $debugrecur .= "[id: $db::added_record_id]";
           }
         } elsif ($input{recurstyle} eq 'until') {
@@ -622,13 +625,8 @@ sub updateoccasionhours {
           $dt = $findnext->($dt);
           while ($dt->ymd() le $until) {
             $debugrecur .= '[while: ' . $dt->ymd() . ']';
-            addrecord('resched_staffsch_occasion', +{ staffid   => $$sr{id},
-                                                      starttime => DateTime::Format::ForDB($dt->clone()),
-                                                      endtime   => DateTime::Format::ForDB($dt->clone()->add_duration($duration)),
-                                                      location  => $$firstoccasion{location},
-                                                      flags     => ($$firstoccasion{flags} . 'C'),
-                                                      comment   => $$firstoccasion{comment},
-                                                    });
+	    $addrecur->(DateTime::Format::ForDB($dt->clone()),
+			DateTime::Format::ForDB($dt->clone()->add_duration($duration)));
             $dt = $findnext->($dt);
             $debugrecur .= '[next: ' . $dt->ymd() . ']';
           }

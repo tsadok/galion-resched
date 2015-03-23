@@ -350,7 +350,8 @@ $db->prepare(
           endtime   datetime,
           location  integer,
           flags     tinytext,
-          comment   text
+          comment   text,
+          createdts datetime
      )"
      )->execute();
 

@@ -246,9 +246,11 @@ sub authbox {
 
   if ($auth::user) {
     # User is logged in already.  Display logout option and whatever the callback returns (if any):
+    my $r = getrecord('users', $auth::user);
     my $more = "";
     if ($callback) { $more = $callback->($auth::user); }
-    my $href = (-e 'user.cgi') ? qq[ href="user.cgi?user=$auth::user"] : '';
+    my $href = (-e 'user.cgi') ? qq[ href="user.cgi?user=$auth::user"]
+      : (($$r{flags} =~ /A/) ? qq[ href="admin.cgi?action=edituser&amp;userid=$auth::user"] : '');
     return qq[<div class="authbox">$status
        <div>$loggedin <a$href>$calltheuser</a>.</div>
        <div><a href="index.cgi?AUTH_logout=$auth::user">Log Out</a></div>
