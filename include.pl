@@ -14,7 +14,7 @@ our %userflag = (
                  M => [M => 'Multiuser'  => 'Account is used by multiple persons, e.g., a team working a circulation desk together.'],
                 );
 
-our %sidebarpos = ( right => 1 ) unless defined %sidebarpos; # Used by contentwithsidebar
+our %sidebarpos = ( right => 1 ) unless exists $sidebarpos{right}; # Used by contentwithsidebar
 # any of 'left', 'right', 'top', and 'bottom' that are set to true
 # cause sidebar to appear there.  'right' only is the default.
 

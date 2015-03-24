@@ -719,10 +719,10 @@ sub resupdate {
     $$re{flags} =~ s/X//g; $dbg .= qq[f2:$$re{flags} ];
     $$re{flags} .= 'X' unless ($input{qq[resequip$$e{id}]} =~ /on/); $dbg .= qq[f3:$$re{flags} ];
     if ($$re{id}) {
-      warn "updating r_r_e record for equipment $$e{id} for resource $$res{id} ($dbg)";
+#      warn "updating r_r_e record for equipment $$e{id} for resource $$res{id} ($dbg)";
       updaterecord('resched_resource_equipment', $re);
-    } elsif (not $$re{flags} =~ /X/) {
-      warn "adding r_r_e record for equipment $$e{id} for resource $$res{id} ($dbg)";
+    } else {
+#      warn "adding r_r_e record for equipment $$e{id} for resource $$res{id} ($dbg)";
       addrecord('resched_resource_equipment', $re);
     }
   }
