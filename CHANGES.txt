@@ -120,7 +120,11 @@ Version 0.9.7:
     creation of staff schedule occasion records will fail.
   * For administrative users (those with the A flag set), the authbox
     now links your username to your user record.
-  * 
+  * Started the long process of allowing local customization of
+    the wording for things like buttons and links.  All config
+    variables for this will start with wording_ and will be
+    listed below all the other variables, so you can ignore them
+    unless there is some wording you want to customize.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

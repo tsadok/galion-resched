@@ -76,6 +76,11 @@ my %cfgvar =
                                    description => 'If true, program listings in the sidebar show time of day.',
                                    sortkey     => 256,
                                   },
+   sidebar_show_admin_link => +{
+				default     => 0,
+				description => 'If true, the sidebar will link to admin.cgi (which in turn links to config.cgi) if the user has the admin privileges (A flag set or lax security enabled).',
+				sortkey     => 299,
+			       },
    nonusers => +{
                  default => 'closed,maintenance,out of order',
                  description => 'Comma-separated list of special names that resources can be booked for, which should not count toward usage statistics.',
@@ -167,6 +172,11 @@ my %cfgvar =
                                          description => 'First day of the week, for staff schedule purposes.  0 means Sunday, 1 means Monday, etc.',
                                          sortkey     => 2030,
                                         },
+   staff_schedule_jump_to_edit => +{
+				    default     => 0,
+				    description => "If true, when you click the link to a staff member's schedule, if you have permission to edit it, you skip straight to the edit screen.",
+				    sortkey     => 2041,
+				   },
    max_color_choices => +{
                           default     => 16,
                           description => 'Maximum number of color choices to display (when assigning colors to people for staff scheduling).',
@@ -209,6 +219,11 @@ my %cfgvar =
                       description => 'Bookmark icon (favicon) to suggest that the browser use to represent (your installation of) resched.',
                       sortkey     => 9000,
                      },
+   wording_personal_schedule => +{
+				  default     => 'Personal Schedule',
+				  description => "Wording to use for the link to a staff member's personal schedule.",
+				  sortkey     => 99800,
+				 },
   );
 
 if ($auth::user) {

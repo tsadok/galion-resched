@@ -1310,6 +1310,9 @@ sub liststaff {
   my @staff = getrecord('resched_staff');
   @staff = grep { not $$_{flags} =~ /X/ } @staff
     unless $input{listall} eq 'yes';
+  my $personalschedule = getvariable('resched', 'wording_personal_schedule') || 'Personal Schedule';
+  my $scheduleaction   = ((($user{flags} =~ /A/) or ($$sr{userid} eq $user{id}) or getvariable('resched', 'staff_schedule_lax_security'))
+			  and getvariable('resched', 'staff_schedule_jump_to_edit')) ? 'editstaffhours' : 'staffschedule';
   my @li = map {
     my $sr = $_;
     my $sname = formatshortname($sr, suppressabbr => 1);
@@ -1318,7 +1321,7 @@ sub liststaff {
     my $editlink = (($user{flags} =~ /A/) or getvariable('resched', 'staff_schedule_lax_security'))
       ? qq[<a class="adminlink" href="staffsch.cgi?action=editstaff&amp;staffid=$$sr{id}&amp;$persistentvars">Staff Record</a>] : '';
     qq[<tr><td>$sname</td><td>$fname</td>
-           <td><a href="staffsch.cgi?action=staffschedule&amp;staffid=$$sr{id}&amp;$persistentvars">Personal Schedule</a></td>
+           <td><a href="staffsch.cgi?action=${scheduleaction}&amp;staffid=$$sr{id}&amp;$persistentvars">$personalschedule</a></td>
            <td>$editlink</td></tr>];
   } @staff;
   my $addstafflink = (($$user{flags} =~ /A/) or getvariable('resched', 'staff_schedule_lax_security'))
@@ -1610,6 +1613,9 @@ sub usersidebar {
                                                                  } grep { not /usestyle|ajax/
                                                                         } grep { $input{$_}
                                                                                } keys %input;
+  my $adminlinks = (getvariable('resched', 'sidebar_show_admin_link')
+		    and (($user{flags} =~ /A/) or getvariable('resched', 'staff_schedule_lax_security')))
+    ? qq[<div><a href="admin.cgi">ReSched Administration</a></div>] : '';
   #warn "Preserving Variables: $preserve";
   my $stylesec  = include::sidebarstylesection($preserve, 'staffsch.cgi');
   my @wecanedit = findrecord('resched_staff', 'userid', $user{id});
@@ -1634,6 +1640,7 @@ sub usersidebar {
       <hr />
       <div><a href="index.cgi?usestyle=$input{usestyle}">Resource Scheduling</a></div>
       <div><a href="program-signup.cgi?usestyle=$input{usestyle}">Program Signup</a></div>
+      $adminlinks
       $stylesec
   </div>\n];
 }
