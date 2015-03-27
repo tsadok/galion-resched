@@ -303,13 +303,14 @@ sub createprogram {
         $flags .= $f unless $flags =~ /[$f]/;
       }}
     my $newprogram = +{
-                       category  => $catid,
-                       title     => encode_entities($input{title}),
-                       agegroup  => encode_entities($input{agegroup}),
-                       starttime => DateTime::Format::ForDB($when),
-                       endtime   => DateTime::Format::ForDB($until),
-                       flags     => $flags,
-                       notes     => encode_entities($input{notes}),
+                       category    => $catid,
+                       title       => encode_entities($input{title}),
+                       agegroup    => encode_entities($input{agegroup}),
+                       starttime   => DateTime::Format::ForDB($when),
+                       endtime     => DateTime::Format::ForDB($until),
+                       flags       => $flags,
+                       notes       => encode_entities($input{notes}),
+		       signuplimit => include::getnum('signuplimit'),
                       };
     my $result = addrecord('resched_program', $newprogram);
     if ($result) {
