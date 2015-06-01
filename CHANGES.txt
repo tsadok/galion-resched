@@ -127,6 +127,8 @@ Version 0.9.7:
     unless there is some wording you want to customize.
   * Fixed a bug wherein, when creating a program for program signup,
     the max number of participants was not saved.
+  * Allow some programs to be marked as "ongoing", causing them to
+    be listed separately from the "upcoming" ones.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from
