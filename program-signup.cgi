@@ -37,6 +37,7 @@ my %categoryflag = (
                    );
 my %programflag = (
                    'L' => ['L', 'Library program', 'This is one of our official programs.'],
+		   'O' => ['O', 'Ongoing program', 'Program is not on any specific date or is ongoing over a period of time.'],
                    'T' => ['T', 'Third-party',     'This program is unofficial or is run by a third party.'],
                    'W' => ['W', 'Waiting list',    'If this program fills up to the limit, a waiting list will be started.'],
                    'X' => ['X', 'Canceled',        'This program has been canceled.'],
@@ -564,8 +565,10 @@ sub listprograms {
     } (['Day', 'days', 1], ['Week', 'days', 7], ['Month', 'months', 1], ['Quarter', 'months', 3], ['Year', 'years', 1]);
     my $cutoffnote  = $cutoff ? qq[<div class="info">Showing programs ending by ] . include::datewithtwelvehourtime($cutoff) . qq[</div>\n       ] : '';
     my @program     = getprogramlist(100, $cutoff);
-    my $programlist = join "\n       ", map {
-      my $prec      = $_;
+    my @ongoing     = grep { $$_{flags} =~ /O/ } @program;
+    my @upcoming    = grep { not ($$_{flags} =~ /O/ ) } @program;
+    my $programli   = sub {
+      my ($prec) = @_;
       my $title     = ($$prec{flags} =~ /X/)
                         ? '<del class="redcancel">' . encode_entities($$prec{title}) . '</del>'
                         : encode_entities($$prec{title});
@@ -573,10 +576,14 @@ sub listprograms {
       my $when      = include::datewithtwelvehourtime($dt);
       my $dow       = $dt->day_name();
       my $ages      = $$prec{agegroup};
-    qq[<li><a href="program-signup.cgi?action=showprogram&amp;program=$$prec{id}&amp;$persistentvars" title="$when">$title</a>
+      return qq[<li><a href="program-signup.cgi?action=showprogram&amp;program=$$prec{id}&amp;$persistentvars" title="$when">$title</a>
            for $ages, $dow, $when</li>]
-  } @program;
-  return qq[$cutoffnote<div><strong>Upcoming Programs:</strong></div><ul>$programlist</ul>
+    };
+    my $programlist = join "\n       ", map { $programli->($_); } @upcoming;
+    my $ongoing = (scalar @ongoing) ? (qq[<div><strong>Ongoing Programs:</strong></div><ul>]
+				       . (join "\n       ", map { $programli->($_) } @ongoing) . qq[</ul>]) : "";
+  return qq[$cutoffnote$ongoing
+<div><strong>Upcoming Programs:</strong></div><ul>$programlist</ul>
   <div class="listactions">Show Previous: $prev</div>
   <div class="listactions"><a class="button" href="program-signup.cgi?action=listprograms&amp;$persistentvars&amp;cutoffdate=] . ($cutoff ? DateTime::Format::ForURL($cutoff) : '') . qq[&amp;showcanceled=1">Show Canceled Programs</a></div>];
 }
