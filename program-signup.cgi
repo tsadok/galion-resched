@@ -38,12 +38,13 @@ my %categoryflag = (
 my %programflag = (
                    'L' => ['L', 'Library program', 'This is one of our official programs.'],
 		   'O' => ['O', 'Ongoing program', 'Program is not on any specific date or is ongoing over a period of time.'],
+		   'R' => ['R', 'Reminder call',   'Provide a checkbox for tracking which patrons have been called to remind them of the program.'],
                    'T' => ['T', 'Third-party',     'This program is unofficial or is run by a third party.'],
                    'W' => ['W', 'Waiting list',    'If this program fills up to the limit, a waiting list will be started.'],
                    'X' => ['X', 'Canceled',        'This program has been canceled.'],
                    '#' => ['#', 'DEBUG',           'This is not a real program.  It exists only for testing the booking software.', 'inherited'],
                   );
-my %signupflag = (
+my %signupflag = ('R' => ['R', 'Reminded', 'This person has received a reminder call.'],
                   'X' => ['X', 'Canceled', 'This person no longer plans to attend.'],
                   '?' => ['?', 'Maybe',    'This person is unsure whether they will attend.'],
                   '#' => ['#', 'DEBUG',    'You can ignore this signup: we were just testing the booking software.']
@@ -340,10 +341,20 @@ sub dosignup {
   my $prog = getrecord('resched_program', $progid);
   #warn "Incorrect program lookup, signup will probably be bollocks" if $$prog{id} ne $progid;
   if ($prog) {
+    if ($$prog{R}) {
+      for my $s (findrecord('resched_program_signup', 'program_id', $$prog{id})) {
+	if ($input{"flagR$$s{id}"}) {
+	  my %f = map { $_ => 1 } split //, $$s{flags};
+	  $f{R}++;
+	  $$s{flags} = join "", grep { $f{$_} } sort { $a cmp $b } keys %f;
+	  updaterecord('resched_program_signup', $s);
+	}
+      }
+    }
     for my $n (1 .. ($input{numofnewsignups} || 1)) {
       my $attender = encode_entities($input{"signup" . $n . "attender"});
       my $phone    = encode_entities($input{"signup" . $n . "phone"});
-      # TODO: Handle Flags
+      # TODO: Handle Flags, notably R
       my $comments = encode_entities($input{"signup" . $n . "comments"});
       if ($attender) {
         my $category = getrecord('resched_program_category', $$prog{category});
@@ -462,6 +473,16 @@ sub showprogram {
     my $notes = $$prog{notes} ? qq[<div id="programnotes">$$prog{notes}</div>] : '';
     my $makerow = sub {
       my ($s) = @_;
+      if ($input{"flagR$$s{id}"}) {
+	my %f = map { $_ => 1 } split //, $$s{flags};
+	$f{R}++;
+	$$s{flags} = join "", grep { $f{$_} } sort { $a cmp $b } keys %f;
+	updaterecord('resched_program_signup', $s);
+      } elsif (($input{action} eq 'dosignup' or $input{action} eq 'updatesignup')
+	       and $$prog{flags} =~ /R/) {
+	$$s{flags} =~ s/R//g;
+	updaterecord('resched_program_signup', $s);
+      }
       my $flags = showflags($$s{flags}, \%signupflag);
       my $usealt = getvariable('resched', 'signup_sheets_use_alt_norm');
       $usealt = 1 if not defined $usealt;
@@ -469,8 +490,10 @@ sub showprogram {
                              : (getvariable('resched', 'normal_name_order') || 0);
       my $normal   = include::normalisebookedfor($$s{attender}, $order);
       my $attender = include::capitalise(include::dealias($normal));
+      my $rcalled  = ($$s{flags} =~ /R/) ? ' checked="checked"' : "";
+      my $rcallcb  = ($$prog{flags} =~ /R/) ? qq[<input type="checkbox" name="flagR$$s{id}"$rcalled />] : '';
       #use Data::Dumper; warn Dumper(+{ usealt => $usealt, order => $order, raw => $$s{attender}, normal => $normal, final => $attender });
-      return qq[<tr class="signup"><td class="numeric">$$s{num}</td><td><a href="program-signup.cgi?action=editsignup&amp;id=$$s{id}&amp;$persistentvars">$attender</a></td><td>$$s{phone}</td><td>$flags</td><td>$$s{comments}</td></tr>\n      ]
+      return qq[<tr class="signup"><td class="numeric">$$s{num}</td><td><a href="program-signup.cgi?action=editsignup&amp;id=$$s{id}&amp;$persistentvars">$attender</a></td><td>$rcallcb$$s{phone}</td><td>$flags</td><td>$$s{comments}</td></tr>\n      ]
     };
     my $existingsignups = join "", map { $makerow->($_) } @signup;
     my $waitlistsignups = join "", map { $makerow->($_) } @waitlist;
