@@ -131,6 +131,8 @@ Version 0.9.7:
     be listed separately from the "upcoming" ones.
   * Programs now have a flag, R, which causes signups to get a
     checkbox by the phone number for reminder calls.
+  * Fixed a bug with the interaction between automatic day-closed
+    bookings and statistics gathering.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from

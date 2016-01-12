@@ -1949,7 +1949,8 @@ sub getstatsforadaterange {
   #        so that if we gather for multiple ranges the results make sense.
   my @category = @$categories;
   my (@gatheredstat);
-  my %exclude = map { (lc $_) => 1 } split /,\s*/, (getvariable('resched', 'nonusers') || 'closed,maintenance,out of order');
+  my %exclude = map { (lc $_) => 1 } map { $_, qq[ $_ ] }
+    split /,\s*/, (getvariable('resched', 'nonusers') || 'closed,maintenance,out of order');
   for (@category) {
     ($category, @resid) = @$_;
     my ($totaltotalbookings, $totaltotalduration);
