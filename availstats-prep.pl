@@ -58,13 +58,39 @@ if ($arg{stopdate} =~ m!(\d{4})[-/](\d+)[-/](\d+)!) {
 			       day       => $today->day());
 }
 
+my %excluderesource = ();
+if ($arg{excluderesources}) { # Mainly useful when retroactively filling in historical availability
+                              # stats, if new resources have since been added that, not yet having
+                              # been present, should not count as having been "available" then.
+  for my $rid (split /,\s*/, $arg{excluderesources}) {
+    $excluderesource{$rid}++;
+  }
+}
+my %addresource = ();
+if ($arg{addresources}) { # Mainly useful when retroactively filling in historical availability
+                          # stats, if old resources have since been retired but should be counted
+                          # during the timeframe in question.
+  for my $catinfo (split /;\s*/, $arg{addresources}) {
+    my ($catname, @res) = split /[,:]\s*/, $arg{addresources};
+    for (@res) {
+      if (/(\d+)/) {
+	my $rid = $1;
+	push @{$addresource{$catname}}, $rid;
+      } else {
+	errorline("Invalid resource ID: $_");
+      }
+    }
+  }
+}
+
 print "Gathering availability information starting on " . $startdate->ymd() . ", stopping at " . $stopdate->ymd() . ".\n";
 my %closedwday = map { $_ => 1 } split /,\s*/, getvariable('resched', 'daysclosed');
 
 for my $category (include::categories()) {
   my ($catname, @resource) = @$category;
   majorheading($catname);
-  @resource = include::uniq(@resource);
+  @resource = include::uniq(@{$addresource{$catname}},
+			    grep { not $excluderesource{$_} } @resource);
   my %res = map { my $rid = $_;
 		  my @rec = getrecord('resched_resources', $rid);
 		  $rid => $rec[0] } @resource;
@@ -150,6 +176,16 @@ sub markavail {
 		 numtotal       => $total,
 	       });
   }
+}
+
+sub errorline {
+  my ($title, $color) = @_;
+  $color ||= 'bold yellow on_red';
+  print color($color);
+  print $title;
+  print color('reset');
+  print "\n";
+  return;
 }
 
 sub minorheading {
