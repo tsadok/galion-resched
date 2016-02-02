@@ -325,6 +325,19 @@ div.listactions {
   background-color:     #BBBBBB;
 }
 
+table.availstats th {
+  font-weight:          bold;
+}
+table.availstats td {
+  font-weight:          normal;
+}
+table.availstats th,
+table.availstats td {
+  padding-left:         1em;
+  padding-right:        1em;
+}
+
+
 table.dbrecord th,
 table.dbrecord td {
   border-bottom:        2pt solid #666666;

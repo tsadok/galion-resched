@@ -10,9 +10,10 @@ $ENV{ENV}='';
 
 use DateTime;
 use DateTime::Span;
-use HTML::Entities qw(); sub encode_entities{ my $x = HTML::Entities::encode_entities(shift@_);
+use HTML::Entities qw(); sub encode_entities{ my $x = HTML::Entities::encode_entities(shift @_);
                                               $x =~ s/[-][-]/&mdash;/g;
                                               return $x; }
+use Math::SigFigs;
 use Data::Dumper;
 
 require "./forminput.pl";
@@ -29,8 +30,6 @@ our $hiddenpersist  = persist('hidden');
 my $datevars = join "&amp;", grep { $_ } map { $input{$_} ? "$_=$input{$_}" : '' } qw (year month mday magicdate startyear startmonth startmday endyear endmonth endmday);
 
 sub usersidebar; # Defined below.
-sub uniq;        # Also defined below.
-sub uniqnonzero; # below.
 
 my $ab = authbox(sub { my $x = getrecord('users', shift); "<!-- Hello, $$x{nickname} -->"; });
 my @warn; # scoped this way because sub nextrecur pushes warnings onto it in certain cases.
@@ -351,6 +350,9 @@ if ($auth::user) {
                                     </form>]),
                                     $ab, $input{usestyle});
     }
+  } elsif ($input{availstats}) {
+    # How many were _available_ (i.e., not booked) at any given time?
+    availstats();
   } elsif ($input{stats}) {
     gatherstats();
   } elsif ($input{frequserform}) {
@@ -385,7 +387,7 @@ if ($auth::user) {
         ? $count{$consolikey} + $rawcount{$rawkey}
         : $rawcount{$rawkey};
     }
-    for my $ck (uniq @ck) {
+    for my $ck (include::uniq(@ck)) {
       my $CK =
         #join ' ', map { ucfirst lc $_ } split /\s+/, $ck;
         include::capitalise($ck);
@@ -1232,7 +1234,8 @@ sub overview {
   my %res;
   my %alwaysclosed = map { $_ => 1 } daysclosed(0);
   for my $id (@res) { $res{$id} = +{ %{getrecord('resched_resources', $id)} }; }
-  my %sch = map { $_ => scalar getrecord('resched_schedules', $_) } uniq map { $res{$_}{schedule} } @res;
+  my %sch = map { $_ => scalar getrecord('resched_schedules', $_)
+		} include::uniq(map { $res{$_}{schedule} } @res);
   my @calendar;
   for (qw(startyear startmonth startmday endyear endmonth endmday)) {
     ($input{$_}) = $input{$_} =~ /(\d+)/;
@@ -1377,29 +1380,14 @@ sub doview {
          # Bookings are filled in below, after we know what dates we want.
         };
     }
-    my @s = map {       scalar getrecord('resched_schedules', $_) } uniq map { $res{$_}{schedule} } @res;
-    my %s = map { $_ => scalar getrecord('resched_schedules', $_) } uniq map { $res{$_}{schedule} } @res;
+    my @s = map {       scalar getrecord('resched_schedules', $_) } include::uniq(map { $res{$_}{schedule} } @res);
+    my %s = map { $_ => scalar getrecord('resched_schedules', $_) } include::uniq(map { $res{$_}{schedule} } @res);
 
     # We want the starttimes as numbers of minutes since midnight.
-    my @starttime = uniq map { $$_{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2; } @s;
+    my @starttime = include::uniq(map { $$_{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2; } @s);
     # (These are used to calculate the gcf and also for the table's start time for the first row.)
 
-    my $gcf;
-    { # Now, we need the gcf interval.  Start based on schedules...
-
-      # We need the gcf of the durations of the _offsets_ (not of the
-      # start times themselves).  The algo below takes permutations,
-      # which will run in O(n*n) time, so don't feed it large numbers
-      # of distinct starttimes.
-      my @offset = uniqnonzero map {
-        my $st = $_;
-        map { abs ($st - $_) } @starttime;
-      } @starttime;
-
-      # Now, we need the gcf of these offsets taken together with the
-      # intervals from the actual schedules:
-      $gcf = arithgcf(@offset, uniqnonzero map { $$_{intervalmins} } @s);
-    }
+    my $gcf = include::schedule_start_offset_gcf(@s);
     # $gcf now is the number of minutes per table row.  We can get the
     # rowspan figure for each cell by dividing the duration it
     # represents by this $gcf figure.  We can also calculate the times
@@ -1841,6 +1829,294 @@ sub doview {
     # ****************************************************************************************************************
 }# end of doview()
 
+sub availstats_for_category {
+  my ($category, $startstats, $endstats) = @_;
+  my @debugline;
+  push @debugline, "category: $category";
+  push @debugline, "startstats: $startstats";
+  push @debugline, "endstats: $endstats";
+  my (@resource, @month, @dow, @time, %monct, %dowct, %timect, %availstat);
+  my ($catname, @resid) = @$category;
+  push @resource, $_ for @resid;
+
+  @resource = include::uniq(@resource);
+  push @debugline, "resources: @resource";
+
+  my $when = $startstats->clone();
+  while ($when <= $endstats) {
+    push @month, $when->year . "_" . $when->month_abbr();
+    $when = $when->add(months => 1);
+  }
+  push @debugline, "months: @month";
+
+  my %closedwday = map { $_ => 1 } split /,\s*/, getvariable('resched', 'daysclosed');
+  @dow = grep { not $closedwday{$_} } 0 .. 6;
+  push @debugline, "dows: @dow";
+
+  my %res = map { my $rid = $_;
+		  my @rec = getrecord('resched_resources', $rid);
+		  $rid => $rec[0] } @resource;
+  use Data::Dumper; push @debugline, "res: " . Dumper(\%res);
+  my @schedule  = include::uniq(map { $$_{schedule} } values %res);
+  push @debugline, "schedules: @schedule";
+  my %sch = map { my $sid = $_;
+		  my @rec = getrecord('resched_schedules', $sid);
+		  $sid => $rec[0] } @schedule;
+  my @starttime = sort { $a <=> $b } include::uniq(map {
+    $sch{$_}{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2;
+  } @schedule);
+  push @debugline, "calculated start times: " . join ", ", @starttime;
+  my $gcf = include::schedule_start_offset_gcf(map { $sch{$_} } @schedule);
+  push @debugline, "gcf: $gcf";
+  my %ot = include::openingtimes();
+  my %ct = include::closingtimes();
+
+  my $day = DateTime->new(
+			  year    => $startstats->year(),
+			  month   => $startstats->month(),
+			  day     => $startstats->day(),
+			  hour    => 0,
+			  minute  => 0,
+			 );
+  my ($firstday, $lastday);
+  while ($day->ymd() lt $endstats->ymd()) {
+    my $nextday = $day->clone()->add( days => 1 );
+    $when = $day->clone();
+    my $dow = $day->dow() % 7;
+    push @debugline, "day: $day (dow: $dow)";
+    if (not $closedwday{$dow}) {
+      my ($ohour, $omin) = @{$ot{$dow} || [8,  0] };
+      my ($chour, $cmin) = @{$ct{$dow} || [18, 0] };
+      push @debugline, "  open/close times: o = $ohour:$omin; c = $chour:$cmin";
+      while (($when lt $nextday) and ($when->hour < $ohour))  { $when = $when->add( minutes => $gcf ); }
+      push @debugline, "  advanced to opening hour: $when";
+      while (($when lt $nextday) and ($when->minute < $omin)) { $when = $when->add( minutes => $gcf ); }
+      push @debugline, "  advanced to opening minute: $when";
+      push @debugline, "  next day at $nextday";
+      # TODO: skip days when everything is booked closed.
+      while (($when lt $nextday) and (($when->hour < $chour) or ($when->hour == $chour and $when->minute <= $cmin))) {
+	my $nextwhen = $when->clone()->add( minutes => $gcf );
+	my $time = sprintf "%1d:%02d", $when->hour, $when->minute;
+	push @debugline, "    time $time";
+	my $month = $day->month();
+	$timect{$time}++;
+	$dowct{$dow}++;
+	$monct{$month}++;
+	$firstday ||= $day;
+	$lastday    = $day;
+
+	### # The following produces the correct answer but performs very badly.
+	### my ($avail, $used) = (0,0);
+	### for my $rid (@resource) {
+	###   #my $r = $res{$rid};
+	###   if (include::check_for_collision_using_datetimes($rid, $when, $nextwhen->clone()->subtract ( seconds => 1))) {
+	###     push @debugline, "      res $rid $res{$rid}{name}: used";
+	###     $used++;
+	###   } else {
+	###     push @debugline, "      res $rid $res{$rid}{name}: avail";
+	###     $avail++;
+	###   }
+	### }
+
+	# So for perf reasons, we have farmed out the stat collection to availstats-prep.pl
+	my ($used, $avail);
+	my ($availrec) = findrecord('resched_availstats',
+				    category       => $catname,
+				    timeframestart => DateTime::Format::ForDB($when),
+				    #timeframeend   => DateTime::Format::ForDB($nextwhen),
+				   );
+	if (ref $availrec) {
+	  $used  = $$availrec{numused};
+	  $avail = $$availrec{numavailable};
+	} else {
+	  push @debugline, "    Unknown (catname: $catname; start $when)";
+	  $used = $avail = '[Unknown]';
+	}
+	push @debugline, "    avail: $avail; used: $used";
+	$availstat{overall}{avail}         += $avail;
+	$availstat{overall}{used}          += $used;
+	$availstat{overall}{cnt}{$avail}++;
+	$availstat{overall}{cnt}{total}++;
+
+	$availstat{bytime}{$time}{avail}   += $avail;
+	$availstat{bytime}{$time}{used}    += $used;
+	$availstat{bytime}{$time}{cnt}{$avail}++;
+	$availstat{bytime}{$time}{cnt}{total}++;
+
+	$availstat{bydow}{$dow}{avail}     += $avail;
+	$availstat{bydow}{$dow}{used}      += $used;
+	$availstat{bydow}{$dow}{cnt}{$avail}++;
+	$availstat{bydow}{$dow}{cnt}{total}++;
+
+	my $mon = $day->year . "_" . $day->month_abbr();
+	$availstat{bymonth}{$mon}{avail} += $avail;
+	$availstat{bymonth}{$mon}{used}  += $used;
+	$availstat{bymonth}{$mon}{cnt}{$avail}++;
+	$availstat{bymonth}{$mon}{cnt}{total}++;
+
+	$when = $nextwhen;
+      }
+    }
+    $day = $nextday;
+  }
+  @time = sort { $a cmp $b } keys %timect;
+  push @debugline, "----------------------------------------------------------------------------------------------";
+  return qq[
+  <table class="availstatcriteria"><tbody>
+     <tr><th>Category:</th> <td>$catname</td></tr>
+     <tr><th>Resources:</th>  <td>]  . (join ", ", map { $res{$_}{name} } @resource) . qq[</td></tr>
+     <tr><th>Date Range:</th> <td>] . $firstday->ymd() . " through " . $lastday->ymd() . qq[</td></tr>
+     <!-- tr><th>Date Range:</th> <td>] . $startstats->ymd() . " through " . $endstats->ymd() . qq[</td></tr -->
+     <tr><th>Statistical Interval:</th> <td>$gcf minutes</td></tr>
+  </tbody></table>
+
+  <h2>Overall $catname Availability</h2>
+  <table class="availstats"><thead>
+      <tr><th>&nbsp;</th><th class="numeric">Average</th>]
+				. (join "", map { qq[<th class="numeric">$_ avail.</th>]
+						} sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>
+  </thead><tbody>
+      <tr><th>Overall</th><th class="numeric">] .
+				($availstat{overall}{cnt}{total}
+				 ? (threeplaces($availstat{overall}{avail} / $availstat{overall}{cnt}{total})) : "N/A") . qq [</th>
+              ] . (join "", map { my $n = $_;
+			      $availstat{overall}{cnt}{total}
+				? (sprintf(qq[<td class="numeric"><div>%1d times</div> <div>], $availstat{overall}{cnt}{$n}) .
+				   threeplaces($availstat{overall}{cnt}{$n} * 100 / $availstat{overall}{cnt}{total}) .
+				   qq[</div></td>])
+				: qq[<td class="numeric">[none]</td>] # This datum notwithstanding, the column is numeric.
+			    } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>
+  </tbody></table>
+
+  <h2>$catname Availability By Time of Day</h2>
+  <table class="availstats"><thead>
+      <tr><th>&nbsp;</th><th class="numeric">Average</th>]
+				. (join "", map { qq[<th class="numeric">$_ avail.</th>]
+						} sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>
+      ] . (join "\n      ",
+	   map { my $t = $_;
+		 my $avg = $availstat{bytime}{$t}{cnt}{total}
+		   ? threeplaces($availstat{bytime}{$t}{avail} / $availstat{bytime}{$t}{cnt}{total}) : qq[N/A];
+		 qq[<tr><th>$t</th><td class="numeric">$avg</td>]
+		   . (join "", map { my $n = $_;
+				     $availstat{bytime}{$t}{cnt}{total}
+				       ? (sprintf(qq[<td class="numeric"><div>%1d times</div>], $availstat{bytime}{$t}{cnt}{$n},)
+					  . qq[<div>] . threeplaces($availstat{bytime}{$t}{cnt}{$n} * 100 / $availstat{bytime}{$t}{cnt}{total}) . qq[%</div></td>])
+				       : qq[<td class="numeric">[none]</td>] # This datum notwithstanding, the column is numeric.
+				     } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>] } @time) . qq[
+  </thead><tbody>
+  </tbody></table>
+
+
+  <h2>$catname Availability By Day of Week</h2>
+  <table class="availstats"><thead>
+      <tr><th>&nbsp;</th><th class="numeric">Average</th>]
+				. (join "", map { qq[<th class="numeric">$_ avail.</th>]
+						} sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>
+      ] . (join "\n      ",
+	   map { my $dow = $_;
+		 my $avg = $availstat{bydow}{$dow}{cnt}{total}
+		   ? threeplaces($availstat{bydow}{$dow}{avail} / $availstat{bydow}{$dow}{cnt}{total}) : qq[N/A];
+		 qq[<tr><th>$dow</th><td class="numeric">$avg</td>]
+		   . (join "", map { my $n = $_;
+				     $availstat{bydow}{$dow}{cnt}{total}
+				       ? (sprintf(qq[<td class="numeric"><div>%1d times</div>], $availstat{bytime}{$t}{cnt}{$n},)
+					  . qq[<div>] . threeplaces($availstat{bydow}{$dow}{cnt}{$n} * 100 / $availstat{bydow}{$dow}{cnt}{total}) . qq[%</div></td>])
+				       : qq[<td class="numeric">[none]</td>] # This datum notwithstanding, the column is numeric.
+				     } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>] } @dow) . qq[
+  </thead><tbody>
+  </tbody></table>
+
+
+  <h2>$catname Availability By Month</h2>
+  <table class="availstats"><thead>
+      <tr><th>&nbsp;</th><th class="numeric">Average</th>]
+				. (join "", map { qq[<th class="numeric">$_ avail.</th>]
+						} sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>
+      ] . (join "\n      ",
+	   map { my $mon = $_;
+		 my $avg = $availstat{bymonth}{$mon}{cnt}{total}
+		   ? threeplaces($availstat{bymonth}{$mon}{avail} / $availstat{bymonth}{$mon}{cnt}{total}) : qq[N/A];
+		 qq[<tr><th>$mon</th><td class="numeric">$avg</td>]
+		   . (join "", map { my $n = $_;
+				     $availstat{bymonth}{$mon}{cnt}{total}
+				       ? (sprintf(qq[<td class="numeric"><div>%1d times</div>], $availstat{bymonth}{$mon}{cnt}{$n},)
+					  . qq[<div>] . threeplaces($availstat{bymonth}{$mon}{cnt}{$n} * 100 / $availstat{bymonth}{$mon}{cnt}{total}) . qq[%</div></td>])
+				       : qq[<td class="numeric">[none]</td>] # This datum notwithstanding, the column is numeric.
+				     } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>] } @month) . qq[
+  </thead><tbody>
+  </tbody></table>
+
+
+  <!-- \n] . (join "\n", @debugline) . qq[ -->\n];
+}
+
+sub availstats {
+  my (@category);
+  if ($input{category}) {
+    my @allcat = include::categories();
+    for my $c (split /,\s*/, $input{category}) {
+      push @category, $_ foreach (grep { $$_[0] eq $c } @allcat);
+    }
+  } else {
+    @category = include::categories();
+  }
+
+  my ($startstats, $endstats);
+  if ($input{availstats} eq 'yesterday') {
+    $endstats = DateTime->now(time_zone => $include::localtimezone);
+    $endstats->set_hour(0); $endstats->set_minute(0); $endstats->set_second(1);
+    $startstats = $endstats->clone()->subtract( days => 1 );
+  } elsif ($input{availstats} eq 'lastweek') {
+    $endstats = DateTime->now(time_zone => $include::localtimezone);
+    $endstats->set_hour(0); $endstats->set_minute(0); $endstats->set_second(1);
+    while ($endstats->wday > 1) { $endstats = $endstats->subtract( days => 1 ); }
+    $startstats = $endstats->clone()->subtract( days => 7 );
+  } elsif ($input{availstats} eq 'lastmonth') {
+    $endstats = DateTime->now(time_zone => $include::localtimezone);
+    $endstats->set_hour(0); $endstats->set_minute(0); $endstats->set_second(1);
+    $endstats->set_day(1); # First of the month.
+    $startstats = $endstats->clone()->subtract( months => 1 );
+  } elsif ($input{availstats} eq 'lastyear') {
+    $endstats = DateTime->new(
+                              year   => DateTime->now->year(),
+                              month  => 1,
+                              day    => 1,
+                             );
+    $startstats = $endstats->clone()->subtract( years => 1 );
+  } elsif ($input{availstats} eq 'custom') {
+    $startstats = DateTime->new(
+                                year  => parsenum($input{startyear}),
+                                month => parsenum($input{startmonth}),
+                                day  => parsenum($input{startmday}),
+                               );
+    $endstats = DateTime->new(
+                              year  => parsenum($input{endyear}),
+                              month => parsenum($input{endmonth}),
+                              day  => parsenum($input{endmday}),
+                             );
+  } elsif ($input{availstats} eq 'overtime') {
+    # This is where we start doing multiple date ranges.
+    # TODO:  implement this.
+  }
+
+  print include::standardoutput('Availability Statistics',
+				qq[<h1>Availability Statistics</h1>]
+				. (join "\n\n", map { availstats_for_category($_, $startstats, $endstats) } @category),
+				$ab, $input{usestyle});
+  exit 0;
+
+}
+
+sub threeplaces {
+  # Round to three significant digits and sprintf-pad to n.nn
+  my ($number) = @_;
+  use Math::SigFigs;
+  my $result = FormatSigFigs($number,3);
+  $result =~ s/[.]$//;
+  return $result;
+}
+
 sub gatherstats {
   my (@category);
   if ($input{resource}) {
@@ -1856,16 +2132,16 @@ sub gatherstats {
   my ($startstats, $endstats);
   if ($input{stats} eq 'yesterday') {
     $endstats = DateTime->now(time_zone => $include::localtimezone);
-    $endstats->set_hour(0); $endstats->set_minute(1);
+    $endstats->set_hour(0); $endstats->set_minute(0);
     $startstats = $endstats->clone()->subtract( days => 1 );
   } elsif ($input{stats} eq 'lastweek') {
     $endstats = DateTime->now(time_zone => $include::localtimezone);
-    $endstats->set_hour(0); $endstats->set_minute(1);
+    $endstats->set_hour(0); $endstats->set_minute(0);
     while ($endstats->wday > 1) { $endstats = $endstats->subtract( days => 1 ); }
     $startstats = $endstats->clone()->subtract( days => 7 );
   } elsif ($input{stats} eq 'lastmonth') {
     $endstats = DateTime->now(time_zone => $include::localtimezone);
-    $endstats->set_hour(0); $endstats->set_minute(1);
+    $endstats->set_hour(0); $endstats->set_minute(0);
     $endstats->set_day(1); # First of the month.
     $startstats = $endstats->clone()->subtract( months => 1 );
   } elsif ($input{stats} eq 'lastyear') {
@@ -2557,7 +2833,7 @@ sub attemptbooking {
                         $result{$b} <=> $result{$a}
                     } grep {
                       lc $_ ne lc $name
-                    } uniq(map {
+                    } include::uniq(map {
                       #join " ", map { ucfirst lc $_ } split /\W+/, include::dealias(include::normalisebookedfor($_))
                       include::capitalise(include::dealias(include::normalisebookedfor($_)))
                     } keys %result))) . qq[
@@ -2842,10 +3118,18 @@ sub usersidebar {
   my $statsection = qq[<div><strong><span onclick="toggledisplay('statslist','statsmark');" id="statsmark" class="expmark">+</span>
         <span onclick="toggledisplay('statslist','statsmark','expand');">Statistics:</span></strong>
         <div id="statslist" style="display: none;"><ul>
-        <li><a href="./?stats=yesterday&amp;].persist(undef,['magicdate']).qq[">yesterday</a></li>
-        <li><a href="./?stats=lastweek&amp;].persist(undef,['magicdate']).qq[">last week</a></li>
-        <li><a href="./?stats=lastmonth&amp;].persist(undef,['magicdate']).qq[">last month</a></li>
-        <li><a href="./?stats=lastyear&amp;].persist(undef,['magicdate']).qq[">last year</a></li>
+        <li><strong>Usage</strong><ul>
+            <li><a href="./?stats=yesterday&amp;].persist(undef,['magicdate']).qq[">yesterday</a></li>
+            <li><a href="./?stats=lastweek&amp;].persist(undef,['magicdate']).qq[">last week</a></li>
+            <li><a href="./?stats=lastmonth&amp;].persist(undef,['magicdate']).qq[">last month</a></li>
+            <li><a href="./?stats=lastyear&amp;].persist(undef,['magicdate']).qq[">last year</a></li>
+          </ul></li>
+        <li><strong>Availability</strong><ul>
+            <li><a href="./?availstats=yesterday&amp;].persist(undef,['magicdate']).qq[">yesterday</a></li>
+            <li><a href="./?availstats=lastweek&amp;].persist(undef,['magicdate']).qq[">last week</a></li>
+            <li><a href="./?availstats=lastmonth&amp;].persist(undef,['magicdate']).qq[">last month</a></li>
+            <li><a href="./?availstats=lastyear&amp;].persist(undef,['magicdate']).qq[">last year</a></li>
+          </ul></li>
         </ul></div></div>];
   my $stylesection = include::sidebarstylesection($currentview);
   my $otherfeatures = 0;
@@ -2886,15 +3170,6 @@ sub usersidebar {
 </div>];
 }
 
-sub uniq {
-  my %seen;
-  return grep { not $seen{$_}++ } @_;
-}
-sub uniqnonzero {
-  my %seen = ( 0 => 1 );
-  return grep { not $seen{$_}++ } @_;
-}
-
 sub ordinalnumber {
   my ($n) = @_;
   return $n . include::ordinalsuffix($n);
@@ -2922,53 +3197,6 @@ sub parsenum {
   my ($string) = @_;
   my ($num) = $string =~ /(\d+)/;
   return $num;
-}
-
-sub primefactor {
-  # Don't try to do huge numbers (e.g., for cryptanalysis) with this, but it works for our purposes:
-  my ($composite) = @_;
-  die "Cannot prime-factor a non-integer value ($composite)" unless ($composite == int $composite);
-  my $pf = 2;
-  my @fact;
-  while ($composite >= $pf) {
-    while (not ($composite % $pf)) {
-      $composite /= $pf;
-      push @fact, $pf;
-    }
-    $pf++;
-  }
-  return @fact;
-}
-
-sub arithgcf {
-  # return the greatest common factor of the integers in @_.
-  # primefactor will die if any are non-integers.
-  my @pf = map {
-    my @f = primefactor abs $_;
-    my %f;
-    for (@f) { ++$f{$_} }
-    \%f
-  } @_;
-  my %pf = %{ $pf[0] };
-  my %opf = %pf;
-  for $f (@pf) {
-    my %f = %$f;
-    for (keys %f) {
-      if (exists $pf{$_}) {
-        $pf{$_} = $f{$_} if $pf{$_} >= $f{$_};
-      }
-    }
-    for (keys %pf) {
-      delete $pf{$_} unless $f{$_};
-    }
-  }
-  my $gcf = 1;
-  for $pf (keys %pf) {
-    for (1..$pf{$pf}) {
-      $gcf *= $pf;
-    }
-  }
-  return $gcf;
 }
 
 sub sanitycheckalias {
@@ -3028,24 +3256,3 @@ sub newaliasform {
              </form>]
 }
 
-# The following works, but we ended up not needing it:
-# sub arithlcd {
-#   # return the lowest common denominator of the integers in @_.
-#   # primefactor will die if any are non-integers.
-#   my @pf = map {[primefactor abs $_]} @_;
-#   my %pf;
-#   for (@pf) {
-#     my %f;
-#     for (@$_) { ++$f{$_} }
-#     for (keys %f) {
-#       $pf{$_} = $f{$_} unless $pf{$_} >= $f{$_};
-#     }
-#   }
-#   my $lcd = 1;
-#   for $pf (keys %pf) {
-#     for (1..$pf{$pf}) {
-#       $lcd *= $pf;
-#     }
-#   }
-#   return $lcd;
-# }

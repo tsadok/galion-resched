@@ -422,6 +422,109 @@ sub categories {
   return @category;
 }
 
+sub uniq {
+  my %seen;
+  return grep { not $seen{$_}++ } @_;
+}
+
+sub uniqnonzero {
+  my %seen = ( 0 => 1 );
+  return grep { not $seen{$_}++ } @_;
+}
+
+sub schedule_start_offset_gcf { # Returns GCF of the _offsets_ (not of the start times themselves).
+  my (@s) = @_;
+  # We want the starttimes as numbers of minutes since midnight.
+  my @starttime = uniq(map { $$_{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2; } @s);
+
+  my $gcf;
+  # Start based on schedules...
+
+  # We need the gcf of the durations of the _offsets_ (not of the
+  # start times themselves).  The algo below takes permutations,
+  # which will run in O(n*n) time, so don't feed it large numbers
+  # of distinct starttimes.
+  my @offset = uniqnonzero map {
+    my $st = $_;
+    map { abs ($st - $_) } @starttime;
+  } @starttime;
+
+  # Now, we need the gcf of these offsets taken together with the
+  # intervals from the actual schedules:
+  $gcf = arithgcf(@offset, uniqnonzero map { $$_{intervalmins} } @s);
+  return $gcf;
+}
+
+sub primefactor {
+  # Don't try to do huge numbers (e.g., for cryptanalysis) with this, but it works for our purposes:
+  my ($composite) = @_;
+  die "Cannot prime-factor a non-integer value ($composite)" unless ($composite == int $composite);
+  my $pf = 2;
+  my @fact;
+  while ($composite >= $pf) {
+    while (not ($composite % $pf)) {
+      $composite /= $pf;
+      push @fact, $pf;
+    }
+    $pf++;
+  }
+  return @fact;
+}
+
+sub arithgcf {
+  # return the greatest common factor of the integers in @_.
+  # primefactor will die if any are non-integers.
+  my ($f, $pf);
+  my @pf = map {
+    my @f = primefactor(abs $_);
+    my %f;
+    for (@f) { ++$f{$_} }
+    \%f
+  } @_;
+  my %pf = %{ $pf[0] };
+  my %opf = %pf;
+  for $f (@pf) {
+    my %f = %$f;
+    for (keys %f) {
+      if (exists $pf{$_}) {
+        $pf{$_} = $f{$_} if $pf{$_} >= $f{$_};
+      }
+    }
+    for (keys %pf) {
+      delete $pf{$_} unless $f{$_};
+    }
+  }
+  my $gcf = 1;
+  for $pf (keys %pf) {
+    for (1..$pf{$pf}) {
+      $gcf *= $pf;
+    }
+  }
+  return $gcf;
+}
+
+# The following works, but we ended up not needing it:
+# sub arithlcd {
+#   # return the lowest common denominator of the integers in @_.
+#   # primefactor will die if any are non-integers.
+#   my @pf = map {[primefactor abs $_]} @_;
+#   my %pf;
+#   for (@pf) {
+#     my %f;
+#     for (@$_) { ++$f{$_} }
+#     for (keys %f) {
+#       $pf{$_} = $f{$_} unless $pf{$_} >= $f{$_};
+#     }
+#   }
+#   my $lcd = 1;
+#   for $pf (keys %pf) {
+#     for (1..$pf{$pf}) {
+#       $lcd *= $pf;
+#     }
+#   }
+#   return $lcd;
+# }
+
 sub getnum {
   my ($name) = @_;
   my ($num) = $main::input{$name} =~ /([0-9.]+)/;

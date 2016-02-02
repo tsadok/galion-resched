@@ -133,6 +133,16 @@ Version 0.9.7:
     checkbox by the phone number for reminder calls.
   * Fixed a bug with the interaction between automatic day-closed
     bookings and statistics gathering.
+  * Introduced availability statistics.  Instead of raw figures
+    like "How many times were our internet computers used?", this
+    is designed to answer questions like "What percentage of the
+    time were there no unused internet computers available?"
+    Note that, for performance reasons, the bulk of the calculation
+    for these stats is done by a separate script, availstats-prep.pl,
+    which should be run from a cron job.  Running it once a day with
+    no arguments will work, always calculating the previous day's
+    information; or you can use command-line arguments to specify the
+    date range.
 
 Version 0.9.6:
   * Fixed a bug that prevented the generic "wherever" location from
