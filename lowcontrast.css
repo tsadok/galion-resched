@@ -252,6 +252,9 @@ table.formtable td {
 table.searchresults td {
   border:              1px solid #223333;
 }
+table.formtable tbody th {
+  text-align:          left;
+}
 
 div.calmdaynum,
 div.calmdaynum a {

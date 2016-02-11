@@ -1842,8 +1842,15 @@ sub availstats_for_category {
   @resource = include::uniq(@resource);
   push @debugline, "resources: @resource";
 
-  my $when = $startstats->clone();
-  while ($when <= $endstats) {
+  my $when = DateTime->new(
+                           year    => $startstats->year(),
+                           month   => $startstats->month(),
+                           day     => $startstats->day(),
+                           hour    => 0,
+                           minute  => 0,
+                          );
+
+  while ($when < $endstats) {
     push @month, $when->year . "_" . $when->month_abbr();
     $when = $when->add(months => 1);
   }
@@ -1895,72 +1902,73 @@ sub availstats_for_category {
       push @debugline, "  next day at $nextday";
       # TODO: skip days when everything is booked closed.
       while (($when lt $nextday) and (($when->hour < $chour) or ($when->hour == $chour and $when->minute <= $cmin))) {
-	my $nextwhen = $when->clone()->add( minutes => $gcf );
-	my $time = sprintf "%1d:%02d", $when->hour, $when->minute;
-	push @debugline, "    time $time";
-	my $month = $day->month();
-	$timect{$time}++;
-	$dowct{$dow}++;
-	$monct{$month}++;
-	$firstday ||= $day;
-	$lastday    = $day;
+        my $nextwhen = $when->clone()->add( minutes => $gcf );
+        my $time = sprintf "%1d:%02d", $when->hour, $when->minute;
+        push @debugline, "    time $time";
+        my $month = $day->month();
+        $timect{$time}++;
+        $dowct{$dow}++;
+        $monct{$month}++;
+        $firstday ||= $day;
+        $lastday    = $day;
 
-	### # The following produces the correct answer but performs very badly.
-	### my ($avail, $used) = (0,0);
-	### for my $rid (@resource) {
-	###   #my $r = $res{$rid};
-	###   if (include::check_for_collision_using_datetimes($rid, $when, $nextwhen->clone()->subtract ( seconds => 1))) {
-	###     push @debugline, "      res $rid $res{$rid}{name}: used";
-	###     $used++;
-	###   } else {
-	###     push @debugline, "      res $rid $res{$rid}{name}: avail";
-	###     $avail++;
-	###   }
-	### }
+        ### # The following produces the correct answer but performs very badly.
+        ### my ($avail, $used) = (0,0);
+        ### for my $rid (@resource) {
+        ###   #my $r = $res{$rid};
+        ###   if (include::check_for_collision_using_datetimes($rid, $when, $nextwhen->clone()->subtract ( seconds => 1))) {
+        ###     push @debugline, "      res $rid $res{$rid}{name}: used";
+        ###     $used++;
+        ###   } else {
+        ###     push @debugline, "      res $rid $res{$rid}{name}: avail";
+        ###     $avail++;
+        ###   }
+        ### }
 
-	# So for perf reasons, we have farmed out the stat collection to availstats-prep.pl
-	my ($used, $avail);
-	my ($availrec) = findrecord('resched_availstats',
-				    category       => $catname,
-				    timeframestart => DateTime::Format::ForDB($when),
-				    #timeframeend   => DateTime::Format::ForDB($nextwhen),
-				   );
-	if (ref $availrec) {
-	  $used  = $$availrec{numused};
-	  $avail = $$availrec{numavailable};
-	} else {
-	  push @debugline, "    Unknown (catname: $catname; start $when)";
-	  $used = $avail = '[Unknown]';
-	}
-	push @debugline, "    avail: $avail; used: $used";
-	$availstat{overall}{avail}         += $avail;
-	$availstat{overall}{used}          += $used;
-	$availstat{overall}{cnt}{$avail}++;
-	$availstat{overall}{cnt}{total}++;
+        # So for perf reasons, we have farmed out the stat collection to availstats-prep.pl
+        my ($used, $avail);
+        my ($availrec) = findrecord('resched_availstats',
+                                    category       => $catname,
+                                    timeframestart => DateTime::Format::ForDB($when),
+                                    #timeframeend   => DateTime::Format::ForDB($nextwhen),
+                                   );
+        if (ref $availrec) {
+          $used  = $$availrec{numused};
+          $avail = $$availrec{numavailable};
+        } else {
+          push @debugline, "    Unknown (catname: $catname; start $when)";
+          $used = $avail = '[Unknown]';
+        }
+        push @debugline, "    avail: $avail; used: $used";
+        $availstat{overall}{avail}         += $avail;
+        $availstat{overall}{used}          += $used;
+        $availstat{overall}{cnt}{$avail}++;
+        $availstat{overall}{cnt}{total}++;
 
-	$availstat{bytime}{$time}{avail}   += $avail;
-	$availstat{bytime}{$time}{used}    += $used;
-	$availstat{bytime}{$time}{cnt}{$avail}++;
-	$availstat{bytime}{$time}{cnt}{total}++;
+        $availstat{bytime}{$time}{avail}   += $avail;
+        $availstat{bytime}{$time}{used}    += $used;
+        $availstat{bytime}{$time}{cnt}{$avail}++;
+        $availstat{bytime}{$time}{cnt}{total}++;
 
-	$availstat{bydow}{$dow}{avail}     += $avail;
-	$availstat{bydow}{$dow}{used}      += $used;
-	$availstat{bydow}{$dow}{cnt}{$avail}++;
-	$availstat{bydow}{$dow}{cnt}{total}++;
+        $availstat{bydow}{$dow}{avail}     += $avail;
+        $availstat{bydow}{$dow}{used}      += $used;
+        $availstat{bydow}{$dow}{cnt}{$avail}++;
+        $availstat{bydow}{$dow}{cnt}{total}++;
 
-	my $mon = $day->year . "_" . $day->month_abbr();
-	$availstat{bymonth}{$mon}{avail} += $avail;
-	$availstat{bymonth}{$mon}{used}  += $used;
-	$availstat{bymonth}{$mon}{cnt}{$avail}++;
-	$availstat{bymonth}{$mon}{cnt}{total}++;
+        my $mon = $day->year . "_" . $day->month_abbr();
+        $availstat{bymonth}{$mon}{avail} += $avail;
+        $availstat{bymonth}{$mon}{used}  += $used;
+        $availstat{bymonth}{$mon}{cnt}{$avail}++;
+        $availstat{bymonth}{$mon}{cnt}{total}++;
 
-	$when = $nextwhen;
+        $when = $nextwhen;
       }
     }
     $day = $nextday;
   }
   @time = sort { $a cmp $b } keys %timect;
   push @debugline, "----------------------------------------------------------------------------------------------";
+
   return qq[
   <table class="availstatcriteria"><tbody>
      <tr><th>Category:</th> <td>$catname</td></tr>
@@ -1988,6 +1996,17 @@ sub availstats_for_category {
 			    } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>
   </tbody></table>
 
+  <h2>Overall $catname Usage</h2>
+  <table class="availstats"><thead>
+      <tr><th>&nbsp;</th><th class="numeric">Average</th>]
+				. (join "", map { qq[<th class="numeric">$_ avail.</th>]
+						} sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>
+  </thead><tbody>
+      <tr><th>Overall</th><td class="numeric">] .
+				($availstat{overall}{cnt}{total}
+				 ? (threeplaces($availstat{overall}{used} / $availstat{overall}{cnt}{total})) : "N/A") . qq [</td></tr>
+  </tbody></table>
+
   <h2>$catname Availability By Time of Day</h2>
   <table class="availstats"><thead>
       <tr><th>&nbsp;</th><th class="numeric">Average</th>]
@@ -2007,7 +2026,7 @@ sub availstats_for_category {
   </thead><tbody>
   </tbody></table>
 
-
+  ] . (($startstats->clone->add(days => 1) < $endstats) ? (qq[
   <h2>$catname Availability By Day of Week</h2>
   <table class="availstats"><thead>
       <tr><th>&nbsp;</th><th class="numeric">Average</th>]
@@ -2025,34 +2044,37 @@ sub availstats_for_category {
 				       : qq[<td class="numeric">[none]</td>] # This datum notwithstanding, the column is numeric.
 				     } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>] } @dow) . qq[
   </thead><tbody>
-  </tbody></table>
+  </tbody></table>]) : '') . qq[
 
-
+  ] . ((1 < scalar @month) ? (qq[
   <h2>$catname Availability By Month</h2>
   <table class="availstats"><thead>
       <tr><th>&nbsp;</th><th class="numeric">Average</th>]
 				. (join "", map { qq[<th class="numeric">$_ avail.</th>]
-						} sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>
+                                } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>
       ] . (join "\n      ",
-	   map { my $mon = $_;
-		 my $avg = $availstat{bymonth}{$mon}{cnt}{total}
-		   ? threeplaces($availstat{bymonth}{$mon}{avail} / $availstat{bymonth}{$mon}{cnt}{total}) : qq[N/A];
-		 qq[<tr><th>$mon</th><td class="numeric">$avg</td>]
-		   . (join "", map { my $n = $_;
-				     $availstat{bymonth}{$mon}{cnt}{total}
-				       ? (sprintf(qq[<td class="numeric"><div>%1d times</div>], $availstat{bymonth}{$mon}{cnt}{$n},)
-					  . qq[<div>] . threeplaces($availstat{bymonth}{$mon}{cnt}{$n} * 100 / $availstat{bymonth}{$mon}{cnt}{total}) . qq[%</div></td>])
-				       : qq[<td class="numeric">[none]</td>] # This datum notwithstanding, the column is numeric.
-				     } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>] } @month) . qq[
+           map { my $mon = $_;
+                 my $avg = $availstat{bymonth}{$mon}{cnt}{total}
+                   ? threeplaces($availstat{bymonth}{$mon}{avail} / $availstat{bymonth}{$mon}{cnt}{total}) : qq[N/A];
+                 qq[<tr><th>$mon</th><td class="numeric">$avg</td>]
+                   . (join "", map { my $n = $_;
+                                     $availstat{bymonth}{$mon}{cnt}{total}
+                                       ? (sprintf(qq[<td class="numeric"><div>%1d times</div>], $availstat{bymonth}{$mon}{cnt}{$n},)
+                                          . qq[<div>] . threeplaces($availstat{bymonth}{$mon}{cnt}{$n} * 100 / $availstat{bymonth}{$mon}{cnt}{total}) . qq[%</div></td>])
+                                       : qq[<td class="numeric">[none]</td>] # This datum notwithstanding, the column is numeric.
+                                     } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>] } @month) . qq[
   </thead><tbody>
-  </tbody></table>
-
+  </tbody></table>]) : '') . qq[
 
   <!-- \n] . (join "\n", @debugline) . qq[ -->\n];
 }
 
 sub availstats {
   my (@category);
+  if (grep { $input{$_} } grep { /^categorycb\w+/ } keys %input) {
+    $input{category} = ($input{category} ? qq[$input{category},] : '')
+      . join(",", map { /categorycb(.*)/; $1 } grep { $input{$_} } grep { /^categorycb\w+/ } keys %input);
+  }
   if ($input{category}) {
     my @allcat = include::categories();
     for my $c (split /,\s*/, $input{category}) {
@@ -2100,12 +2122,60 @@ sub availstats {
     # TODO:  implement this.
   }
 
+  my $dur = $endstats - $startstats;
+  my $hrd = human_readable_duration($dur);
+  my $prevstart = $startstats - $dur;
+  my $nextend = $endstats + $dur;
+  my $prevlink = qq[<a href="./?availstats=custom]
+    . "&amp;startyear="  . $prevstart->year()  . "&amp;endyear="  . $startstats->year()
+    . "&amp;startmonth=" . $prevstart->month() . "&amp;endmonth=" . $startstats->month()
+    . "&amp;startmday="  . $prevstart->mday()  . "&amp;endmday="  . $startstats->mday()
+    . '&amp;' . persist(undef, ['magicdate', 'availstats']) . qq[">&lt;= previous $hrd</a>];
+  my $nextlink = '<a href="./?availstats=custom'
+    . "&amp;startyear="  . $endstats->year()  . "&amp;endyear="  . $nextend->year()
+    . "&amp;startmonth=" . $endstats->month() . "&amp;endmonth=" . $nextend->month()
+    . "&amp;startmday="  . $endstats->mday()  . "&amp;endmday="  . $nextend->mday()
+    . '&amp;' . persist(undef, ['magicdate', 'availstats']) . qq[">next $hrd =&gt;</a>];
+  my $persisthidden = persist('hidden', ['magicdate', 'availstats', 'category']);
+  my @monthopt = ( [ 1 => 'January'],   [  2 => 'February'], [  3 => 'March'],    [  4 => 'April'],
+                   [ 5 => 'May'],       [  6 => 'June'],     [  7 => 'July'],     [  8 => 'August'],
+                   [ 9 => 'September'], [ 10 => 'October'],  [ 11 => 'November'], [ 12 => 'December']);
+
   print include::standardoutput('Availability Statistics',
-				qq[<h1>Availability Statistics</h1>]
-				. (join "\n\n", map { availstats_for_category($_, $startstats, $endstats) } @category),
+                                qq[<h1>Availability Statistics</h1>]
+                                . qq[<p>$prevlink | $nextlink</p>]
+                                . (join "\n\n", map { availstats_for_category($_, $startstats, $endstats) } @category)
+                                . qq[<div>&nbsp;</div><hr /><div>&nbsp;</div>
+
+  <form class="availstatsform" action"index.cgi" method="get">
+      <input type="hidden" name="availstats" value="custom" />
+      <table class="formtable"><tbody>
+          <tr><th>Categories:</th>
+              <td>] . (join "\n                  ", map {
+                my ($catname, @res) = @$_;
+                my $checked = (grep { $$_[0] eq $catname } @category) ? qq[checked="checked"] : '';
+                qq[<input type="checkbox" id="cbcat$catname" name="categorycb$catname" $checked />&nbsp;<label for="cbcat$catname">$catname</label>];
+              } include::categories()) . qq[</td></tr>
+          <tr><th>Timeframe:</th>
+              <td><table class="formtable subtable"><thead>
+                      <tr><th></th><th>Year</th><th>Month</th><th>Day</th><td>Time</td></tr>
+                  </thead><tbody>
+                      <tr><th>Start:</th>
+                          <td><input type="text" size="5" name="startyear" value="] . ($startstats->year()) . qq[" /></td>
+                          <td>] . include::orderedoptionlist('startmonth', [@monthopt], $startstats->month()) . qq[</td>
+                          <td><input type="text" size="5" name="startmday" value="] . ($startstats->mday()) . qq[" /></td>
+                          <td> (all day)</td></tr>
+                      <tr><th>Stop:</th>
+                          <td><input type="text" size="5" name="endyear" value="] . ($endstats->year()) . qq[" /></td>
+                          <td>] . include::orderedoptionlist('endmonth', [@monthopt], $endstats->month()) . qq[</td>
+                          <td><input type="text" size="5" name="endmday" value="] . ($endstats->mday()) . qq[" /></td>
+                          <td> (stop before opening&nbsp;&mdash; exclude this day)</td></tr>
+                  </tbody></table></td></tr>
+          <tr><th>Use These Settings:</th><td><input type="submit" value="Get Availability Stats" /></td></tr>
+      </tbody></table>
+  </form>\n],
 				$ab, $input{usestyle});
   exit 0;
-
 }
 
 sub threeplaces {
@@ -3128,7 +3198,6 @@ sub usersidebar {
             <li><a href="./?availstats=yesterday&amp;].persist(undef,['magicdate']).qq[">yesterday</a></li>
             <li><a href="./?availstats=lastweek&amp;].persist(undef,['magicdate']).qq[">last week</a></li>
             <li><a href="./?availstats=lastmonth&amp;].persist(undef,['magicdate']).qq[">last month</a></li>
-            <li><a href="./?availstats=lastyear&amp;].persist(undef,['magicdate']).qq[">last year</a></li>
           </ul></li>
         </ul></div></div>];
   my $stylesection = include::sidebarstylesection($currentview);
