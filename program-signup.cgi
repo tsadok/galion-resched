@@ -291,7 +291,7 @@ sub blankattender {
 
 sub createprogram {
   my ($when) = assembledatetime('start', \%input, $include::localtimezone, 'cleanup');
-  my $until = $when->clone()->set( hour => $input{endhour}, minute => $input{endminute});
+  my $until = $when->clone()->set( hour => $input{endhour}, minute => ($input{endminute} || 0));
   if ($until < $when) {
     $until = $when->clone()->add( hours => 1);
   }
