@@ -126,15 +126,20 @@ my %cfgvar =
                                 description => 'If the number of people signed up for a program reaches the limit, do we allow more names to be taken for a waiting list?  0 = No, 1 = Yes.  Either way, it can be changed on a per-program basis with the W flag, but new programs are created according to this preference.',
                                 sortkey     => 712,
                                },
+   program_signup_waitlist_checkbox => +{
+                                         default     => 0,
+                                         description => qq[When signing someone up for a program that is not yet full but is allowed to have a waiting list, provide a checkbox to place the person explicitly on the waiting list.  0 = No, 1 = Yes.],
+                                         sortkey     => 714,
+                                        },
    program_signup_default_limit => +{
                                      default     => 0,
                                      description => 'By default, how many people can sign up for any given one of your programs.  This can still be changed on a per-program basis, but new programs get this value if you do not change it.  0 means no limit.  The fire-safety capacity of your primary meeting room makes a good value here.',
-                                     sortkey     => 713,
+                                     sortkey     => 720,
                                     },
    program_signup_default_sort => +{
                                     default     => 'num',
                                     description => 'Order in which program signup lists are shown by default.  This can be overridden for individual programs, which in turn can be overridden by clicking a different column header to sort by that column.  "num" means sort numerically; "lastname" means sort by last name.',
-                                    sortkey     => 715,
+                                    sortkey     => 725,
                                    },
 
    normal_name_order => +{

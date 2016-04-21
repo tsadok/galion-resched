@@ -45,6 +45,7 @@ my %programflag = (
                    '#' => ['#', 'DEBUG',           'This is not a real program.  It exists only for testing the booking software.', 'inherited'],
                   );
 my %signupflag = ('R' => ['R', 'Reminded', 'This person has received a reminder call.'],
+                  'W' => ['W', 'Waitlist', 'This person signed up for the wait list, before the program filled up.'],
                   'X' => ['X', 'Canceled', 'This person no longer plans to attend.'],
                   '?' => ['?', 'Maybe',    'This person is unsure whether they will attend.'],
                   '#' => ['#', 'DEBUG',    'You can ignore this signup: we were just testing the booking software.']
@@ -82,11 +83,12 @@ if ($auth::user) {
     respondtouser(updatesignup(), "Edit Program Signup");
   } elsif ($input{action} eq 'AjaxAddSignup') {
     my $num = $input{numofnewsignups} + 1;
+    my $ewt = $input{explicitwait};
     sendresponse(ajaxvarupdate('numofnewsignups', $num)
                  . ajaxtoggledisplay('addmoresignupsbutton', 'inline')
                  . ajaxtoggledisplay('onemomentnoticegoeshere', 'none')
                  . ajaxinsert('insertemptysignupshere',
-                              blankattender($num) # both content and focus
+                              blankattender($num, $ewt) # both content and focus
                              )
                 );
   } else {
@@ -275,11 +277,15 @@ sub editsignup {
 }
 
 sub blankattender {
-  my ($num) = @_;
+  my ($num, $explicitwait) = @_;
+  my @flagcb = ();
+  if ($explicitwait) {
+    push @flagcb, qq[<input type="checkbox" id="signup${num}flagW" name="signup${num}flagW" />&nbsp;<label for="signup${num}flagW"><abbr title="Place on the waiting list">Wait</abbr></label>];
+  }
   my $html = qq[      <tr>
         <td> </td><td><input type="text" id="signup${num}attender" name="signup${num}attender" size="30" /></td>
                    <td><input type="text" id="signup${num}phone"    name="signup${num}phone"    size="15" /></td>
-                   <td><!-- TODO:  Checkboxes --></td>
+                   <td>@flagcb</td>
                    <td><textarea id="signup${num}comments" name="signup${num}comments" rows="3" cols="25"></textarea></td>
       </tr>\n];
   if (wantarray) {
@@ -343,18 +349,20 @@ sub dosignup {
   if ($prog) {
     if ($$prog{R}) {
       for my $s (findrecord('resched_program_signup', 'program_id', $$prog{id})) {
-	if ($input{"flagR$$s{id}"}) {
-	  my %f = map { $_ => 1 } split //, $$s{flags};
-	  $f{R}++;
-	  $$s{flags} = join "", grep { $f{$_} } sort { $a cmp $b } keys %f;
-	  updaterecord('resched_program_signup', $s);
-	}
+        if ($input{"flagR$$s{id}"}) {
+          my %f = map { $_ => 1 } split //, $$s{flags};
+          $f{R}++;
+          $$s{flags} = join "", grep { $f{$_} } sort { $a cmp $b } keys %f;
+          updaterecord('resched_program_signup', $s);
+        }
       }
     }
     for my $n (1 .. ($input{numofnewsignups} || 1)) {
       my $attender = encode_entities($input{"signup" . $n . "attender"});
       my $phone    = encode_entities($input{"signup" . $n . "phone"});
-      # TODO: Handle Flags, notably R
+      my $flags    = inheritflags($$prog{flags}, \%programflag)
+        . join "", #map { encode_entities($_) }
+          grep { $input{"signup" . $n . "flag" . $_} } keys %signupflag;
       my $comments = encode_entities($input{"signup" . $n . "comments"});
       if ($attender) {
         my $category = getrecord('resched_program_category', $$prog{category});
@@ -364,7 +372,7 @@ sub dosignup {
                                   attender   => $attender,
                                   phone      => $phone,
                                   comments   => $comments,
-                                  flags      => inheritflags($$prog{flags}, \%programflag),
+                                  flags      => $flags,
                                  });
       }}
     return (showprogram(), "Program Signup", redirectheader('showprogram'));
@@ -413,14 +421,24 @@ sub showprogram {
     }
     my $num = 0;
     my $category = getrecord('resched_program_category', $$prog{category});
+    my $explicitwait = (main::getvariable('resched', "program_signup_waitlist_checkbox")
+                        and ($$prog{flags} =~ /W/)) ? 1 : 0;
+    my ($waitlistnote, @waitlist, $showwaitlist) = ('');
     for my $i (0 .. $#signup) {
       if ($signup[$i]{flags} =~ /X/) {
         $signup[$i]{num} = '<abbr title="X - Canceled">X</abbr>';
+      } elsif ($explicitwait and $signup[$i]{flags} =~ /W/) {
+        $signup[$i]{num} = '<abbr title="W - Waiting list">W</abbr>';
+        $waitlistnote = qq[<tr><td colspan="5"><div><strong><hr />Waiting List:</strong></div></td></tr>\n      ];
       } else {
         $signup[$i]{num} = ++$num;
       }
     }
-    my ($waitlistnote, @waitlist) = ('');
+    if ($waitlistnote) {
+      @waitlist = grep { $$_{num} eq '<abbr title="W - Waiting list">W</abbr>' } @signup;
+      @signup   = grep { $$_{num} ne '<abbr title="W - Waiting list">W</abbr>' } @signup;
+    }
+
     my $digits = ($num > 900) ? "%04d" : (($num > 90) ? "%03d" : (($num > 8) ? "%02d" : "%0d"));
     if (($$prog{signuplimit} > 0) and ($num >= $$prog{signuplimit})) {
       $waitlistnote = qq[<tr><td colspan="5"><div><strong><hr />Waiting List:</strong></div></td></tr>\n      ];
@@ -450,16 +468,16 @@ sub showprogram {
     } elsif (($$prog{signuplimit} > 0) and ($num >= $$prog{signuplimit}) and (not ($$prog{flags} =~ /W/))) {
       $newsignup = '<tr><td colspan="4"><div class="info">This program is full.</div></td></tr>';
     } else {
-      my $newsignuplimit = $$prog{signuplimit} - (scalar @signup) - (scalar @waitlist);
+      my $newsignuplimit = $$prog{signuplimit} - (scalar @signup);
       my $limit = (($$prog{signuplimit} > 0) and (not ($$prog{flags} =~ /W/)))
         ? qq[<input type="hidden" id="signuplimit" name="signuplimit" value="$newsignuplimit" />\n                        ]
         : '';
-      $newsignup = blankattender(1)
+      $newsignup = blankattender(1, $explicitwait)
         . ($input{useajax} eq 'off' ? '' : qq[
       <tr id="insertemptysignupshere">
         <td colspan="4">$limit<input type="hidden" id="numofnewsignups" name="numofnewsignups" value="1" />
                         <span id="onemomentnoticegoeshere"><span id="onemomentnotice" style="display: none;">One moment...</span></span>
-                        <input type="button" id="addmoresignupsbutton" value="Add More" onclick="augmentprogramsignupform();" /></td>
+                        <input type="button" id="addmoresignupsbutton" value="Add More" onclick="augmentprogramsignupform($explicitwait);" /></td>
        </tr>]);
       $submitbutton = qq[<input type="submit" value="Submit" />];
     }
@@ -473,15 +491,18 @@ sub showprogram {
     my $notes = $$prog{notes} ? qq[<div id="programnotes">$$prog{notes}</div>] : '';
     my $makerow = sub {
       my ($s) = @_;
-      if ($input{"flagR$$s{id}"}) {
-	my %f = map { $_ => 1 } split //, $$s{flags};
-	$f{R}++;
-	$$s{flags} = join "", grep { $f{$_} } sort { $a cmp $b } keys %f;
-	updaterecord('resched_program_signup', $s);
-      } elsif (($input{action} eq 'dosignup' or $input{action} eq 'updatesignup')
-	       and $$prog{flags} =~ /R/) {
-	$$s{flags} =~ s/R//g;
-	updaterecord('resched_program_signup', $s);
+      for my $flagchar (keys %signupflag) {
+        if ($input{"flag" . $flagchar . $$s{id}}) {
+          my %f = map { $_ => 1 } split //, $$s{flags};
+          $f{$flagchar}++;
+          $$s{flags} = join "", grep { $f{$_} } sort { $a cmp $b } keys %f;
+          updaterecord('resched_program_signup', $s);
+        } elsif (($flagchar eq 'R') and
+                 (($input{action} eq 'dosignup' or $input{action} eq 'updatesignup')
+                  and $$prog{flags} =~ /R/)) {
+          $$s{flags} =~ s/R//g;
+          updaterecord('resched_program_signup', $s);
+        }
       }
       my $flags = showflags($$s{flags}, \%signupflag);
       my $usealt = getvariable('resched', 'signup_sheets_use_alt_norm');

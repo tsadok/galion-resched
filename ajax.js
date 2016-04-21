@@ -124,7 +124,7 @@ function insert_before_element(what, where) {
   where.parentNode.insertBefore(range.createContextualFragment(what),where);
   }
 
-function augmentprogramsignupform() {
+function augmentprogramsignupform(waitbox) {
   toggledisplay('addmoresignupsbutton', null, 'none');
   toggledisplay('onemomentnotice', null, 'inline');
   var varelt   = document.getElementById('numofnewsignups');
@@ -142,7 +142,10 @@ function augmentprogramsignupform() {
     var numerate = '<td>?</td>';
     var attender = '<td><input type="text" id="signup' + num + 'attender" name="signup' + num + 'attender" size="30" /></td>';
     var phonenum = '<td><input type="text" id="signup' + num + 'phone"    name="signup' + num + 'phone"    size="15" /></td>';
-    var chkboxes = '<td></td>';
+    var waitcbid = 'signup' + num + 'flagW';
+    var chkboxes = '<td>'
+          + ((waitbox > 0) ? ('<input type="checkbox" id="' + waitcbid + '" name="' + waitcbid + '" />&nbsp;<label for="' + waitcbid + '"><abbr title="Place on the waiting list">Wait</abbr></label>') : '')
+          + '</td>';
     var comments = '<td><textarea id="signup' + num + 'comments" name="signup' + num + 'comments" rows="3" cols="25"></textarea></td>';
     var tablerow = '<tr>' + numerate + attender + phonenum + chkboxes + comments + '</tr>';
     var location = document.getElementById('insertemptysignupshere');
