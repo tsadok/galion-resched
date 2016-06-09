@@ -576,6 +576,8 @@ sub viewbooking {
                                                                      hour   => $input{booking_late_datetime_hour},
                                                                      minute => $input{booking_late_datetime_minute},
                                                                     ));
+          } elsif ($input{waslatestart}) {
+            $newb{latestart} = undef;
           }
           if ($input{doneearlycheckbox}) {
             warn "doneearlycheckbox has a value: $input{doneearlycheckbox}" if $debug;
@@ -666,6 +668,7 @@ sub viewbooking {
       my $noteslines = 2 + split /\n/, $ben{notes};  $noteslines = 3 if $noteslines < 3; $noteslines = 10 if $noteslines > 10;
       #warn " latestart: '$b{latestart}'; fromtime: '$b{fromtime}'; ";
       my $latedt = DateTime::From::MySQL( ($b{latestart} ? $b{latestart} : $b{fromtime}), undef, 'A');
+      my $waslat = $b{latestart} ? qq[<input type="hidden" name="waslatestart" value="1" >] : "";
       my $fromdt = DateTime::From::MySQL( $b{fromtime}, undef, 'B');
       my $untidt = DateTime::From::MySQL( $b{until}, undef, 'C');
       my $earldt = DateTime::From::MySQL(($b{doneearly} ? $b{doneearly} : $b{until}),undef,'D');
@@ -695,7 +698,7 @@ sub viewbooking {
               <tr><td>From<sup><a href="#footnote1">1</a></sup>:</td>
                   <td>].(DateTime::Form::Fields($fromdt, 'booking_fromtime',undef,undef,'FieldsK',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td>
-                  <td><input type="checkbox" name="latestart" ]
+                  <td>$waslat<input type="checkbox" name="latestart" ]
                     .($b{latestart} ? ' checked="checked" ' : '').qq[ />&nbsp;Started late at
                       ].(DateTime::Form::Fields($latedt, 'booking_late', 'skipdate',undef,'FieldsL',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td></tr>
@@ -2856,6 +2859,8 @@ sub attemptbooking {
         $late = $late->add( hours => 12 );
       }
       $booking{latestart} = DateTime::Format::ForDB($late);
+    } elsif ($input{waslatestart}) {
+      $booking{latestart} = undef;
     } elsif ($input{dynamicform} and getvariable('resched', 'automatic_late_start_time')) {
       # Do implicit late start if AND ONLY IF we are making the booking during the timeslot.
       my $now = DateTime->now(time_zone => $include::localtimezone);
