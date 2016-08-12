@@ -116,6 +116,18 @@ my %cfgvar =
                                       default     => 0,
                                       sortkey     => 605,
                                      },
+
+   privacy_cutoff_old_schedules => +{
+                                     description => "Number of months' worth of old schedules to allow people to look at.  0 means no limit.  Note that overviews are only viewable if the first of the month is viewable, so setting this to 1 means last month's overview will be unavailable.",
+                                     default     => 12,
+                                     sortkey     => 650,
+                                    },
+   privacy_cutoff_old_searches => +{
+                                    description => "Number of months' worth of old bookings to keep searchable.  0 means no limit.",
+                                    default     => 24,
+                                    sortkey     => 651,
+                                   },
+
    program_signup_show_in_sidebar => +{
                                        default     => 0,
                                        description => 'If true, the resource scheduling sidebar contains a link to the program signup facility.',

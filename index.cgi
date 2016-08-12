@@ -1245,6 +1245,7 @@ sub overview {
   }
   $input{endyear} ||= $input{startyear};
   $input{endmonth} ||= $input{startmonth};
+
   my $begdt = DateTime->new(
                             year  => $input{startyear},
                             month => $input{startmonth},
@@ -1258,6 +1259,34 @@ sub overview {
                                                           month  => $input{endmonth})),
                             #hour   => 23, # i.e., _after_ the dt that starts this day, but before the next day.
                            );
+
+  my $cutoffwarn = "";
+  my $cutoffmonths = getvariable('resched', 'privacy_cutoff_old_schedules');
+  $cutoffmonths = 12 if not defined $cutoffmonths;
+  my $origdaycount = scalar @dt;
+  if ($cutoffmonths > 0) {
+    my $cutoff = DateTime->now(time_zone => $include::localtimezone)->clone()->subtract( months => $cutoffmonths );
+    if ($begdt < $cutoff) {
+      $begdt = $cutoff;
+      while ($begdt->mday > 1) {
+        $begdt = $begdt->add( days => 1 );
+      }
+      $cutoffwarn = include::errordiv("Old Schedules Unavailable", "Schedules more than $cutoffmonths months old are unavailable.
+                                                                    If this is a problem, ask your ReSched site administrator
+                                                                    about the privacy policy configuration.");
+      if (($enddt < $cutoff) || ($enddt <= $begdt)) {
+        $enddt = DateTime->new(
+                               year   => $begdt->year,
+                               month  => $begdt->month,
+                               day    => last_mday_of_month(year   => $begdt->year,
+                                                            month  => $begdt->month),
+                               #hour   => 23, # i.e., _after_ the dt that starts this day, but before the next day.
+                              );
+      }
+    }
+  }
+
+
   my $monthdt = $begdt->clone();
   my $dt = $monthdt->clone();
   my @dowhead = map { qq[<th class="dow">$_</th>] } daysopen(1);
@@ -1320,7 +1349,7 @@ sub overview {
       </form>
     ];
   my $labeltext = join ", ", map { qq[<span class="resourcename">${$res{$_}}{name}</span>] } @res;
-  return (qq[<div class="overviewheader">Overview: $labeltext</div>] . (join "\n", @calendar), "Overview");
+  return (qq[<div class="overviewheader">Overview: $labeltext</div>$cutoffwarn] . (join "\n", @calendar), "Overview");
 }
 
 sub daysclosed {
@@ -1402,6 +1431,7 @@ sub doview {
     my $t = $starttime[0]; for (@starttime) { $t = $_ if $_ < $t }
     $tablestarttime=$t;
 
+
     # What day(s) are we showing?
     my $year  = ($input{year}  || ((localtime)[5] + 1900));
     my $month = ($input{month} || ((localtime)[4] + 1));
@@ -1433,6 +1463,26 @@ sub doview {
     } split /,/, ($input{mday}  ||  (localtime)[3]);
     # Each of these DateTime values is a starting time for the top row
     # in a set of columns (one column per resource).
+
+    my $cutoffmonths = getvariable('resched', 'privacy_cutoff_old_schedules');
+    $cutoffmonths = 12 if not defined $cutoffmonths;
+    my $origdaycount = scalar @dt;
+    if ($cutoffmonths > 0) {
+      my $cutoff = $now->clone()->subtract( months => $cutoffmonths );
+      @dt = grep { $_ gt $cutoff } @dt;
+    }
+    if (not @dt) {
+      if ($origdaycount > 0) {
+        print include::standardoutput("Error: Old Schedules Unvailable",
+                                      include::errordiv("Old Schedules Unavailable",
+                                                        qq[Sorry, but schedules more than $cutoffmonths months old are
+                                                           unavailable.  If this is a problem, ask your ReSched site
+                                                           administrator about the privacy policy configuration.]));
+      } else {
+        print include::standardoutput("Error: No Dates Specified",
+                                      include::errordiv("No Dates", qq[Did you forget to specify which dates you wanted to see the schedule for?]));
+      }
+    }
 
     # Now we can fill in the bookings:
     {
@@ -2361,8 +2411,25 @@ sub searchresults {
                                               bookings where the string <q>$input{search}</q> matched
                                               either in the party it was booked for or in the notes.]),
                                   $ab, $input{usestyle});
+    return;
   }
   # So if we get here, we have results in @result:
+  my $cutoffmonths = getvariable('resched', 'privacy_cutoff_old_searches');
+  $cutoffmonths = 24 if not defined $cutoffmonths;
+  if ($cutoffmonths > 0) {
+    my $cutoff = DateTime->now(time_zone => $include::localtimezone)->clone()->subtract( months => $cutoffmonths );
+    @result = grep { $$_{fromtime} ge $cutoff } @result;
+  }
+  if (not @result) {
+    print include::standardoutput("Not Found:  " . encode_entities($input{search}),
+                                  include::errordiv('No Recent Bookings Found',
+                                           qq[Sorry, but I couldn't find any
+                                              bookings during the last $cutoffmonths months
+                                              where the string <q>$input{search}</q> matched.]),
+                                  $ab, $input{usestyle});
+    return;
+  }
+  # So if we get here, we have non-expiered results in @result:
   return qq[<table class="searchresults"><thead>
               <tr><th>Booking</th><th>Resource</th><th>Date &amp; Time</th><th>Notes</th><th>Booked By</th></tr>
           </thead><tbody>\n].(join "\n                ", map {
