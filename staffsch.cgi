@@ -247,21 +247,31 @@ sub showinterval {
         if (not (getvariable('resched', 'staff_schedule_show_redundant_flags') || 0)) {
           $suppressflag{$_}++ for grep { $_ =~ /$aflag/ } split //, $$rh{flags};
         }
+        if ($$rh{starthour} >= 24) {
+          warn "crazy rh starthour: " . Dumper($rh);
+          $$rh{starthour} = 0;
+        }
+        if ($$rh{endhour} >= 24) {
+          warn "crazy rh endhour: " . Dumper($rh);
+          $$rh{endhour} = 23;
+        }
+        my $startdt = DateTime->new(year      => $dt->year,
+                                    month     => $dt->month,
+                                    day       => $dt->mday,
+                                    hour      => ($$rh{starthour} || 0),
+                                    minute    => ($$rh{startmin} || 0),
+                                    time_zone => $localtimezone, );
+        my $enddt = DateTime->new(year      => $dt->year,
+                                  month     => $dt->month,
+                                  day       => $dt->mday,
+                                  hour      => ($$rh{endhour} || 0),
+                                  minute    => ($$rh{endmin} || 0),
+                                  time_zone => $localtimezone, );
         [qq[<div class="staffschedulehours regularhours">] . formatreghours($rh, suppressdow => 1,
                                                                                  suppressflag => \%suppressflag,
                                                                            ) . qq[</div>],
-         DateTime::Format::ForDB(DateTime->new(year      => $dt->year,
-                                               month     => $dt->month,
-                                               day       => $dt->mday,
-                                               hour      => ($$rh{starthour} || 0),
-                                               minute    => ($$rh{startmin} || 0),
-                                               time_zone => $localtimezone, )),
-         DateTime::Format::ForDB(DateTime->new(year      => $dt->year,
-                                               month     => $dt->month,
-                                               day       => $dt->mday,
-                                               hour      => ($$rh{endhour} || 0),
-                                               minute    => ($$rh{endmin} || 0),
-                                               time_zone => $localtimezone, )),
+         DateTime::Format::ForDB($startdt),
+         DateTime::Format::ForDB($enddt),
          $aflags,
         ];
       } @regular;
@@ -961,7 +971,9 @@ sub updateregularhours {
                                   } grep {
                                     (not $$_{obsolete}) or ($dbnow lt $$_{obsolete})
                                   } getrecord('resched_staffsch_flag');
-    if ($id) {
+    while ($$r{starthour} >= 24) { $$r{starthour} -= 12; }
+    while ($$r{endhour} >= 24) { $$r{endhour} -= 12; }
+    elsif ($id) {
       updaterecord('resched_staffsch_regular', $r);
     } else {
       addrecord('resched_staffsch_regular', $r);
