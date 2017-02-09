@@ -973,7 +973,7 @@ sub updateregularhours {
                                   } getrecord('resched_staffsch_flag');
     while ($$r{starthour} >= 24) { $$r{starthour} -= 12; }
     while ($$r{endhour} >= 24) { $$r{endhour} -= 12; }
-    elsif ($id) {
+    if ($id) {
       updaterecord('resched_staffsch_regular', $r);
     } else {
       addrecord('resched_staffsch_regular', $r);

@@ -2835,7 +2835,7 @@ sub attemptbooking {
                                month     => $when->month,
                                day       => $when->mday,
                                hour      => $hour,
-                               minute    => $min,
+                               minute    => ($min || 0),
                               );
       } else {
         # It wasn't specified, so default to a timeslot durationmins long:
