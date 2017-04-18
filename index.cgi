@@ -903,6 +903,10 @@ sub assemble_extranotes {
     $extranotes .= "\n" unless $extranotes eq $olden;
   }
 
+  if ($input{participants}) {
+    $extranotes .= "$input{participants} Participants.\n";
+  }
+
   if ('yes' eq lc $input{policyhave}) {
     $extranotes .= "Already have a copy of our meeting room policy on file.\n";
   } else {
