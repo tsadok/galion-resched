@@ -407,7 +407,7 @@ sub categories {
   if ($categories) {
     @category = map {
       my ($catname, @id) = split /,\s*/, $_;
-      [$catname, map { /(\d+)/; $1 } @id]
+      [$catname, map { /(\w+)/; $1 } @id]
     } grep { $_ } split /\r?\n/, $categories;
   } else {
     @category = map {

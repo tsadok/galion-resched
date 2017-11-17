@@ -4,6 +4,7 @@ Version 0.9.8:
     and privacy_cutoff_old_searches, to control how old information can
     be before the Galion ReSched web interface will refuse to show it.
   * Bugfix:  room booking code was not recording number of participants.
+  * Resource categories can now include subcategories.
 
 Version 0.9.7:
   * Releases no longer include sitecode.pl so new installations will

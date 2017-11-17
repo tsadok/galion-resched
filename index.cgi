@@ -1403,7 +1403,16 @@ sub doview {
     my %category = map { my @x = @$_; my $name = shift @x; ($name, \@x) } @category;
     my @res;
     if ($input{category} and $category{$input{category}}) {
-      @res = @{$category{$input{category}}};
+      @res = map {
+        my $this = $_;
+        my @r;
+        if ($this =~ /^\d+$/) {
+          @r = ($this);
+        } elsif ($category{$this}) {
+          @r = @{$category{$this}};
+        }
+        @r;
+      } @{$category{$input{category}}};
     } else {
       @res = split /,\s*/, $input{view};
     }
