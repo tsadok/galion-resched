@@ -485,12 +485,13 @@ if ($auth::user) {
     # possible resources and a way to choose a date (or list of dates
     # and ranges of dates).
     my @res = getrecord('resched_resources');
+    my @category = include::categories();
     my %rescat =
       map {
         my $cat = $_;
         my $catname = shift @$cat;
-        map { $_ => $catname } @$cat;
-      } include::categories();
+        map { $_ => $catname } categoryitems($catname, \@category); # @$cat;
+      } @category;           ;
     my @rescb = map {[$rescat{$$_{id}}, qq[<div><span class="nobr"><input type="checkbox" value="$$_{id}" name="view" />&nbsp;$$_{name}</span></div>]]} sort { $$a{id} <=> $$b{id} } @res;
     %rescat = ();
     for (@rescb) {
@@ -1400,19 +1401,12 @@ sub doview {
     my $now = DateTime->now(time_zone => $include::localtimezone);
     my %alwaysclosed = map { $_ => 1 } daysclosed(0);
     my @category = include::categories();
-    my %category = map { my @x = @$_; my $name = shift @x; ($name, \@x) } @category;
+    my %category = map { my @x = @$_; my $name = shift @x;
+                         @x = categoryitems($name, \@category);
+                         ($name, \@x) } @category;
     my @res;
     if ($input{category} and $category{$input{category}}) {
-      @res = map {
-        my $this = $_;
-        my @r;
-        if ($this =~ /^\d+$/) {
-          @r = ($this);
-        } elsif ($category{$this}) {
-          @r = @{$category{$this}};
-        }
-        @r;
-      } @{$category{$input{category}}};
+      @res = categoryitems($input{category}, \@category);
     } else {
       @res = split /,\s*/, $input{view};
     }
@@ -1844,6 +1838,7 @@ sub doview {
     }
     my %specialview = map {
       my ($name, @res) = @$_;
+      @res = categoryitems($name, \@category);
       my $view = join ',', sort { $a <=> $b } @res;
       ($view => $name)
     } @category;
@@ -1896,13 +1891,14 @@ sub doview {
 }# end of doview()
 
 sub availstats_for_category {
-  my ($category, $startstats, $endstats) = @_;
+  my ($category, $startstats, $endstats, $categories) = @_;
   my @debugline;
   push @debugline, "category: $category";
   push @debugline, "startstats: $startstats";
   push @debugline, "endstats: $endstats";
   my (@resource, @month, @dow, @time, %monct, %dowct, %timect, %availstat);
   my ($catname, @resid) = @$category;
+  @resid = categoryitems($catname, $categories);
   push @resource, $_ for @resid;
 
   @resource = include::uniq(@resource);
@@ -2210,7 +2206,7 @@ sub availstats {
   print include::standardoutput('Availability Statistics',
                                 qq[<h1>Availability Statistics</h1>]
                                 . qq[<p>$prevlink | $nextlink</p>]
-                                . (join "\n\n", map { availstats_for_category($_, $startstats, $endstats) } @category)
+                                . (join "\n\n", map { availstats_for_category($_, $startstats, $endstats, \@category) } @category)
                                 . qq[<div>&nbsp;</div><hr /><div>&nbsp;</div>
 
   <form class="availstatsform" action"index.cgi" method="get">
@@ -2219,6 +2215,7 @@ sub availstats {
           <tr><th>Categories:</th>
               <td>] . (join "\n                  ", map {
                 my ($catname, @res) = @$_;
+                @res = categoryitems($catname, \@category);
                 my $checked = (grep { $$_[0] eq $catname } @category) ? qq[checked="checked"] : '';
                 qq[<input type="checkbox" id="cbcat$catname" name="categorycb$catname" $checked />&nbsp;<label for="cbcat$catname">$catname</label>];
               } include::categories()) . qq[</td></tr>
@@ -2259,11 +2256,6 @@ sub gatherstats {
     @category = (['Selected Resource(s)' => split /,\s*/, $input{resource}]);
   } else {
     @category = include::categories();
-     # (['Internet' => 15, 16, 17, 3],
-     #  ['Word Processing' => 4, 5, 6],
-     #  ['Typewriter' => 7],
-     #  ['Rooms' => 8, 9, 10],
-     #  ['Practice Zone' => 11,12,13,14]);
   }
   my ($startstats, $endstats);
   if ($input{stats} eq 'yesterday') {
@@ -2360,11 +2352,13 @@ sub getstatsforadaterange {
   # TODO:  Make this return something that specifies the date range,
   #        so that if we gather for multiple ranges the results make sense.
   my @category = @$categories;
+  my @allcategory = include::categories();
   my (@gatheredstat);
   my %exclude = map { (lc $_) => 1 } map { $_, qq[ $_ ] }
     split /,\s*/, (getvariable('resched', 'nonusers') || 'closed,maintenance,out of order');
   for (@category) {
     ($category, @resid) = @$_;
+    @resid = categoryitems($category, @allcategory);
     my ($totaltotalbookings, $totaltotalduration);
     push @gatheredstat, '<div>&nbsp;</div><table><thead><tr><th colspan="4"><strong>' . "$category</strong></th></tr>\n\n";
     # <div><strong>' . ucfirst $category . '</strong></div>' . "\n<table>\n";
@@ -3093,7 +3087,8 @@ sub getcategoryfromitem {
 
 sub parseshowwith {
   my ($sw, $r) = @_; # That's (showwith, id) for a resource we were just working with.
-  my %category = map { my @x = @$_; my $name = shift @x; ($name, \@x) } include::categories();
+  my @category = include::categories();
+  my %category = map { my @x = @$_; my $name = shift @x; ($name, [categoryitems($name, \@category)]) } @category;
   if ($category{$sw}) {
     my @r = @{$category{$sw}};
     my %included = map { $_ => 1 } @r;
@@ -3115,7 +3110,8 @@ sub parseshowwith {
 sub parseswitchwith {
   my ($sw, $r) = @_; # That's (switchwith, id) for a resource we were just working with.
   #warn "parseswitchwith('$sw', $r)\n";
-  my %category = map { my @x = @$_; my $name = shift @x; ($name, \@x) } include::categories();
+  @category = include::categories();
+  my %category = map { my @x = @$_; my $name = shift @x; ($name, [categoryitems($name, \@category)]) } @category;
   if ($category{$sw}) {
     #use Data::Dumper; warn Dumper($category{$sw});
     return grep { $_ ne $r } @{$category{$sw}};
@@ -3228,6 +3224,7 @@ sub usersidebar {
   my $today = qq[<div><strong>Today:</strong>\n   <ul>
       ] . (join "\n      ", map {
         my ($catname, @id) = @$_;
+        @id = categoryitems($catname, \@category);
         qq[<li><a href="./?category=$catname&amp;view=] . (join ',', @id)
         . '&amp;magicdate=today&amp;' . persist(undef, ['magicdate', 'category']) . qq[">$catname</a></li>]
       } @category) . qq[   </ul>\n   </div>];
@@ -3322,6 +3319,24 @@ sub usersidebar {
            </ul></div>
    </div>
 </div>];
+}
+
+sub categoryitems {
+  my ($catname, $categories) = @_;
+  $categories ||= [include::cagegories()];
+  my ($cat) = grep { $$_[0] eq $catname } @$categories;
+  my ($cn, @id) = @$cat;
+  @id = map { my @r = ($_);
+              if (not $r[0] =~ /^\d+$/) {
+                my ($subcat) = grep { $$_[0] eq $r[0] } @$categories;
+                if ($subcat) {
+                  @r = @$subcat;
+                  shift @r;
+                }
+              }
+              @r;
+            } @id;
+  return @id;
 }
 
 sub ordinalnumber {
