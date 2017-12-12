@@ -2358,7 +2358,7 @@ sub getstatsforadaterange {
     split /,\s*/, (getvariable('resched', 'nonusers') || 'closed,maintenance,out of order');
   for (@category) {
     ($category, @resid) = @$_;
-    @resid = categoryitems($category, @allcategory);
+    @resid = categoryitems($category, \@allcategory);
     my ($totaltotalbookings, $totaltotalduration);
     push @gatheredstat, '<div>&nbsp;</div><table><thead><tr><th colspan="4"><strong>' . "$category</strong></th></tr>\n\n";
     # <div><strong>' . ucfirst $category . '</strong></div>' . "\n<table>\n";
