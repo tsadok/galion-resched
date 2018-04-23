@@ -19,6 +19,7 @@ our $hiddenpersist  = persist('hidden', [qw(category magicdate)]);
 my %resflag = (
                R => ['R', 'Room', 'This resource is a meeting room.'],
                S => ['S', 'StaffSchAux', 'This resource should be listed as an auxilliary schedule when showing staff schedules.'],
+               T => ['T', 'TimeDuality', 'This resource can accept a second time, e.g. so that a room booked early for setup can show a meeting start time.'],
                X => ['X', 'eXclude', 'Exclude this resource from sidebar lists.'],
                requireinitials => [ undef, 'Initials',   'Staff must enter initials when booking this resource.'],
                requirenotes    => [ undef, 'Notes',      'Staff must enter certain notes when booking this resource.'],
@@ -47,6 +48,8 @@ my %equipflag = (
                  N => [ 'N', 'Number',    'Only meaningful for <q>text</q> fields; causes a smaller text entry box.'],
                  X => [ 'X', 'Disabled',  'Do not offer this equipment when booking any resource now, even if it is assigned.' ],
                 );
+
+my %default = (st_name => "Meeting Start Time");
 
 if ($auth::user) {
   my $user = getrecord('users', $auth::user);
@@ -397,6 +400,7 @@ sub userform {
   my $username  = encode_entities($$u{username});
   my $fullname  = encode_entities($$u{fullname});
   my $nickname  = encode_entities($$u{nickname});
+  my $initials  = encode_entities($$u{initials} || "");
   my $password  = $$u{password} ? 'Legacy' : ($$u{salt} and $$u{hashedpass}) ? 'Salted' : $$u{hashedpass} ? 'Unsalted' : 'Unset';
   my $flaglabel = 'Flags:';
   my $flagrows  = join "\n               ", map {
@@ -408,7 +412,7 @@ sub userform {
            <td><input type="checkbox" id="userflag$flagchar" name="userflag$flagchar" $checked />
                <label for="userflag$flagchar">$flagshortname</label></td>
            <td class="explan"><label for="userflag$flagchar">$flagdetails</label></td></tr>]
-  } keys %include::userflag;
+  } sort { $a cmp $b } keys %include::userflag;
   my $passexplan = '';
   if (($password eq 'Salted') or ($password eq 'Unsalted') or ($password eq 'Legacy')) {
     $passexplan    = 'The password allows the user to log into the account.  ';
@@ -459,6 +463,8 @@ sub userform {
            <td><input type="text" size="30" id="nickname" name="nickname" value="$nickname" /></td>
            <td class="explan">The nickname is what the software will call the user.
                               It can be whatever the user wants, but it defaults to the username.</td></tr>
+       <tr><th><label for="initials">Initials:</label></th>
+           <td><input type="text" size="5" id="initials" name="initials" value="$initials" /></td></tr>
        <tr><th>Password:</th>
            <td>$password</td>
            <td class="explan" rowspan="2">$passexplan</td></tr>
@@ -501,6 +507,7 @@ sub saveuser {
     if not $$u{username};
   $$u{fullname} = encode_entities($input{fullname} || $input{userusername} || $$u{username});
   $$u{nickname} = encode_entities($input{nickname} || $input{userusername} || $input{fullname} || $$u{username});
+  $$u{initials} = encode_entities($input{initials} || "");
   $$u{flags}    = join '', grep { $input{"userflag$_"} } keys %include::userflag;
   if ($input{setpass} eq 'unsetpass') {
     $$u{password}   = undef;
@@ -601,9 +608,12 @@ sub resform {
   my $idfield = $$res{id} ? qq[\n     <input type="hidden" name="id" value="$$res{id}" />] : '';
   my $flagcheckboxes = join "\n               ", map {
     my $f = $_;
+    my $stnam = encode_entities($input{st_name} || $$r{st_name} || $default{st_name});
+    my $stnin = (($f eq "T") and ($$res{flags} =~ /T/))
+      ? qq[ <input type="text" name="st_name" size="20" value="$stnam" />] : '';
     qq[<div><input  id="cbflag$f" name="flag$f" type="checkbox"]
                 . (($$res{flags} =~ "$f") ? ' checked="checked"' : '') . qq[ />
-            <label for="cbflag$f" title="$resflag{$f}[2]">$resflag{$f}[1]</label></div>]
+            <label for="cbflag$f" title="$resflag{$f}[2]">$resflag{$f}[1]</label>$stnin</div>]
   } sort { $a cmp $b } grep { /^.$/ } keys %resflag;
   my $bgform = include::orderedoptionlist('bgcolor', [map {
     my $clr = $_;
@@ -709,6 +719,7 @@ sub resupdate {
   $$res{$_} = encode_entities($input{$_}) for qw(switchwith showwith combine);
   $$res{$_} = ($input{$_} ? 1 : 0) for qw(requireinitials requirenotes autoex);
   $$res{flags}   = join '', sort { $a cmp $b } grep { $input{'flag' . $_} } grep { /^.$/ } keys %resflag;
+  $$res{st_name} = ($input{flagT}) ? ($input{st_name} || $default{st_name}) : "";
   my $bg = getrecord('resched_booking_color', include::getnum('bgcolor'));
   $$res{bgcolor} = $bg ? $$bg{id} : 0;
   updaterecord('resched_resources', $res);
@@ -738,6 +749,7 @@ sub rescreate {
                showwith        => encode_entities($input{showwith}),
                combine         => encode_entities($input{combine}),
                flags           => (join '', sort { $a cmp $b } grep { $input{'flag' . $_} } grep { /^.$/ } keys %resflag),
+               st_name         => encode_entities($input{flagT} ? ($input{st_name} || $default{st_name}) : ""),
              };
   $$res{$_} = ($input{$_} ? 1 : 0) for qw(requireinitials requirenotes autoex);
   my (@dupe) = findrecord('resched_resources', 'name', $$res{name});

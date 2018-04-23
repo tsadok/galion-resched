@@ -36,11 +36,12 @@ my @warn; # scoped this way because sub nextrecur pushes warnings onto it in cer
 my $uniqueid = 101;
 my $didyoumean_invoked;
 my ($messagetouser, $redirectheader) = ('', '');
+my %user;
 
 if ($auth::user) {
   # ****************************************************************************************************************
   # User is authorized as staff.
-  my %user = %{getrecord('users',$auth::user)}; # Some things below want to know which staff.
+  %user = %{getrecord('users',$auth::user)}; # Some things below want to know which staff.
   if ($input{extend}) {
     ($messagetouser, $redirectheader) = extendbooking();
     # Note: extendbooking() kludges %input:
@@ -175,7 +176,7 @@ if ($auth::user) {
                                   until      => $ob{until},     # and is scheduled until the end of the original timeslot.
                                   isfollowup => $ob{id},        # This keeps it from getting its own table cell.
                                                                 # (It will be listed in the same cell with the parent.)
-                                  (($input{staffinitials}) ? (staffinitials => $input{staffinitials}) : ()),
+                                  (($input{staffinitials} || $user{initials}) ? (staffinitials => $input{staffinitials} || $user{initials}) : ()),
                                   (((lc $bookedfor) ne (lc $input{followupname}))
                                    ? ( notes => "($input{followupname})")
                                    : ()),
@@ -244,7 +245,7 @@ if ($auth::user) {
              <p><div>Optional:</div>
                 <input type="text" name="followupname"></input>
                 then booked the remainder of the timeslot.
-                <div>staff initials:&nbsp;<input name="staffinitials" type="text" size="3" /></div>
+                <div>staff initials:&nbsp;<input name="staffinitials" type="text" size="3" value="$user{initials}" /></div>
                 </p>
            </td></tr></table><!-- /table daleth -->
       </form>]),
@@ -597,7 +598,7 @@ sub viewbooking {
                 $fb{resource} = $b{resource};
                 $fb{isfollowup} = $b{id};
               }
-              $fb{staffinitials} = $input{followupstaffinitials} || $fb{staffinitials} || $input{staffinitials} || $newb{staffinitials};
+              $fb{staffinitials} = $input{followupstaffinitials} || $fb{staffinitials} || $input{staffinitials} || $newb{staffinitials} || $user{initials};
               $fb{bookedfor} = include::dealias(include::normalisebookedfor($input{followupname}));
               if ((lc $fb{bookedfor}) ne (lc $input{followupname})) {
                 $fb{notes} = ($fb{notes} ? ($fb{notes} . "\n") : '')
@@ -1104,6 +1105,7 @@ sub newbooking {
        </div>];
     }
     my $styleatt = bookingstyle($res{bgcolor});
+    my $inits = encode_entities($input{staffinitials} || $user{initials} || "");
     return (qq[
        <form action="./" method="POST" name="bookingform" class="res$res{id}">
        <div class="res$res{id}"$styleatt>
@@ -1116,7 +1118,7 @@ sub newbooking {
             <input type="text" name="bookedfor" size="50"></input></p>
        <p>$untilp
           <!-- We pick up bookedby from your login, which is $auth::user.  Log out and log in as a different user to change this. -->
-          initials:&nbsp;<input type="text" name="staffinitials" value="$input{staffinitials}" size="3" maxsize="20" />
+          initials:&nbsp;<input type="text" name="staffinitials" value="$inits" size="3" maxsize="20" /><!-- user $user{id} -->
           </p>
        $roombookingfields
        $submitbeforenotes
@@ -2544,7 +2546,7 @@ sub daysclosedform {
        <em>all day long</em> on the following date, since we will be closed:</div>
   $dateinputs
   <br />
-  <span class="nobr">Staff Initials: <input type="text" name="staffinitials" size="5" /></span>
+  <span class="nobr">Staff Initials: <input type="text" name="staffinitials" size="5" value="$user{initials}" /></span>
   <div>Reason for Closing: <input type="text" name="notes" /></div>
   <br />
   <input type="submit" value="Book Us Closed" />
@@ -2879,7 +2881,7 @@ sub attemptbooking {
   } elsif ($closedwday{$when->dow}) {
     return include::errordiv('Booking Conflict', 'The '.ordinalnumber($when->mday)." of ".$when->month_name."
             falls on a ".($when->day_name)." in ".$when->year.".  $res{name} not booked.");
-  } elsif ($res{requireinitials} and not $input{staffinitials}) {
+  } elsif ($res{requireinitials} and not ($input{staffinitials} ||= $user{initials})) {
     return include::errordiv('Initials Required', qq[Staff initials are required to book this resource.
             Please go back and fill in your initials.  Thanks.]);
   } elsif ($res{requirenotes} and not $input{notes}) {
@@ -2900,7 +2902,7 @@ sub attemptbooking {
                    fromtime   => $fromtime,
                    until      => DateTime::Format::ForDB($until),
                    notes      => encode_entities($input{notes}),
-                   (($input{staffinitials}) ? (staffinitials => $input{staffinitials}) : ()),
+                   (($input{staffinitials} || $user{initials}) ? (staffinitials => ($input{staffinitials} || $user{initials})) : ()),
 #                   notes      => (((lc $bookedfor) ne (lc $input{bookedfor}))
 #                                  ? ( $input{notes}
 #                                      ? encode_entities($input{notes}) . "\n(" . encode_entities($input{bookedfor}) . ")"

@@ -27,6 +27,7 @@ $db->prepare(
           bookedfor longtext,
           bookedby integer,
           fromtime datetime,
+          starttime datetime,
           until datetime,
           doneearly datetime,
           followedby integer,
@@ -52,7 +53,8 @@ $db->prepare(
           requirenotes integer,
           autoex integer,
           bgcolor integer,
-          flags tinytext
+          flags tinytext,
+          st_name tinytext
      )"
     )->execute();
 
@@ -219,6 +221,7 @@ $db->prepare(
           nickname   mediumtext,
           prefs      mediumtext,
           salt       mediumtext,
+          initials   tinytext,
           flags      tinytext
      )"
     )->execute();
@@ -500,3 +503,27 @@ if (not scalar @schcolor) {
        addrecord('resched_staffsch_color', +{ name => $name, fg => $fg, shadow => $shadow, flags => $flags });
     }
 }
+
+$db->prepare(qq[CREATE TABLE IF NOT EXISTS
+      circdeskmail_message (
+            id        INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            headerid  integer,
+            rawdata   longtext,
+            annotate  mediumtext
+       );])->execute();
+
+$db->prepare(
+     qq[CREATE TABLE IF NOT EXISTS
+      circdeskmail_header (
+            id        INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            retrieved datetime,
+            status    integer,
+            lastseen  datetime,
+            folder    tinytext,
+            fromline  tinytext,
+            subject   tinytext,
+            firstline tinytext,
+            flags     tinytext,
+            initials  tinytext
+      );])->execute();
+

@@ -19,12 +19,14 @@ require "./ajax.pl";
 require "./datetime-extensions.pl";
 
 our %input = %{getforminput()};
+our %user;
 
 #use Data::Dumper; warn Dumper(+{ input => \%input });
 
 my $ab = authbox(sub { my $x = getrecord('users', shift); "<!-- Hello, $$x{nickname} -->"; });
 
 if ($auth::user) {
+  %user = %{getrecord('users',$auth::user)}; # Some things below want to know which staff.
   if ($input{ajax} eq 'updateme') {
     my $since = DateTime::From::MySQL($input{since});
     my @r = getsince('resched_bookings', 'tsmod', $since);
@@ -98,7 +100,7 @@ sub senddoneearlyform {
                                              time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[
                        and was followed by
                        <input type="text" name="followupname" id="$focid" />
-                       initial:<input type="text" name="staffinitials" size="3" />
+                       initial:<input type="text" name="staffinitials" value="$user{initials}" size="3" />
                      <input type="submit" value="Save Change" />
     </form>], $focid);
   } else {
@@ -169,7 +171,7 @@ sub sendnewbookingform {
                      <input type="hidden" name="dynamicform"  value="yes" />
                      <input type="text" name="bookedfor" size="20" id="$focid" />
                      $untilinput
-                     <span class="nobr">initial:<input type="text" size="3" name="staffinitials" maxsize="20" /></span>
+                     <span class="nobr">initial:<input type="text" size="3" name="staffinitials" maxsize="20" value="$user{initials}" /></span>
                      <input type="submit" value="Do it" />
                    </form></span>],
                 $focid

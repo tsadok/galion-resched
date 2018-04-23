@@ -393,7 +393,7 @@ our $footer = qq[<div class="footer">
    and <abbr title="Asynchronous Javascript And XML"><a href="http://en.wikipedia.org/wiki/AJAX">AJAX</a></abbr> Technologies:
 <a href="http://www.linux.org"><img src="tux-small.png" alt="Linux, "></img></a>
 <a href="http://www.apache.org"><img src="feather-small.png" alt="Apache, "></img></a>
-<a href="http://www.mysql.com/"><img src="dolphin-blue-white-small.png" alt="MySQL, " width="36" height="32"></img></a>
+<a href="https://mariadb.org/"><img src="seal-blue-white-small.png" alt="MariaDB, " width="42" height="28"></img></a>
 <a href="http://www.perl.com/"><img src="camel-small.png" alt="Perl, " width="28" height="31"></img></a>
 <a href="http://en.wikipedia.org/wiki/Javascript"><img src="rhino.png" alt="Javascript, " width="23" height="32" /></a>
 <abbr title="Extensible Markup Language"><a href="http://www.w3.org/XML/"><code>&lt;xml/&gt;</code></a></abbr>

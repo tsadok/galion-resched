@@ -13,10 +13,6 @@ Desired Changes:
  * Users should also be able to set their own nickname.
  * Users should be able to change their own passwords
    (subject to config variable approval).
- * The users table probably should be able to store initials,
-   so that users at their own desks logged in with their
-   own accounts can have their initials autofilled (subject
-   to config variable approval).
  * Make alternate name order available by clicking a link.
  * Incorrectly specifying openingtimes or closingtimes should
    result in a MUCH friendlier error message.  Also, there

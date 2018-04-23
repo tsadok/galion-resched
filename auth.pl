@@ -216,7 +216,7 @@ sub authbox {
 
   # Determine whether to authenticate by IP address:
   # $status .= "<!-- Determining whether to authenticate via IP address for $ENV{REMOTE_ADDR} -->\n";
-  my $authbyip = findrecord('auth_by_ip', 'ip', $ENV{REMOTE_ADDR});
+  my $authbyip = findrecord('auth_by_ip', 'ip', ($ENV{REMOTE_ADDR} || "__UNKNOWN__"));
   if ((not $auth::user) and $authbyip) {
     # User is not logged in, but we can authenticate by IP:
     $auth::user = $$authbyip{user};
