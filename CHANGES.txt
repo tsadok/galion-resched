@@ -4,7 +4,34 @@ Version 0.9.8:
     and privacy_cutoff_old_searches, to control how old information can
     be before the Galion ReSched web interface will refuse to show it.
   * Bugfix:  room booking code was not recording number of participants.
+  * Staff who log in individually can now specify their initials in their
+    user record, allowing them to be automatically filled in when relevant.
+    Existing sites must add the initials field to the users table in order
+    to be able to use this feature.  (For new sites, create-tables.pl will
+    create the table with this field in place.)
+  * New feature:  Circ Desk Mail.  This is intended to provide
+    everyone on staff joint read access to a shared low-volume
+    "circulation desk" email account.  The implementation is quite
+    minimal (there isn't even a reply or send feature yet) and at this
+    point still a bit rough around the edges, and it is not inteded to
+    be practical for handling large volumes of mail.  If you get a lot
+    of mail, you can train your staff to check it regularly using
+    whatever client you want.  This is intended for use with an
+    account that doesn't necessarily get mail during any given shift,
+    so when it does, the staff need to be notified in an interface
+    that they use.  Think of it as a glorified integrated 'biff'
+    feature really.
+  * Officially upgraded to MariaDB for the database.  (In practice,
+    our installation here has been using MariaDB for some time.)
   * Resource categories can now include subcategories.
+  * Resources can now be marked as using a second time field, to
+    indicate a time within the booked time slot.  This can be used
+    e.g. to indicate the actual starting time for meetings, when the
+    room is booked early for setup.  By default, this second time is
+    called "Meeting Start Time".  This may be changed on a per-resource
+    basis.  Existing sites will need to add the starttime field to the
+    resched_bookings table and the st_name field to the resched_resources
+    table in order to use this feature.
 
 Version 0.9.7:
   * Releases no longer include sitecode.pl so new installations will

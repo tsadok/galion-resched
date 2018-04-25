@@ -506,24 +506,25 @@ if (not scalar @schcolor) {
 
 $db->prepare(qq[CREATE TABLE IF NOT EXISTS
       circdeskmail_message (
-            id        INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            headerid  integer,
-            rawdata   longtext,
-            annotate  mediumtext
+            id         INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            headerid   integer,
+            rawheaders longtext,
+            body       longtext,
+            annotate   mediumtext
        );])->execute();
 
 $db->prepare(
      qq[CREATE TABLE IF NOT EXISTS
       circdeskmail_header (
-            id        INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            retrieved datetime,
-            status    integer,
-            lastseen  datetime,
-            folder    tinytext,
-            fromline  tinytext,
-            subject   tinytext,
-            firstline tinytext,
-            flags     tinytext,
-            initials  tinytext
+            id         INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            retrieved  datetime,
+            status     integer,
+            lastseen   datetime,
+            folder     tinytext,
+            fromline   tinytext,
+            subject    tinytext,
+            firstline  tinytext,
+            flags      tinytext,
+            initials   tinytext
       );])->execute();
 

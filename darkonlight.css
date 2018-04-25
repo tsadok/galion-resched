@@ -160,6 +160,10 @@ input, textarea, select, a.button {
   padding:              1px;
 }
 
+table tbody th {
+  text-align:           left;
+}
+
 input[type=text], input[type=checkbox]
 textarea, select {
   border-style:         inset;
@@ -508,3 +512,53 @@ div.p:last-child {
   margin-bottom:        0.1em;
 }
 
+
+/* ************************  Circ Desk Mail  ************************ */
+div.listwrapper {
+  background-color:     #CCCCCC;
+  padding:              0.5em;
+  font-size:            110%;
+}
+div.listnav {
+  font-size:            110%;
+  font-weight:          bold;
+  padding:              0.2em;
+  background-color:     #AAAAAA;
+}
+table.msglist thead th {
+  border-bottom:        2pt solid #999999;
+}
+table.msglist th {
+  text-align:           left;
+}
+table.msglist thead {
+  font-weight:          bold;
+}
+table.msglist tbody {
+  font-weight:          normal;
+}
+
+div.showmessage {
+  background-color:     #CCCCCC;
+  padding:              3pt;
+}
+.msgstatus {
+  background-color:     #CCAA99;
+}
+.msgfromline {
+  color:                #7F3333;
+}
+.msgsubject {
+  color:                #00447F;
+}
+table.msglist .msgfirstline {
+  color:                #7F0088;
+}
+.msginitials {
+  background-color:     #99CC99;
+}
+
+
+.mailfoldersidebar .unreadcount {
+  color:                #CC0000;
+}

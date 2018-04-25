@@ -167,7 +167,13 @@ sub confirmdiv {
 
 sub errordiv {
   my ($title, $details) = @_;
-  return qq[<div class="error"><div><strong>$title</strong></div>
+  return qq[<div class="error box"><div><strong>$title</strong></div>
+     $details</div>];
+}
+
+sub infobox {
+  my ($title, $details) = @_;
+  return qq[<div class="infobox box"><div><strong>$title</strong></div>
      $details</div>];
 }
 

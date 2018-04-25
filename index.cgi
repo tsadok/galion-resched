@@ -3292,12 +3292,22 @@ sub usersidebar {
   }
   my $programsignup = ''; if (getvariable('resched', 'program_signup_show_in_sidebar')) {
     $programsignup  = qq[<div><strong><a href="program-signup.cgi?usestyle=$input{usestyle}">Program Signup</a></strong></div>];
-    $otherfeature++;
+    $otherfeatures++;
+  }
+  my ($mailfeature, $inboxnote) = ("", "");
+  if (getvariable('resched', 'mail_enable')) {
+    $mailfeature = qq[<div><strong><a href="mail.cgi?usestyle=$input{usestyle}">Circ Desk Mail</a></strong></div>];
+    $otherfeatures++;
+    my %unread = %{countfield('circdeskmail_header', 'folder', undef, undef, 'status', [0])};
+    if ($unread{inbox}) {
+      $inboxnote = qq[<div class="mailfoldersidebar"><a href="mail.cgi">inbox: <span class="unreadcount">$unread{inbox}</span> Unread messages</a></div>];
+    }
   }
   my $otherfeaturessec = $otherfeatures ? qq[<!-- div id="otherfeaturessection" -->
         $programsignup
-        $staffschfeature<!-- /div -->] : '';
-  return qq[<div class="sidebar">
+        $staffschfeature
+        $mailfeature<!-- /div -->] : '';
+  return qq[<div class="sidebar">$inboxnote
    <div>$prevnext</div>
    <div><a href="./?usestyle=$input{usestyle}"><strong>Choose Resource(s) &amp; Date(s)</strong></a></div>
    $other

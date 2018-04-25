@@ -207,6 +207,7 @@ sub countfield {
     die "Incorrect arguments:  criterion $criterion specified without values." if not $crit{$criterion};
   }
   my $whereclause;
+  my @value;
   if (ref $enddt) {
     my $start = DateTime::Format::MySQL->format_datetime($startdt);
     my $end   = DateTime::Format::MySQL->format_datetime($enddt);
@@ -216,15 +217,17 @@ sub countfield {
     my $v = $crit{$f};
     my $whereword = $whereclause ? 'AND' : 'WHERE';
     if (ref $v eq 'ARRAY') {
-      $whereclause .= " $whereword $f IN (" . (join ',', map { "'$_'" } @$v) . ") ";
+      $whereclause .= " $whereword $f IN (" . (join ',', map { "?" } @$v) . ") ";
+      push @value, $_ for @$v;
     } else {
       warn "Skipping criterion of unknown type: $field => $v";
     }
   }
   warn "countfield query: SELECT id, $field FROM $table $whereclause";
+  warn "countfield values: @value" if scalar @value;
   my $db = dbconn();
   $q = $db->prepare("SELECT id, $field FROM $table $whereclause");
-  $q->execute();
+  $q->execute(@value);
   my %c;
   while (my $r = $q->fetchrow_hashref()) {
     ++$c{$$r{$field}};
@@ -248,6 +251,34 @@ sub countfield {
 ##   }
 ##   return @answer;
 ## }
+
+sub findnotin {
+  my ($table, @more) = @_;
+  my (%fv, @field);
+  while (@more) {
+    my ($field, $values);
+    ($field, $values, @more) = @more;
+    die "findnotin called with unbalanced arguments (no values aref for $field field)" if not ref $values;
+    push @field, $field;
+    $fv{$field} = $values;
+  }
+  my $db = dbconn();
+  my $q = $db->prepare("SELECT * FROM $table WHERE "
+                       . (join " AND ", map { my $f = $_;
+                                              qq[$f NOT IN (] . join (", ", map { "?" } @{$fv{$f}}) . qq[)]
+                                            } @field ));
+  $q->execute(map { @{$fv{$_}} } @field);
+  my @answer; my $r;
+  while ($r = $q->fetchrow_hashref()) {
+    if (wantarray) {
+      push @answer, $r;
+    } else {
+      return $r;
+    }
+  }
+  return @answer;
+}
+
 sub findrecord {
 # FIND:    @records = findrecord(tablename, fieldname, exact_value);
   my ($table, $field, $value, @more) = @_;

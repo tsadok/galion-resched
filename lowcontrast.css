@@ -524,3 +524,54 @@ div.p {
 div.p:last-child {
   margin-bottom:        0.1em;
 }
+
+
+/* ************************  Circ Desk Mail  ************************ */
+div.listwrapper {
+  background-color:     #AAAAAA;
+  padding:              0.5em;
+  font-size:            110%;
+}
+div.listnav {
+  font-size:            110%;
+  font-weight:          bold;
+  padding:              0.2em;
+  background-color:     #999999;
+}
+table.msglist thead th {
+  border-bottom:        2pt solid #CCCCCC;
+}
+table.msglist th {
+  text-align:           left;
+}
+table.msglist thead {
+  font-weight:          bold;
+}
+table.msglist tbody {
+  font-weight:          normal;
+}
+
+.msgstatus {
+  background-color:     #BB997F;
+}
+.msgfromline {
+  color:                #993333;
+}
+.msgsubject {
+  color:                #335599;
+}
+table.msglist .msgfirstline {
+  color:                #883388;
+}
+.msginitials {
+  background-color:     #669966;
+}
+
+table tbody th {
+  text-align:           left;
+}
+
+
+.mailfoldersidebar .unreadcount {
+  color:                #990000;
+}

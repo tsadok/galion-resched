@@ -24,7 +24,8 @@ be done when installing this software.
    * Speaking of which, you need perl, and at least the following
      modules (available from the CPAN): DateTime, DateTime::Span,
      DateTime::Format::MySQL, DBI, DBD::mysql, Carp, Digest::MD5,
-     HTML::Entities, Taint::Util, and Data::Dumper.
+     HTML::Entities, Taint::Util, and Data::Dumper.  If you wish
+     to use the Circ Desk Mail feature, add Mail::POP3Client.
 
  3. Open ajax.js in a text editor and change the basedir variable (on
     the second line) so that it contains the public URI of the resched
