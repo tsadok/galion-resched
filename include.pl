@@ -177,6 +177,11 @@ sub infobox {
      $details</div>];
 }
 
+sub rawoutput {
+  my ($ctype, $data) = @_;
+  return qq[Content-type: $ctype\n\n$data];
+}
+
 sub standardoutput {
   # This returns the complete http headers and the html
   # calling code must define sub main::usersidebar that

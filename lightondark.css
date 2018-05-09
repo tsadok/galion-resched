@@ -569,3 +569,19 @@ table.msglist .msgfirstline {
 .mailfoldersidebar .unreadcount {
   color:                #FFFF99;
 }
+
+.msgbody {
+  color:                #FFE6BC;
+}
+.mailsignature {
+  color:                #B3AF93; /* #939982; */
+}
+
+div.msgbody_html {
+  margin:               1em;
+  padding:              0.5em;
+  border:               2pt solid #99AAAA;
+  border-radius:        0.5em;
+  background-color:     #667F7F;
+  color:                #FFF3DE;
+}

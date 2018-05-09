@@ -223,8 +223,8 @@ sub countfield {
       warn "Skipping criterion of unknown type: $field => $v";
     }
   }
-  warn "countfield query: SELECT id, $field FROM $table $whereclause";
-  warn "countfield values: @value" if scalar @value;
+  #warn "countfield query: SELECT id, $field FROM $table $whereclause";
+  #warn "countfield values: @value" if scalar @value;
   my $db = dbconn();
   $q = $db->prepare("SELECT id, $field FROM $table $whereclause");
   $q->execute(@value);

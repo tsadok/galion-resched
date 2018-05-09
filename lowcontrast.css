@@ -575,3 +575,11 @@ table tbody th {
 .mailfoldersidebar .unreadcount {
   color:                #990000;
 }
+
+div.msgbody_html {
+  margin:               1em;
+  padding:              0.5em;
+  border:               2pt solid #669999;
+  border-radius:        0.5em;
+  background-color:     #99AAAA;
+}
