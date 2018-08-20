@@ -239,7 +239,7 @@ sub parse_message_parts {
       my $thispart = undef;
       if (scalar @nwl) {
         my (@rawheader, @bodyline);
-        my ($ctype, $charset, $encoding, $disposition, $filename, $description, $decoded);
+        my ($ctype, $charset, $bound, $encoding, $disposition, $filename, $description, $decoded);
         my $headersdone = 0;
         while (scalar @line) {
           my $l = shift @line;
@@ -257,9 +257,21 @@ sub parse_message_parts {
         warn "" . @rawheader . " raw headers and " . @bodyline . " body lines in part $partnum.\n" if $debug =~ /parse_message_parts/;
         if ((scalar @rawheader) or (grep { not /^\s*$/ } @bodyline)) {
           for my $h (@rawheader) {
-            if ($h =~ /Content-Type:\s+(.*?)(?:; charset=(.*?))?\s*?$/i) {
-              $ctype = $1;
-              $charset = $2 if $2;
+            if ($h =~ m!Content-Type:\s+(.*?)\s*$!i) {
+              my ($raw) = $1;
+              my ($mimetype, @info) = split /;\s*/, $raw;
+              if ($mimetype =~ m!(\w+)[/](\w+)!) {
+                #my ($basetype, $subtype) = ($1, $2);
+                $ctype = $mimetype;
+              }
+              for my $i (@info) {
+                if ($i =~ /charset=(.*)/) {
+                  $charset = $1;
+                }
+                if ($i =~ /boundary=["]([^"]+)["]/) {
+                  $bound = $1;
+                }
+              }
             } elsif ($h =~ /Content-Transfer-Encoding:\s+(.*)/i) {
               $encoding = $1;
             } elsif ($h =~ /Content-Disposition:\s+(.*?)(?:; filename=(.*?))?\s*$/i) {
@@ -280,6 +292,7 @@ sub parse_message_parts {
           }
           $thispart = +{ content_type => $ctype,
                          charset      => $charset,
+                         boundary     => $bound,
                          encoding     => $encoding,
                          disposition  => $disposition,
                          filename     => $filename,
@@ -314,6 +327,14 @@ sub msgbody_part {
     }
   } elsif ($$part{content_type} =~ m!image[/](png|jpg|jpeg)!) {
     $partbody = msgbody_image($part);
+  } elsif ($$part{content_type} =~ m!^multipart[/]!) {
+    my ($subhead, $subbod) = split /^\r?\n/m, $$part{content}, 2;
+      #$$part{content} =~ /^(.*?)\r?\n\r?\n(.*)$/s;
+    use Data::Dumper;
+    $partbody =
+      qq[<!-- ] . (Dumper(+{ head => $subhead, body => $subbod, whole => $$part{content} })) . qq[ -->]
+       . msgbody($subbod, $subhead);
+      #. msgbody_binary($part);
   } else {
     warn "application/octet-stream or whatever\n" if $debug =~ /msgbodypart/;
     $partbody = msgbody_binary($part);
@@ -362,8 +383,9 @@ sub msgbody_binary {
   return qq[<div class="mailattachment">
      <span class="mailattachpaperclip"><img alt="Attachment: " src="paperclip-green-ryanlerch-64px.png" width="64" height="49" /></span>
      <span class="mailattachpartnum">[MIME part $$part{partnum}]</span>
+     <span class="mailattachctype">$$part{content_type}</span>
      <span class="mailattachfilename" title="$preview">$filename</span>
-     <span class="mailattachmentdownloadlink"><a href="mail.cgi?action=rawattachmentdata&amp;headerid=$input{headerid}&amp;partnum=$$part{partnum}&amp;filename=$filename">[Download]</a></span>
+     <span class="mailattachmentdownloadlink"><a href="mail.cgi?action=rawattachmentdata&amp;headerid=$input{headerid}&amp;partnum=$$part{partnum}">[Download]</a></span>
   </div>];
 }
 sub msgbody_html {
