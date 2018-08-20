@@ -32,6 +32,8 @@ Version 0.9.8:
     basis.  Existing sites will need to add the starttime field to the
     resched_bookings table and the st_name field to the resched_resources
     table in order to use this feature.
+  * Fixed a bug wherein changes to the age group for program signup
+    were not saved when updating the program details later.
 
 Version 0.9.7:
   * Releases no longer include sitecode.pl so new installations will
