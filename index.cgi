@@ -678,6 +678,7 @@ sub viewbooking {
       my $ts = ((getvariable('resched', 'show_booking_timestamp')
                  ? qq[ <span class="tsmod">last modified $b{tsmod}</span>]
                  : ''));
+      my $startword = ($res{flags} =~ /R/) ? qq[Meeting starts] : qq[Started late];
       #use Data::Dumper; warn Dumper(\%b);
       push @bookinglisting, qq[<form action="./" method="post">
            <input type="hidden" name="booking" value="$b{id}" />
@@ -701,7 +702,7 @@ sub viewbooking {
                   <td>].(DateTime::Form::Fields($fromdt, 'booking_fromtime',undef,undef,'FieldsK',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td>
                   <td>$waslat<input type="checkbox" name="latestart" ]
-                    .($b{latestart} ? ' checked="checked" ' : '').qq[ />&nbsp;Started late at
+                    .($b{latestart} ? ' checked="checked" ' : '').qq[ />&nbsp;$startword at
                       ].(DateTime::Form::Fields($latedt, 'booking_late', 'skipdate',undef,'FieldsL',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td></tr>
               <tr><td>Until<sup><a href="#footnote2">2</a></sup>:</td>
@@ -1106,6 +1107,7 @@ sub newbooking {
     }
     my $styleatt = bookingstyle($res{bgcolor});
     my $inits = encode_entities($input{staffinitials} || $user{initials} || "");
+    my $startword = ($res{flags} =~ /R/) ? qq[Meeting starts] : qq[Started late];
     return (qq[
        <form action="./" method="POST" name="bookingform" class="res$res{id}">
        <div class="res$res{id}"$styleatt>
@@ -1122,7 +1124,7 @@ sub newbooking {
           </p>
        $roombookingfields
        $submitbeforenotes
-       <p><input type="checkbox" name="latestart" /> Started late at
+       <p><input type="checkbox" name="latestart" /> $startword at
           <input type="text" size="3" name="latehour" />:<input type="text" size="3" name="lateminute"  />
           <input type="button" value="Starting Late Right Now" onclick="
               var f=document.bookingform;
