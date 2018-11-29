@@ -24,7 +24,7 @@ do "./html-mail-policy.pl" if -e "./html-mail-policy.pl"; # See html-mail-policy
 our %input = %{getforminput()};
 our %mailstatus = ( 0 => "Unread",
                     1 => "Not Acted Upon",
-                    2 => "Claimed",
+                    2 => "Claimed", # This "2" is hardcoded in a findrecord() below, search for YxUikWq
                     4 => "Answered",
                     8 => "Resolved",
                     9 => "Archived",);
@@ -555,8 +555,22 @@ sub usersidebar {
        }
        qq[<li>$stats <a href="mail.cgi?action=showfolder&amp;folder=$fenc&amp;usestyle=$input{usestyle}">$fenc</a>$stati</li>]
      } @folder) . qq[</ul></div>];
+  my $claimed = '';
+  if ($input{initials} or $user{initials}) {
+    my @c = findrecord('circdeskmail_header', 'status', 2, # Hardcoded key from %mailstatus above, search for YxUikWq
+                       'initials', ($input{initials} || $user{initials}));
+    my $listthrough = (scalar @c) - 1;
+    $listthrough = 9 if $listthrough > 9; # Note: it starts at 0, so this allows 10.
+    $claimed = qq[<div id="mailclaimedsection"><strong>Claims (] . (scalar @c) . qq[):</strong><ul>
+       ] . (join "\n       ", map {
+         my $claim = $c[$_];
+         qq[<li><a href="mail.cgi?action=showmessage&amp;headerid=$$claim{id}&amp;usestyle=$input{usestyle}">]
+           . encode_entities($$claim{subject} || '[No Subject]') . qq[</a></li>]
+       } 0 .. $listthrough) . qq[
+    </ul></div>];
+  }
   return qq[<div class="sidebar" id="circdeskmailsidebar">
-      <!-- Circ Desk Mail Sidebar -->
+      <!-- Circ Desk Mail Sidebar -->$claimed
       $folders
       <div><a href="index.cgi">Resource Scheduling</a></div>
       <div><a href="program-signup.cgi">Program Signup</a></div>
