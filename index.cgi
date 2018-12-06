@@ -632,6 +632,7 @@ sub viewbooking {
             # change, the other changes still must be made.
           }
 
+          for my $k (grep { /_datetime$/ } keys %newb) { delete $newb{$k} if ref $newb{$k}; } # Don't need error messages in log to tell us we can't save these computed fields because there's no such column in the DB.
           my @changes = @{updaterecord('resched_bookings', \%newb)};
           if (@changes) {
             push @bookinglisting, qq[<div class="info">The following changes were made: <ul>] . (join $/, map {"<li>Changed $$_[0]
