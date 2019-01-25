@@ -25,4 +25,10 @@ sub normalisebookedfor {
     return $name;
 }
 
+sub sendmeetingroompolicyemail {
+  my ($toaddress) = @_;
+  # Here you can construct the Meeting Room Policy email message
+  # and enqueue it, or send it, or whatever.
+}
+
 42;

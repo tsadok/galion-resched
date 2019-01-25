@@ -915,8 +915,17 @@ sub assemble_extranotes {
     $extranotes .= "Already have a copy of our meeting room policy on file.\n";
   } else {
     if ($input{policysendemail}) {
+      # NOTE:  All this actually does is put a record in the database
+      #        saying it needs to be sent.  Actual sending is meant to
+      #        happen separately on a cron job.  See process-mail-queue.pl
+      #        for an example of how that might work.
+      my $now = DateTime::Format::ForDB(DateTime->now(time_zone => $include::localtimezone));
+      addrecord("resched_mailqueue", +{ mailtype  => 'meetingroompolicy',
+                                        toaddress => $input{policysendemailaddress},
+                                        enqueued  => $now,
+                                        tryafter  => $now, });
       my $eddress = encode_entities($input{policysendemailaddress});
-      $extranotes .= qq[Send meeting room policy by email to $eddress\n];
+      $extranotes .= qq[Attempted to send meeting room policy by email to $eddress.\n];
     }
     if ($input{policysendfax}) {
       my $faxnum  = encode_entities($input{policysendfaxnumber});

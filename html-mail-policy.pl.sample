@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+# -*- cperl -*-
+use HTML::Entities;
+
+sub clean_href {
+  my ($e) = @_;
+  my $link = $e->attr("href");
+  $e->attr("href", undef);
+  my $div = HTML::Element->new('span', 'class' => 'href');
+  $div->push_content("[" . $link . "]");
+  $e->push_content($div);
+}
+
+%html_mail_policy =
+  (
+   filter_attribute => +{ href => sub { clean_href(@_) }, },
+   filter_element => +{ __ALL__ => sub { my ($e) = @_;
+                                         $e->tag(lc $e->tag); },
+                        html    => sub { convert_to_div(@_) },
+                        head    => sub { convert_to_div(@_) },
+                        body    => sub { convert_to_div(@_) },
+                        form    => sub { convert_to_div(@_) },
+                        b       => sub { convert_element("strong", @_) },
+                        u       => sub { convert_element("em", @_) },
+                        i       => sub { convert_element("em", @_) },
+                        title   => sub { convert_element("h1", @_) },
+                        input   => sub { my ($e) = @_;
+                                         $e->push_content(encode_entities($e->attr("value")));
+                                         $e->tag = "span"; },
+                      },
+   blacklist_element => [qw(applet audio base basefont canvas dialog embed frame frameset iframe
+                            link menu menuitem meta nav object script source style track video)],
+   whitelist_attribute => [qw(class id title alt width height name href)],
+  );
+
+

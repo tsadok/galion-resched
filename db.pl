@@ -279,6 +279,31 @@ sub findnotin {
   return @answer;
 }
 
+sub findnullfield {
+# FIND:    @records = findrecord(tablename, fieldname, exact_value);
+  my ($table, $nullfield, @more) = @_;
+  my (%fv, @field, $field, $value);
+  croak "findnullfield called without a field name" if not defined $nullfield;
+  while (@more) {
+    ($field, $value, @more) = @more;
+    die "findnullfield called with unbalanced arguments (no value for $field field)" if not defined $value;
+    push @field, $field;
+    $fv{$field} = $value;
+  }
+  my $db = dbconn();
+  my $q = $db->prepare("SELECT * FROM $table WHERE " . (join " AND ", "$nullfield IS NULL", map { qq[$_=?] } @field ));
+  $q->execute(map { $fv{$_} } @field);
+  my @answer; my $r;
+  while ($r = $q->fetchrow_hashref()) {
+    if (wantarray) {
+      push @answer, $r;
+    } else {
+      return $r;
+    }
+  }
+  return @answer;
+}
+
 sub findrecord {
 # FIND:    @records = findrecord(tablename, fieldname, exact_value);
   my ($table, $field, $value, @more) = @_;

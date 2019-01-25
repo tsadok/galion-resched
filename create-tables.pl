@@ -528,3 +528,13 @@ $db->prepare(
             initials   tinytext
       );])->execute();
 
+$db->prepare(qq[CREATE TABLE IF NOT EXISTS resched_mailqueue (
+            id         INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            mailtype   tinytext,
+            toaddress  tinytext,
+            enqueued   datetime,
+            attempts   integer,
+            tryafter   datetime,
+            sent       datetime,
+            flags      tinytext
+            )])->execute();
