@@ -2,13 +2,14 @@
 
 =head1 App::GalionReSched
 
-Galion ReSched is a web-based resource-scheduling application,
-written in Perl.  It can be used to book limited resources
-(such as computers and meeting rooms), so that you always know
-who is scheduled to use any given one at any given time.
+Galion ReSched is a web-based resource-scheduling application, written
+in Perl.  It can be used to book limited resources (such as computers
+and meeting rooms), so that you always know who is scheduled to use
+any given one at any given time.
 
-In addition, Galion ReSched now also features special program
-signup lists and staff schedule tracking.
+In addition, Galion ReSched now also features program signup lists,
+staff schedule tracking, and notification of incoming email to a
+shared circulation-desk account.
 
 =head2 Live Demo
 
@@ -21,12 +22,12 @@ http://cgi.galion.lib.oh.us/staff/resched-public/resched/
 
 =item 1
 
-Unzip the downloaded Galion ReSched software in a suitable location.
-Issue any necessary chmod commands to ensure that the web server user
-can access the files and execute the cgi scripts.  For security
-reasons, it is important to ensure that dbconfig.pl cannot be directly
-accessed by web users.  (If .pl is associated with cgi execution,
-chmod ugo-x dbconfig.pl should do this.)
+Unzip or untar the downloaded Galion ReSched software in a suitable
+location.  Issue any necessary chmod commands to ensure that the web
+server user can access the files and execute the cgi scripts.  For
+security reasons, it is important to ensure that dbconfig.pl cannot be
+directly accessed by web users.  (If .pl is associated with cgi
+execution, chmod ugo-x dbconfig.pl should do this.)
 
 =item 2
 
@@ -52,7 +53,7 @@ your system).
 =item *
 
 Speaking of which, you need perl, and at least the following modules
-(available from the CPAN): 
+(available from the CPAN):
 
 =over 4
 
@@ -126,7 +127,7 @@ the case by default, but check.)
 =item 7
 
 Run the C<create-tables.pl> Perl script.  This will create the empty
-database tables.  
+database tables.
 
 =item 8
 
@@ -233,7 +234,7 @@ cleanup is planned.)
 
 I didn't really start tracking changes until version 0.4.0,
 when the code was finally stable enough to go several months between
-updates.  
+updates.
 
 Enhancements in the 0.4.x series included aliases and the "Did You
 Mean" feature.  0.5.x enhanced aliases and improved name normalisation
@@ -278,7 +279,7 @@ config.cgi, admin.cgi, and sitecode.pl.
 
 =item *
 
-Keep a backup copy of your sitecode.pl an anything else you have
+Keep a backup copy of your sitecode.pl and anything else you have
 customized, and back up (or replicate) your database on a regular
 basis.  Any customization that you do via config.cgi or admin.cgi is
 stored in the database, so having a backup copy of that is important.
@@ -301,7 +302,8 @@ in future versions of the software.
 
 If you change the actual code, be sure to keep track of what changes
 you have made.  If you later need to re-apply your changes to a future
-version, knowing exactly what your changes are will help.  
+version, knowing exactly what your changes are will help.  (If you are
+comfortable using version control, such as git, that is ideal.)
 
 If you feel that your code changes make the software more flexible and
 would make it easier for other sites to customize to their needs, you
@@ -360,6 +362,7 @@ is also optional.  I do not require it.
 
 Monetary compensation for the software is not expected, and the author
 himself is unwilling to receive any.  (I have already been paid by the
-library for the time I spent developing it.)  If you wish to make a
-donation to the Galion Public Library, you may; but it is not
-required.
+library for the time I spent developing it, and I do not wish to
+complicate my tax filing with additional sources of income.)  If you
+wish to make a donation to the Galion Public Library, you may (the GPL
+is a 501(c)(3) non-profit association library); but it is not required.
