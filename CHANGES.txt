@@ -35,7 +35,8 @@ Version 0.9.8:
   * Fixed a bug wherein changes to the age group for program signup
     were not saved when updating the program details later.
   * Introduced facility for automatically sending meeting room policy
-    by email.
+    by email.  Note:  sites that wish to use this feature must set up
+    a cron job to actually run the send script.
 
 Version 0.9.7:
   * Releases no longer include sitecode.pl so new installations will
