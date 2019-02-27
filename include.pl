@@ -198,7 +198,7 @@ $include::doctype
 <head>
    <!--  This page is served by Galion ReSched, a Resource Scheduling tool.  -->
    <!--  Created by Nathan Eady for Galion Public Library.                   -->
-   <!--  Galion ReSched version 0.9.8 vintage 2016 August 12.                -->
+   <!--  Galion ReSched version 0.9.8 vintage 2019 February 27.              -->
    <!--  http://cgi.galion.lib.oh.us/staff/resched-public/                   -->
    <title>$title</title>
    <link rel="SHORTCUT ICON" href="$favicon" />
