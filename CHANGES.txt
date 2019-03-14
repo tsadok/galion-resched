@@ -1,4 +1,9 @@
 See also TODO.txt
+Version 0.9.9:
+  * Users can now edit their own human-readable name fields (full name,
+    nickname, initials) and set their own password.  As before, only an
+    admin can edit the username and flags.
+  
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules
     and privacy_cutoff_old_searches, to control how old information can
@@ -37,6 +42,7 @@ Version 0.9.8:
   * Introduced facility for automatically sending meeting room policy
     by email.  Note:  sites that wish to use this feature must set up
     a cron job to actually run the send script.
+  * Released 2019 February 27
 
 Version 0.9.7:
   * Releases no longer include sitecode.pl so new installations will
