@@ -126,7 +126,7 @@ sub dateform {
                           my $sel = ($m == $dt->month()) ? ' selected="selected"' : '';
                           qq[<option value="$m"$sel>$monthname{$m}</option>]# . "\n                 "
                         } 1 .. 12;
-  my $houroptions = include::houroptions($dt->hour());
+  my $houroptions = include::houroptions($dt->hour(), $dt->dow());
   my $timeform = qq[<select id="${idprefix}hour" name="${nameprefix}hour">$houroptions</select> :
                    <input type="text" id="${idprefix}minute" name="${nameprefix}minute" size="3" value="] . (sprintf "%02d", $dt->minute()) . qq[" />];
   return $timeform if $timeonly;

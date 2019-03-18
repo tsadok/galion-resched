@@ -12,6 +12,8 @@ require "./db.pl";
 require "./datetime-extensions.pl";
 require "./userform.pl";
 our %input = %{getforminput()};
+our %pref;
+require "./prefs.pl";
 
 sub usersidebar; # Defined below.
 
@@ -23,6 +25,8 @@ if ($auth::user) {
     $content = userpage(include::getnum('userid'));
   } elsif ($input{user}) {
     $content = userpage(include::getnum('user'));
+  } elsif ($input{action} eq "updateprefs") {
+    $content = updateprefs();
   }
   print include::standardoutput($title, $content, $ab, $input{userstyle});
 } else {
@@ -87,12 +91,44 @@ sub userpage {
                   theuser   => "you",
                   theuser_s => "your",
                   conjs     => "<!-- s -->",
-                 )
+                 ) . "<div>&nbsp;</div>"
     . (($userid eq $auth::user) ? prefsform($user) : "");
 }
 
+sub updateprefs {
+  for my $p (map { $pref{$_} } sort { $pref{$a}{sortorder} <=> $pref{$b}{sortorder} } keys %pref) {
+    my $updatecount = 0;
+    my $newval = $input{"pref$$p{prefname}"};
+    if ($newval ne getpref($$p{prefname}, $auth::user)) {
+      $updatecount += updatepref($$p{prefname}, $auth::user, $newval);
+    }
+  }
+  return prefsform(getrecord("users", $auth::user));
+}
+
 sub prefsform {
-  return qq[<div class="prefsform"><form class="prefsform" action="user.cgi" method="post">[TODO:  User Preferences]</form></div>]
+  my ($user) = @_;
+  return qq[<form class="prefsform" action="user.cgi" method="post">
+   <input type="hidden" name="action" value="updateprefs" />
+   <table class="prefstable settingsform"><tbody>\n     ] . (join "\n     ", map {
+     my $p = $pref{$_};
+     my $sd = encode_entities($$p{shortdesc});
+     my $ld = encode_entities($$p{longdesc});
+     my $dnote = encode_entities(qq[(Default: $$p{default})]);
+     my $currval = getpref($$p{prefname}, $$user{id});
+     my $formelt = include::errordiv("Unknown Preference Data Type", "I'm sorry, I don't know how to handle this <q>$$p{type}</q> preference.");
+     if ($$p{type} eq "boolean") {
+       my $checked = $currval ? ' checked="checked"' : "";
+       $formelt = qq[<input type="checkbox" id="pref$$p{prefname}" name="pref$$p{prefname}" $checked />]
+     } elsif ($$p{type} eq "enum") {
+       $formelt = include::orderedoptionlist("pref$$p{prefname}", $$p{enum}, $currval);
+     } # TODO: support other data types, such as string.
+     qq[<tr><th><label for="pref$$p{prefname}">$sd</label></th>
+            <td>$formelt</td>
+            <td class="explan">$ld $dnote</td></tr>]
+  } sort { $pref{$a}{sortorder} <=> $pref{$b}{sortorder} } keys %pref) . qq[
+     <tr><td colspan="3"><input type="submit" value="Update Preferences" /></td></tr>
+   </tbody></table>\n</form>]
 }
 
 sub usersidebar {

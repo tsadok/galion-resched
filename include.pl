@@ -6,6 +6,7 @@ require "./db.pl";
 package include;
 require "./sitecode.pl"; # Site-specific code should be moved into there.
 use Carp;
+use HTML::Entities;
 
 my $ajaxscript = qq[<script language="javascript" src="ajax.js" type="text/javascript">\n</script>\n];
 
@@ -146,14 +147,15 @@ sub main::persist {
   my %skip = map { $_ => 1 } @{$skip} if ref $skip;
   my $vars = '';
   for my $v (grep { not $skip{$_} } (qw(usestyle useajax category magicdate), @$additional)) {
-    if ($main::input{$v}) {
+    my $value = $main::input{$v} || main::getpref($v, $auth::user);
+    if ($value) {
       if ($hidden) {
-        $vars .= qq[\n         <input type="hidden" name="$v"   value="$main::input{$v}" />];
+        $vars .= qq[\n         <input type="hidden" name="$v"   value="$value" />];
       } else {
         if ($vars) {
-          $vars .= qq[&amp;$v=$main::input{$v}];
+          $vars .= qq[&amp;$v=$value];
         } else {
-          $vars = qq[$v=$main::input{$v}];
+          $vars = qq[$v=$value];
         }
       }}}
   return $vars;
@@ -250,7 +252,6 @@ sub contentwithsidebar {
     . ($sidebarpos{bottom} ? qq[<tr class="sidebar"><td class="sidebar" colspan="$colspan">$sidebar</td></tr>]:"")
     . "</table>";
 }
-
 
 
 sub orderedoptionlist {

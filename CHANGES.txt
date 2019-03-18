@@ -3,6 +3,13 @@ Version 0.9.9:
   * Users can now edit their own human-readable name fields (full name,
     nickname, initials) and set their own password.  As before, only an
     admin can edit the username and flags.
+  * Fixed a bug in program signup, wherein the options in drop-down
+    boxes for hour did not take day of week into account.  (This may
+    have side effects for after-hours programs, so I need to watch that.)
+  * Users can now set their preference for stylesheet and AJAX use.
+    (Sites upgrading from earlier versions need to run create-tables.pl
+    before using this feature.)
+  * 
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

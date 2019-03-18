@@ -118,7 +118,7 @@ sub userform {
        $flagrows
        $saverow
      </tbody></table>
-  </form>]
+  </form>\n]
 }
 
 42;

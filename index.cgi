@@ -21,9 +21,9 @@ require "./include.pl";
 require "./auth.pl";
 require "./db.pl";
 require "./datetime-extensions.pl";
+require "./prefs.pl";
 
 our %input = %{getforminput()};
-#$input{useajax} = 'off'; # Hardcoding this would turn the AJAX stuff off for everybody (e.g. for testing)
 
 our $persistentvars = persist();
 our $hiddenpersist  = persist('hidden');
@@ -42,6 +42,8 @@ if ($auth::user) {
   # ****************************************************************************************************************
   # User is authorized as staff.
   %user = %{getrecord('users',$auth::user)}; # Some things below want to know which staff.
+  $input{usestyle} ||= getpref("usestyle", \%user);
+  $input{useajax}  ||= getpref("useajax", \%user);
   if ($input{extend}) {
     ($messagetouser, $redirectheader) = extendbooking();
     # Note: extendbooking() kludges %input:

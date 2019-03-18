@@ -236,6 +236,15 @@ $db->prepare(
      )"
     )->execute();
 
+$db->prepare("CREATE TABLE IF NOT EXISTS
+     resched_preference (
+          id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
+          user      integer,
+          prefname  tinytext,
+          value     mediumtext,
+          flags     tinytext
+     )")->execute();
+
 $db->prepare(
     "CREATE TABLE IF NOT EXISTS
     auth_by_ip (
