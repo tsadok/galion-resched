@@ -271,7 +271,8 @@ sub authbox {
     $result     .= qq[      <div>Username:  <input type="text"     name="AUTH_login_username" size="12"></input></div>
       <div>Password:  <input type="password" name="AUTH_login_password" size="12"></input></div>\n];
     if (not $auth::ALWAYS_RESTRICT_IP) {
-      $result   .= qq[      <div><input type="checkbox" name="AUTH_login_restrict_ip">Restrict session to my current IP address only.</input></div>\n];
+      $result   .= qq[      <div><input type="checkbox" name="AUTH_login_restrict_ip" id="AUTH_login_restrict_ip">
+                                 <label for="AUTH_login_restrict_ip">Restrict session to my current IP address only.</label></input></div>\n];
     }
     $result     .= qq[      <div><input type="submit" value="Log In"></input></div>\n   </form></div>
     <!-- ******************  END AUTHBOX  ****************** -->];

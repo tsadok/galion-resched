@@ -9,6 +9,8 @@ Version 0.9.9:
   * Users can now set their preference for stylesheet and AJAX use.
     (Sites upgrading from earlier versions need to run create-tables.pl
     before using this feature.)
+  * On the login form, for the checkbox that restricts the session to the
+    current IP address, clicking the label checks or unchecks the box now.
   * 
   
 Version 0.9.8:
