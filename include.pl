@@ -3,6 +3,7 @@
 
 use strict;
 require "./db.pl";
+require "./prefs.pl"; # Needed for style
 package include;
 require "./sitecode.pl"; # Site-specific code should be moved into there.
 use Carp;
@@ -189,7 +190,7 @@ sub standardoutput {
   # calling code must define sub main::usersidebar that
   # returns an appropriate div.
   my ($title, $content, $ab, $style, $meta, $favicon) = @_;
-  $style   ||= 'lowcontrast';
+  #$style   ||= 'lowcontrast'; # redundant: include::style() does this on its own.
   my $cws = contentwithsidebar($content, "$ab\n".main::usersidebar());
   my $css = include::style($style);
   $favicon ||= main::getvariable('resched', 'bookmark_icon') || 'resched.ico';
@@ -354,8 +355,8 @@ sub include::check_for_collision {
 }
 
 sub include::style {
-  my ($s) = @_;
-  $s ||= 'lowcontrast';
+  my ($chosenstyle) = @_;
+  my $s = $chosenstyle || 'lowcontrast';
   my %stylesub = ( # a holdover from the old style system, for backward compatibility only.
                   manilla     => 'darkonlight',
                   hicmanilla  => 'darkonlight',
@@ -371,9 +372,6 @@ sub include::style {
                lightondark => qq[<link rel="stylesheet" type="text/css" media="screen" href="lightondark.css" title="Light on Dark Colors" />],
                darkonlight => qq[<link rel="stylesheet" type="text/css" media="screen" href="darkonlight.css" title="Dark on Light Colors" />],
                lowcontrast => qq[<link rel="stylesheet" type="text/css" media="screen" href="lowcontrast.css" title="Low Contrast" />],
-               #browserdefs => qq[<link rel="stylesheet" type="text/css" media="screen" href="browserdefs.css" title="Browser Colors" />],
-               #funwithfont => qq[<link rel="stylesheet" type="text/css" media="screen" href="funwithfont.css" title="Fun with Fonts" />],
-               #blackonwite => qq[<link rel="stylesheet" type="text/css" media="screen" href="blackonwite.css" title="Black on White" />],
               );
   my $style = join "\n", (map {
     $style{$_}

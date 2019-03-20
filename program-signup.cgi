@@ -60,6 +60,8 @@ sub respondtouser { # This is the non-AJAX way.
 }
 
 if ($auth::user) {
+  $input{usestyle} ||= getpref("usestyle", $auth::user);
+  $input{useajax}  ||= getpref("useajax", $auth::user);
   if ($input{action} eq 'newprogram') {
     respondtouser(programform(undef), "Create New Program");
   } elsif ($input{action} eq 'createprogram') {

@@ -48,6 +48,8 @@ if ($auth::user) {
   # User is authorized as staff.
   %user = %{getrecord('users',$auth::user)}; # Some things below want to know which staff.
   my $adminprivs = (($user{flags} =~ /A/) or (getvariable('resched', 'staff_schedule_lax_security'))) ? 1 : 0;
+  $input{usestyle} ||= getpref("usestyle", $auth::user);
+  $input{useajax}  ||= getpref("useajax", $auth::user);
   if ($input{action} eq 'showday') {
     ($content, $pagetitle)   = showday();
     $pagetitle             ||= join ' ', grep { $_ } ('Staff', encode_entities($input{requireflag}), 'Schedules Today');

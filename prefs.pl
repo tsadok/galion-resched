@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 # -*- cperl -*-
 
+require "./db.pl";
+
 our %pref = ( useajax => +{ prefname  => "useajax",
                             sortorder => 100,
                             shortdesc => "Use optional Javascript/AJAX features.",
@@ -21,7 +23,7 @@ our %pref = ( useajax => +{ prefname  => "useajax",
                            },
             );
 
-sub updatepref {
+sub main::updatepref {
   my ($pname, $uid, $value) = @_;
   return if not $uid;
   my ($p) = findrecord("resched_preference", user => $uid, prefname => $pname);
@@ -38,7 +40,7 @@ sub updatepref {
   }
 }
 
-sub getpref {
+sub main::getpref {
   my ($pname, $uid) = @_;
   return $pref{$pname}{default} if not $uid;
   my ($p) = findrecord("resched_preference", user => $uid, prefname => $pname);

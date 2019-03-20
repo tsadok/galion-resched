@@ -36,6 +36,8 @@ if ($auth::user) {
   # ****************************************************************************************************************
   # User is authorized as staff.
   %user = %{getrecord('users',$auth::user)}; # Some things below want to know which staff.
+  $input{usestyle} ||= getpref("usestyle", $auth::user);
+  $input{useajax}  ||= getpref("useajax", $auth::user);
   my $title   = "Circ Desk Mail";
   my $content = include::errordiv("Unknown Action", qq[I don't know how to complete the '$input{action} action, sorry.  Maybe Nathan forgot to program that part?']);
   if (not getvariable('resched', 'mail_enable')) {

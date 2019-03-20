@@ -291,6 +291,8 @@ my %cfgvar =
 if ($auth::user) {
   my $user = getrecord('users', $auth::user);
   ref $user or die "Unable to retrieve user record for $auth::user";
+  $input{usestyle} ||= getpref("usestyle", $auth::user);
+  $input{useajax}  ||= getpref("useajax", $auth::user);
   if ($$user{flags} =~ /A/) {
     my $notice = '';
     my $title = "resched configuration";

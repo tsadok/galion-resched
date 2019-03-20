@@ -21,6 +21,8 @@ my $ab = authbox(sub { my $x = getrecord('users', shift); "<!-- Hello, $$x{nickn
 if ($auth::user) {
   my $title   = "User Info - Galion ReSched";
   my $content = qq[<h1>Error: Fallthrough Condition</h1><p>user.cgi doesn't know what you want to do.</p>];
+  $input{usestyle} ||= getpref("usestyle", $auth::user);
+  $input{useajax}  ||= getpref("useajax", $auth::user);
   if ($input{userid}) {
     $content = userpage(include::getnum('userid'));
   } elsif ($input{user}) {
@@ -28,7 +30,7 @@ if ($auth::user) {
   } elsif ($input{action} eq "updateprefs") {
     $content = updateprefs();
   }
-  print include::standardoutput($title, $content, $ab, $input{userstyle});
+  print include::standardoutput($title, $content, $ab, $input{usestyle});
 } else {
   # User is not authorized for squat.
   print include::standardoutput('Authentication Needed',

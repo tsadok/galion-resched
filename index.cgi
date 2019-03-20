@@ -42,8 +42,9 @@ if ($auth::user) {
   # ****************************************************************************************************************
   # User is authorized as staff.
   %user = %{getrecord('users',$auth::user)}; # Some things below want to know which staff.
-  $input{usestyle} ||= getpref("usestyle", \%user);
-  $input{useajax}  ||= getpref("useajax", \%user);
+  $input{usestyle} ||= getpref("usestyle", $auth::user);
+  $input{useajax}  ||= getpref("useajax", $auth::user);
+  warn "usestyle=$input{usestyle}; useajax=$input{useajax}";
   if ($input{extend}) {
     ($messagetouser, $redirectheader) = extendbooking();
     # Note: extendbooking() kludges %input:
