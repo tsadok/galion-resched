@@ -11,7 +11,8 @@ Version 0.9.9:
     before using this feature.)
   * On the login form, for the checkbox that restricts the session to the
     current IP address, clicking the label checks or unchecks the box now.
-  * 
+  * For program signup, both the list of programs and the signup list for
+    an individual program now show program flags.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

@@ -492,6 +492,8 @@ sub showprogram {
       ? qq[Canceled: $$prog{title} <div>(was scheduled $when)</div>]
       : qq[$$prog{title}, $when];
     my $notes = $$prog{notes} ? qq[<div id="programnotes">$$prog{notes}</div>] : '';
+    my $programflags = showflags($$prog{flags}, \%programflag);
+    my $programflags = $programflags ? (qq[<div id="programflags" class="box">Flags: ] . $programflags . '</div>') : '';
     my $makerow = sub {
       my ($s) = @_;
       for my $flagchar (keys %signupflag) {
@@ -529,7 +531,7 @@ sub showprogram {
        <span class="programcategory">(category: $$category{category})</span></div>
   <div id="programtotal">$howmany</div>
 </div>
-$notes
+$notes$programflags
 <form action="program-signup.cgi" method="post">\n  $hiddenpersist
     <input type="hidden" name="program" value="$id" />
     <input type="hidden" name="action" value="dosignup" />
@@ -567,13 +569,14 @@ sub flagcheckboxes {
 }
 
 sub showflags {
-  my ($flags, $flaghash) = @_;
+  my ($flags, $flaghash, $abbrev) = @_;
   $flaghash ||= \%signupflag;
   my @f = map {
     my $f = $_;
     my ($char, $name, $description, $inherit) = @{$$flaghash{$f}};
-    qq[<abbr title="$description" class="flag"><nobr><span class="flagchar">$char</span> - <span class="flagname">$name</span></nobr></abbr>]
-  } split //, $flags;
+    $abbrev ? qq[<abbr title="$name">$char</abbr>]
+      : qq[<abbr title="$description" class="flag"><nobr><span class="flagchar">$char</span> - <span class="flagname">$name</span></nobr></abbr>]
+  } sort { $a cmp $b } split //, $flags;
   return join ' ', @f;
 }
 
@@ -623,8 +626,9 @@ sub listprograms {
       my $when      = include::datewithtwelvehourtime($dt);
       my $dow       = $dt->day_name();
       my $ages      = $$prec{agegroup};
+      my $flags     = showflags($$prec{flags}, \%programflag, "abbreviate");
       return qq[<li><a href="program-signup.cgi?action=showprogram&amp;program=$$prec{id}&amp;$persistentvars" title="$when">$title</a>
-           for $ages, $dow, $when</li>]
+           for $ages, $dow, $when $flags</li>]
     };
     my $programlist = join "\n       ", map { $programli->($_); } @upcoming;
     my $ongoing = (scalar @ongoing) ? (qq[<div><strong>Ongoing Programs:</strong></div><ul>]
