@@ -44,7 +44,7 @@ if ($auth::user) {
   %user = %{getrecord('users',$auth::user)}; # Some things below want to know which staff.
   $input{usestyle} ||= getpref("usestyle", $auth::user);
   $input{useajax}  ||= getpref("useajax", $auth::user);
-  warn "usestyle=$input{usestyle}; useajax=$input{useajax}";
+  #warn "usestyle=$input{usestyle}; useajax=$input{useajax}";
   if ($input{extend}) {
     ($messagetouser, $redirectheader) = extendbooking();
     # Note: extendbooking() kludges %input:
@@ -683,6 +683,8 @@ sub viewbooking {
                  ? qq[ <span class="tsmod">last modified $b{tsmod}</span>]
                  : ''));
       my $startword = ($res{flags} =~ /R/) ? qq[Meeting starts] : qq[Started late];
+      my $showstart = $b{latestart} ? "" : qq[ style="visibility: hidden"];
+      my $showdone  = $b{doneearly} ? "" : qq[ style="visibility: hidden"];
       #use Data::Dumper; warn Dumper(\%b);
       push @bookinglisting, qq[<form action="./" method="post">
            <input type="hidden" name="booking" value="$b{id}" />
@@ -705,18 +707,20 @@ sub viewbooking {
               <tr><td>From<sup><a href="#footnote1">1</a></sup>:</td>
                   <td>].(DateTime::Form::Fields($fromdt, 'booking_fromtime',undef,undef,'FieldsK',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td>
-                  <td>$waslat<input type="checkbox" name="latestart" ]
-                    .($b{latestart} ? ' checked="checked" ' : '').qq[ />&nbsp;$startword at
+                  <td>$waslat<input type="checkbox" name="latestart" id="cblatestart" onchange="cbvistoggle('cblatestart', 'showstart');" ]
+                    .($b{latestart} ? ' checked="checked" ' : '').qq[ />&nbsp;<label for="cblatestart">$startword</label> <span$showstart id="showstart">at
                       ].(DateTime::Form::Fields($latedt, 'booking_late', 'skipdate',undef,'FieldsL',
-                                                time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td></tr>
+                                                time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</span></td></tr>
               <tr><td>Until<sup><a href="#footnote2">2</a></sup>:</td>
                   <td>].(DateTime::Form::Fields($untidt, 'booking_until',undef,undef,'FieldsM',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td>
-                  <td><input type="checkbox" name="doneearlycheckbox" ].($b{doneearly}?' checked="checked" ' : '').qq[ />&nbsp;Done early at
+                  <td><input type="checkbox" id="cbdoneearly" name="doneearlycheckbox" onchange="cbvistoggle('cbdoneearly', 'showdone');" ]
+                                                  .($b{doneearly}?' checked="checked" ' : '').qq[ />&nbsp;<label for="cbdoneearly">Done early</label>
+                      <span$showdone id="showdone">at
                       ].(DateTime::Form::Fields($earldt,'booking_doneearly', 'skipdate',undef,'FieldsN',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[
                       Followed by: <input name="followupname" value="$fbyrec{bookedfor}" />
-                      <span class="nobr">Initials:<input name="followupstaffinitials" size="4" type="text" value="$fbyrec{staffinitials}" /></span>
+                      <span class="nobr">Initials:<input name="followupstaffinitials" size="4" type="text" value="$fbyrec{staffinitials}" /></span></span>
                       </td></tr>
               <tr><td><input type="submit" value="Save Changes" /></td>
                   <td></td>
@@ -918,17 +922,25 @@ sub assemble_extranotes {
     $extranotes .= "Already have a copy of our meeting room policy on file.\n";
   } else {
     if ($input{policysendemail}) {
-      # NOTE:  All this actually does is put a record in the database
-      #        saying it needs to be sent.  Actual sending is meant to
-      #        happen separately on a cron job.  See process-mail-queue.pl
-      #        for an example of how that might work.
-      my $now = DateTime::Format::ForDB(DateTime->now(time_zone => $include::localtimezone));
-      addrecord("resched_mailqueue", +{ mailtype  => 'meetingroompolicy',
-                                        toaddress => $input{policysendemailaddress},
-                                        enqueued  => $now,
-                                        tryafter  => $now, });
-      my $eddress = encode_entities($input{policysendemailaddress});
-      $extranotes .= qq[Attempted to send meeting room policy by email to $eddress.\n];
+      use Email::Valid;
+      my $toaddress = Email::Valid->address( -address  => $input{policysendemailaddress},
+                                             -mxcheck  => 1,
+                                             -tldcheck => 1);
+      if ($toaddress) {
+        # NOTE:  All this actually does is put a record in the database
+        #        saying it needs to be sent.  Actual sending is meant to
+        #        happen separately on a cron job.  See process-mail-queue.pl
+        #        for an example of how that might work.
+        my $now = DateTime::Format::ForDB(DateTime->now(time_zone => $include::localtimezone));
+        addrecord("resched_mailqueue", +{ mailtype  => 'meetingroompolicy',
+                                          toaddress => $toaddress,
+                                          enqueued  => $now,
+                                          tryafter  => $now, });
+        my $eddress = encode_entities($input{policysendemailaddress});
+        $extranotes .= qq[Attempted to send meeting room policy by email to $toaddress.\n];
+      } else {
+        $extranotes .= qq[Unable to send meeting room policy: not a valid email address:  '$input{policysendemailaddress}'\n];
+      }
     }
     if ($input{policysendfax}) {
       my $faxnum  = encode_entities($input{policysendfaxnumber});

@@ -25,7 +25,9 @@ be done when installing this software.
      modules (available from the CPAN): DateTime, DateTime::Span,
      DateTime::Format::MySQL, DBI, DBD::mysql, Carp, Digest::MD5,
      HTML::Entities, Taint::Util, and Data::Dumper.  If you wish
-     to use the Circ Desk Mail feature, add Mail::POP3Client.
+     to use the Circ Desk Mail feature, add Mail::POP3Client.  If
+     you wish to automaticallysend meeting room policy by email,
+     add Email::Valid and Mail::Sendmail.
 
  3. Open ajax.js in a text editor and change the basedir variable (on
     the second line) so that it contains the public URI of the resched

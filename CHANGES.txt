@@ -13,6 +13,12 @@ Version 0.9.9:
     current IP address, clicking the label checks or unchecks the box now.
   * For program signup, both the list of programs and the signup list for
     an individual program now show program flags.
+  * Introduced an email address validity check, when attempting to
+    automatically send meeting room policy by email.
+  * When viewing a booking, the late-start and early-finish times are
+    hidden when their checkboxes are unchecked.  (Some of our staff
+    were confusing these times for the booking times.  This should
+    reduce the odds of that sort of confusion.)
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

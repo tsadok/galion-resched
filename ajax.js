@@ -15,6 +15,16 @@ try {
   }
 }
 
+function cbvistoggle(cbid, visid) {
+    var cbelt  = document.getElementById(cbid);
+    var viselt = document.getElementById(visid);
+    if (cbelt.checked) {
+        viselt.style.visibility = "visible";
+    } else {
+        viselt.style.visibility = "hidden";
+    }
+}
+
 function toggledisplay(eltid, expansionmarker, coerce) {
   var elt = document.getElementById(eltid);
   if ((coerce=='expand') || (coerce=='inline')) {
