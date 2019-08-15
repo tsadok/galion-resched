@@ -25,6 +25,8 @@ Version 0.9.9:
     should always be possible.)
   * There is now a more or less decent UI for configuring opening and
     closing times.
+  * bugfix: the minimum_password_length variable was not honored correctly.
+  * bugfix: don't set salt_length too high.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

@@ -273,7 +273,7 @@ my %cfgvar =
                                      sortkey     => 7005,
                                   },
    salt_length => +{ default     => 250,
-                     description => 'Number of bytes of salt to use when creating new passwords.  This value MUST NOT exceed the size of the salt field in the users table.  Prior to version 0.9.3, the salt field was created as a tinytext field, and the size of the field is not usually changed on upgrade; so if you originally installed version 0.9.2 or earlier you are probably limited to at most 255 bytes of salt, unless you change the users table by hand.  New installations from version 0.9.3 forward can safely use a larger value.',
+                     description => 'Number of bytes of salt to use when creating new passwords.  This value MUST NOT exceed the size of the salt field in the users table.  Prior to version 0.9.3, the salt field was created as a tinytext field, and the size of the field is not usually changed on upgrade; so if you originally installed version 0.9.2 or earlier you are probably limited to at most 255 bytes of salt, unless you change the users table by hand.  New installations from version 0.9.3 forward can safely use a larger value, but obscenely large values (e.g., in the millions) can cause login failures.  The value 65535 is known to be safe, provided the salt field can hold that many characters.',
                      sortkey     => 7010,
                    },
    bookmark_icon => +{

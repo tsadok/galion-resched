@@ -558,6 +558,10 @@ $q->execute($dbconfig::database, "users", "salt");
 my $maxlen = 250;
 while (my $hr = $q->fetchrow_hashref()) {
   $maxlen = ($$hr{CHARACTER_MAXIMUM_LENGTH} || 255) - 5;
+  # But don't go TOO high:
+  if ($maxlen > 65535) {
+    $maxlen = 65535;
+  }
 }
 print "Setting salt_length = $maxlen\n";
 setvariable("resched", "salt_length", $maxlen);

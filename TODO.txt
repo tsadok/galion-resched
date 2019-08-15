@@ -1,4 +1,5 @@
 Desired Changes:
+ * RFE: "Resend meeting room policy to this address."
  * When editing staff schedule hours (either regular or occasion),
    there should be a UI for getting ones from a different timeframe.
    The capability is there (sstart_datetime_foo), just needs UI.
@@ -44,6 +45,5 @@ Desired Changes:
    custom SQL in the gatherstatsforadaterange function.
  * The tutorial has never been written, and probably
    should be, and a link added to the sidebar.
- * Implement the ability for users to change their passwords,
-   and for the admin to set temporary passwords that must be
-   changed before the user can do anything else.
+ * Implement the ability for the admin to set temporary passwords
+   that must be changed before the user can do anything else.

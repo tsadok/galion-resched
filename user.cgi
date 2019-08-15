@@ -58,7 +58,7 @@ sub userpage {
         $$user{password}   = undef;
         $$user{hashedpass} = undef;
       } elsif ($input{setpass} eq 'setnewpass') {
-        my $minlength = getvariable('minimum_password_length') || 12;
+        my $minlength = getvariable("resched", 'minimum_password_length') || 12;
         if ((length $input{newpassonce}) < $minlength) {
           return include::errordiv('Password Too Short', qq[New passwords must be at least $minlength bytes long.]);
         } elsif ($input{newpassonce} ne $input{newpasstwice}) {
