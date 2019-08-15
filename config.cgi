@@ -29,12 +29,12 @@ my %cfgvar =
                  },
    openingtimes => +{
                      default     => '0-7:9:0',
-                     description => 'List of what time you normally open in the morning, for each day of the week, separated by commas.  Each day is specified in the form n:h:m where n is the number from 0 to 6 indicating day of week (or a hyphenated range thereof), h is the hour in 24-hour time, and m is the number of minutes past the hour.  Note that each resource is linked to a schedule, which overrides this.',
+                     description => qq[<a href="config.cgi?action=octimeswiz&amp;$persistentvars">See Opening &amp; Closing Times</a>], #'List of what time you normally open in the morning, for each day of the week, separated by commas.  Each day is specified in the form n:h:m where n is the number from 0 to 6 indicating day of week (or a hyphenated range thereof), h is the hour in 24-hour time, and m is the number of minutes past the hour.  Note that each resource is linked to a schedule, which overrides this.',
                      sortkey     => 12,
                     },
    closingtimes => +{
                      default     => '0:12:00,1-2:20:00,3:15:00,4-5:20:00,6:15:00',
-                     description => 'List of what time you normally close up at night, for each day of the week, separated by commas.  Each day is specified in the form n:h:m where n is the number from 0 to 6 indicating day of week (or a hyphenated range thereof), h is the hour in 24-hour time, and m is the number of minutes past the hour.',
+                     description => qq[<a href="config.cgi?action=octimeswiz&amp;$persistentvars">See Opening &amp; Closing Times</a>], #'List of what time you normally close up at night, for each day of the week, separated by commas.  Each day is specified in the form n:h:m where n is the number from 0 to 6 indicating day of week (or a hyphenated range thereof), h is the hour in 24-hour time, and m is the number of minutes past the hour.',
                      sortkey     => 13,
                     },
    daysclosed => +{
@@ -299,9 +299,18 @@ if ($auth::user) {
     if ($input{action} eq 'save') {
       ($notice, $title) = savechanges();
     }
-    print include::standardoutput($title,
-                                  $notice . configform(),
-                                  $ab, $input{usestyle});
+    if ($input{action} eq "calcoctimes") {
+      ($notice, $title) = calculate_octimes();
+    }
+    if ($input{action} eq "octimeswiz") {
+      print include::standardoutput("Open / Close Times Wizard",
+                                    octimeswizard(),
+                                    $ab, $input{usestyle});
+    } else {
+      print include::standardoutput($title,
+                                    $notice . configform(),
+                                    $ab, $input{usestyle});
+    }
   } else {
     print include::standardoutput('Administrative Access Needed',
                                   "<p>In order to access this page you need to log into an account that has the Administrator flag set.</p>",
@@ -331,6 +340,93 @@ sub savechanges {
     ? qq[<div class="info">Saved changes to ] . include::sgorpl($changecount, 'variable') . qq[</div>]
     : qq[<div class="error">No changes were made!</div>];
   return ($notice, $title);
+}
+
+sub octimeswizard {
+  my @dow = qw(Sunday Monday Tuesday Wednesday Thursday Friday Saturday);
+  my $allhours = [ [ 0 => "Midnight"], [ 1 => "1am"], [ 2 => "2am"],  [ 3 => "3am"],
+                   [ 4 => "4am"],      [ 5 => "5am"], [ 6 => "6am"],  [ 7 => "7am"],
+                   [ 8 => "8am"],      [ 9 => "9am"], [10 => "10am"], [11 => "11am"],
+                   [12 => "12"],       [13 => "1pm"], [14 => "2pm"],  [15 => "3pm"],
+                   [16 => "4pm"],      [17 => "5pm"], [18 => "6pm"],  [19 => "7pm"],
+                   [20 => "8pm"],      [21 => "9pm"], [22 => "10pm"], [23 => "11pm"], ];
+  my $ot = include::openingtimes();
+  my $ct = include::closingtimes();
+  return qq[<form action="config.cgi" method="POST">
+     $hiddenpersist
+     <div class="h">Opening &amp; Closing Times:</div>
+     <input type="hidden" name="action" value="calcoctimes" />
+     <table><thead>
+      <tr>
+      </tr>
+     </thead><tbody>
+        ] . (join "\n     ", map {
+          my $n = $_;
+          my $fromhoursel = include::orderedoptionlist("fromhour$n", $allhours, $$ot{$n}[0]);
+          my $tillhoursel = include::orderedoptionlist("tillhour$n", $allhours, $$ct{$n}[0]);
+          my $frommin     = sprintf("%02d", ($$ot{$n}[1] || 0));
+          my $tillmin     = sprintf("%02d", ($$ct{$n}[1] || 0));
+          my $isclosed    = ($$ct{$n}[0] > $$ot{$n}[0] or (($$ct{$n}[0] == $$ot{$n}[0]) and ($$ct{$n}[1] > $$ot{$n}[1])))
+            ? "" : qq[ checked="checked"];
+          my $issame      = $isclosed ? "" : ($n == 0) ? "" :
+            (($$ot{$n}[0] == $$ot{$n - 1}[0]) and ($$ot{$n}[1] == $$ot{$n - 1}[1]) and
+             ($$ct{$n}[0] == $$ct{$n - 1}[0]) and ($$ct{$n}[1] == $$ct{$n - 1}[1]))
+            ? qq[ checked="checked"] : "";
+          my $isopen      = ($isclosed or $issame) ? "" : qq[ checked="checked"];
+          my $samediv = ($n > 0)
+            ? qq[<div><input id="same$n" name="open$n" value="same" type="radio"$issame />&nbsp;<label for="same$n">Same times as ] . $dow[$n-1] . qq[</label></div>]
+            : "";
+          qq[<tr><th>$dow[$n]</th>
+              <td><div><input id="closed$n" name="open$n" value="closed" type="radio"$isclosed />&nbsp;<label for="closed$n">Closed</label></div>
+                  $samediv
+                  <div><input id="open$n" name="open$n" value="open" type="radio"$isopen />&nbsp;<label for="open$n">Open</label>
+                       <label for="fromhour$n">from</label>&nbsp;$fromhoursel
+                          :<input type="text" size="3" id="frommin$n" name="frommin$n" value="$frommin" />
+                       <label for="tillhour$n">until</label>&nbsp;$tillhoursel
+                          :<input type="text" size="3" id="tillmin$n" name="tillmin$n" value="$tillmin" />
+                       </div>
+                  </td></tr>]
+     } 0 .. 6) . qq[
+     </tbody></table>
+     <input type="submit" value="Save Changes" />
+  </form>]
+}
+
+sub calculate_octimes {
+  my ($gnum, @group); $gnum = -1;
+  for my $n (0 .. 6) {
+    if ($input{"open" . $n} eq "closed") {
+      # Nothing to do.
+    } elsif (($n > 0) and ($input{"open" . $n} eq "same")) {
+      $group[$gnum]{lastn} = $n;
+    } else {
+      $gnum++;
+      $group[$gnum] = +{ firstn => $n,
+                         lastn  => $n,
+                         ohour  => include::getnum("fromhour" . $n),
+                         omin   => include::getnum("frommin" . $n),
+                         chour  => include::getnum("tillhour" . $n),
+                         cmin   => include::getnum("tillmin" . $n),
+                       };
+    }
+  }
+  my $openspec = join ",", map {
+    my $g = $_;
+    "" . ($$g{lastn} > $$g{firstn} ? qq[$$g{firstn}-$$g{lastn}] : $$g{firstn})
+      . ":" . $$g{ohour} . ":" . $$g{omin};
+  } @group;
+  my $closespec = join ",", map {
+    my $g = $_;
+    "" . ($$g{lastn} > $$g{firstn} ? qq[$$g{firstn}-$$g{lastn}] : $$g{firstn})
+      . ":" . $$g{chour} . ":" . $$g{cmin};
+  } @group;
+  setvariable("resched", "openingtimes", $openspec);
+  setvariable("resched", "closingtimes", $closespec);
+  return include::infobox("Opening and Closing Times Set",
+                          qq[<table><tbody>
+        <tr><th>openingtimes</th><td>$openspec</td></tr>
+        <tr><th>closingtimes</th><td>$closespec</td></tr>
+   </tbody></table>]);
 }
 
 sub configform {

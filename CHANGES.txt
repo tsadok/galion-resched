@@ -23,7 +23,8 @@ Version 0.9.9:
   * create-tables.pl now sets the salt_length config variable to a
     fairly large value if possible.  (For new installations, this
     should always be possible.)
-  * 
+  * There is now a more or less decent UI for configuring opening and
+    closing times.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

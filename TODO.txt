@@ -5,18 +5,11 @@ Desired Changes:
    (Workaround: to get there with the current UI, you can select the
    time frame you want while /viewing/ a staff member's schedule, then
    click the edit link.)
- * The user should be able to set preferences for things
-   like visual style and AJAX, which should then automatically
-   kick in whenever they are logged in.  Ideally, it should
-   also be possible to set preferences that only apply for
-   the current user/IP-address combination.
- * Users should also be able to set their own nickname.
- * Users should be able to change their own passwords
-   (subject to config variable approval).
+ * Ideally, it should be possible for a user to set preferences that
+   only apply for the current user/IP-address combination.
  * Make alternate name order available by clicking a link.
  * Incorrectly specifying openingtimes or closingtimes should
-   result in a MUCH friendlier error message.  Also, there
-   should be a wizard or utility for putting the specs together.
+   result in a MUCH friendlier error message.
  * Would like to sanity check date number inputs before storing
    them in the database.  If anybody finds a way to get an
    invalid date into the db, it could cause denial-of-service.
