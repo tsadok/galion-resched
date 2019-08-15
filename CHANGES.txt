@@ -19,6 +19,11 @@ Version 0.9.9:
     hidden when their checkboxes are unchecked.  (Some of our staff
     were confusing these times for the booking times.  This should
     reduce the odds of that sort of confusion.)
+  * The userform now gives better information about salt length.
+  * create-tables.pl now sets the salt_length config variable to a
+    fairly large value if possible.  (For new installations, this
+    should always be possible.)
+  * 
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

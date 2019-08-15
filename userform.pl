@@ -68,8 +68,12 @@ sub userform {
     }
   }
   if (($password eq 'Salted') or ($password eq 'Unsalted') or ($password eq 'Legacy')) {
-    $passexplan   .= qq[If $arg{theuser_s} password is Unset, $arg{theuser} will no longer be able to log in with it.];
+    $passexplan   .= qq[If $arg{theuser_s} password is Unset, $arg{theuser} will no longer be able to log in with it.  ];
   }
+  $passexplan .= qq[If you set a new password, it will be hashed with $auth::saltlength bytes of per-user salt]
+    . (getvariable('resched', 'retain_cleartext_passwords')
+       ? qq[, but the clear-text password will also be stored (because <code>retain_cleartext_passwords</code> is set in the per-site configuration)]
+       : "") . qq[.  ];
   my $ipauthpointer = () ? qq[See also: <a href="admin.cgi?action=ipauthlist">authentication via IP address settings</a>] : "";
   my $usernamerow = $admin ? qq[<tr><th><label for="userusername">username:</label></th>
            <td><input type="text" size="20" id="userusername" name="userusername" value="$username" /></td>

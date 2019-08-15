@@ -547,3 +547,19 @@ $db->prepare(qq[CREATE TABLE IF NOT EXISTS resched_mailqueue (
             sent       datetime,
             flags      tinytext
             )])->execute();
+
+
+# Can we safely set a good large saltlength?
+my $q = $db->prepare("SELECT DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS"
+                     . " WHERE TABLE_SCHEMA = ?"
+                     . "   AND TABLE_NAME   = ?"
+                     . "   AND COLUMN_NAME  = ?");
+$q->execute($dbconfig::database, "users", "salt");
+my $maxlen = 250;
+while (my $hr = $q->fetchrow_hashref()) {
+  $maxlen = ($$hr{CHARACTER_MAXIMUM_LENGTH} || 255) - 5;
+}
+print "Setting salt_length = $maxlen\n";
+setvariable("resched", "salt_length", $maxlen);
+
+
