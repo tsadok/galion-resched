@@ -6,6 +6,7 @@ our $debug = 0;
 $ENV{PATH}='';
 $ENV{ENV}='';
 
+use strict;
 use DateTime;
 use DateTime::Span;
 use HTML::Entities qw(); sub encode_entities{ my $x = HTML::Entities::encode_entities(shift@_);
@@ -37,18 +38,20 @@ my %categoryflag = (
                    );
 my %programflag = (
                    'L' => ['L', 'Library program', 'This is one of our official programs.'],
-		   'O' => ['O', 'Ongoing program', 'Program is not on any specific date or is ongoing over a period of time.'],
-		   'R' => ['R', 'Reminder call',   'Provide a checkbox for tracking which patrons have been called to remind them of the program.'],
+                   'O' => ['O', 'Ongoing program', 'Program is not on any specific date or is ongoing over a period of time.'],
+                   'R' => ['R', 'Reminder call',   'Provide a checkbox for tracking which patrons have been called to remind them of the program.'],
+                   'S' => ['S', 'Self-Signup',     'Allow patrons to sign themselves up using the public self-signup interface.'],
                    'T' => ['T', 'Third-party',     'This program is unofficial or is run by a third party.'],
                    'W' => ['W', 'Waiting list',    'If this program fills up to the limit, a waiting list will be started.'],
                    'X' => ['X', 'Canceled',        'This program has been canceled.'],
                    '#' => ['#', 'DEBUG',           'This is not a real program.  It exists only for testing the booking software.', 'inherited'],
                   );
-my %signupflag = ('R' => ['R', 'Reminded', 'This person has received a reminder call.'],
-                  'W' => ['W', 'Waitlist', 'This person signed up for the wait list, before the program filled up.'],
-                  'X' => ['X', 'Canceled', 'This person no longer plans to attend.'],
-                  '?' => ['?', 'Maybe',    'This person is unsure whether they will attend.'],
-                  '#' => ['#', 'DEBUG',    'You can ignore this signup: we were just testing the booking software.']
+my %signupflag = ('R' => ['R', 'Reminded',    'This person has received a reminder call.'],
+                  'S' => ['S', 'Self-Signup', 'This information was entered via the public signup form.'],
+                  'W' => ['W', 'Waitlist',    'This person signed up for the wait list, before the program filled up.'],
+                  'X' => ['X', 'Canceled',    'This person no longer plans to attend.'],
+                  '?' => ['?', 'Maybe',       'This person is unsure whether they will attend.'],
+                  '#' => ['#', 'DEBUG',       'You can ignore this signup: we were just testing the booking software.']
                  );
 
 sub respondtouser { # This is the non-AJAX way.
@@ -62,7 +65,9 @@ sub respondtouser { # This is the non-AJAX way.
 if ($auth::user) {
   $input{usestyle} ||= getpref("usestyle", $auth::user);
   $input{useajax}  ||= getpref("useajax", $auth::user);
-  if ($input{action} eq 'newprogram') {
+  if ($input{signmeup}) { # Allow staff to access the public signup form too.  If nothing else, I need to for testing.
+    respondtouser(public_signup());
+  } elsif ($input{action} eq 'newprogram') {
     respondtouser(programform(undef), "Create New Program");
   } elsif ($input{action} eq 'createprogram') {
     respondtouser(createprogram());
@@ -96,6 +101,8 @@ if ($auth::user) {
   } else {
     respondtouser(listprograms(), "Upcoming Programs");
   }
+} elsif ($input{signmeup}) {
+  respondtouser(public_signup());
 } else {
   respondtouser(qq[You probably need to log in.], "Not Authorized");
 }
@@ -124,6 +131,8 @@ sub dateform {
   my ($dt, $nameprefix, $idprefix, $timeonly) = @_;
   $nameprefix ||= '';
   $idprefix   ||= $nameprefix;
+  my %monthname   = ( 1 => "January", 2 => "February", 3 => "March", 4 => "April", 5 => "May", 6 => "June",
+                      7 => "July", 8 => "August", 9 => "September", 10 => "October", 11 => "November", 12 => "December" );
   my @monthoption = map { my $m = $_;
                           my $sel = ($m == $dt->month()) ? ' selected="selected"' : '';
                           qq[<option value="$m"$sel>$monthname{$m}</option>]# . "\n                 "
@@ -140,7 +149,7 @@ sub dateform {
 
 sub programform {
   my ($record) = @_;
-  my ($categoryform, $untilform, $startdateform, $hidden);
+  my ($categoryform, $untilform, $startdateform, $hidden, $savebutton);
   my @dfltsort = ( # Values here must be kept in sync with what showprogram() knows how to handle.
                   [ num      => 'Sort sign-up list numerically.'  ],
                   [ lastname => 'Sort sign-up list by last name.' ],
@@ -210,8 +219,7 @@ sub programform {
 sub updateprogram {
   my $prog = getrecord('resched_program', $input{program});
   if (not ref $prog) {
-    return qq[<div class="error"><div><strong>Error</strong></div>
-       Something is wrong.  I was unable to find program number $input{program} in the database.</div>]
+    return include::errordiv("Error", qq[Something is wrong.  I was unable to find program number $input{program} in the database.]);
   } else {
     my ($when)  = assembledatetime('start', \%input, $include::localtimezone, 'cleanup');
     my ($until) = assembledatetime('end',   \%input, $include::localtimezone, 'cleanup');
@@ -240,8 +248,7 @@ sub updatesignup {
   my ($id) = ($input{id} =~ m/(\d+)/);
   my $s = getrecord('resched_program_signup', $id);
   if (not ref $s) {
-    return qq[<div class="error"><div><strong>Error</strong></div>
-       Unfortunately, I was not able to find signup record $id in the database.</div>];
+    return include::errordiv("Error", qq[Unfortunately, I was not able to find signup record $id in the database.]);
   } else {
     $$s{attender} = (encode_entities($input{attender}) || $$s{attender});
     $$s{phone}    = (encode_entities($input{phone})    || $$s{phone});
@@ -256,8 +263,7 @@ sub editsignup {
   my ($id) = ($input{id} =~ m/(\d+)/);
   my $s = getrecord('resched_program_signup', $id);
   if (not ref $s) {
-    return qq[<div class="error"><div><strong>Error</strong></div>
-       Unfortunately, I was not able to find signup record $id in the database.</div>];
+    return include::errordiv("Error", qq[Unfortunately, I was not able to find signup record $id in the database.]);
   } else {
     my $flagcheckboxes = flagcheckboxes($$s{flags}, \%signupflag);
     return qq[<form action="program-signup.cgi" method="post">\n  $hiddenpersist
@@ -276,6 +282,108 @@ sub editsignup {
     </table>
     <input type="submit" value="Save Changes" />
    </form>];
+  }
+}
+
+sub public_signup_program_desc {
+  my ($p) = @_;
+  my $dt   = DateTime::From::MySQL($$p{starttime});
+  my $when = "on " . $dt->year() . " " . ucfirst($dt->month_name()) . " " . include::htmlordinal($dt->mday())
+    . " at " . $dt->hour_12() . (($dt->minute > 0) ? (":" . sprintf("%02d", $dt->minute())) : ($dt->hour() == 12) ? " Noon" : ($dt->hour() > 12) ? "pm" : "am");
+  return encode_entities($$p{title}) . " $when" . ($$p{agegroup} ? " for $$p{agegroup}" : "");
+}
+
+sub public_signup {
+  my ($p);
+  if ($input{attender} and $input{program_id} and
+      ($p = getrecord("resched_program", $input{program_id})) and
+      ($$p{flags} =~ /S/)) {
+    return public_signup_add_attender($p);
+  } else {
+    return public_signup_form();
+  }
+}
+
+sub public_signup_form {
+  my ($p, $chooseprogram);
+  if ($input{program_id} and
+      ($p = getrecord("resched_program", $input{program_id})) and
+      ($$p{flags} =~ /S/)) {
+    $chooseprogram = qq[<input type="hidden" name="program_id" value="$$p{id}" />
+    ] . public_signup_program_desc($p);
+  } elsif (ref $p) {
+    return include::errordiv("Self-Signup Not Available", qq[I am sorry, but $$p{title} does not appear to have self-signup enabled.  Please call the library to ask about this program.]);
+  } elsif ($input{program_id}) {
+    return include::errordiv("Program Not Found", qq[I am sorry.  I cannot find any record of program number $input{program_id}.  How can I sign you up for a program, when I cannot find record of it?]);
+  } else {
+    my @p = getprogramlist(99, undef, require_flag => "S");
+    if (not scalar @p) {
+      return include::errordiv("Error: No Self-Signup Programs Available",
+                      qq[There are currently no scheduled programs with self-signup enabled.  (Some programs may not allow self-signup.  Call the library for more information or to sign up for one of those.)]);
+    }
+    $chooseprogram = include::orderedoptionlist("program_id", [map {
+      [$$_{id}, public_signup_program_desc($_)],
+    } @p], undef, "program_id");
+  }
+  # The value of signmeup doesn't matter as long as it's true in
+  # boolean context.  I set it to something that looks kinda like a
+  # hash key, as a cheap red herring and potential distraction, for
+  # anyone who is only seeing the HTML/UI side of things.
+  my @fkc = ("A" .. "Z", "a" .. "z", 0 .. 9);
+  my $fakekey = "Ux" . join("", map { $fkc[rand @fkc]} 1 .. 60);
+  return qq[<form class="publicsignup" action="program-signup.cgi" method="post">
+  <input type="hidden" name="signmeup" value="$fakekey" />
+  <table class="formtable"><tbody>
+     <tr><th><label for="program_id">Program:</label></th>
+         <td>$chooseprogram</td></tr>
+     <tr><th><label for="attender">Name:</label></th>
+         <td><input id="attender" name="attender" type="text" size="60" /></td></tr>
+     <tr><th><label for="phone">Phone:</label></th>
+         <td><input id="phone" name="phone" type="text" size="15" /></td></tr>
+     <tr><th><label for="barcode">Library Card #:</label></th>
+         <td><input id="barcode" name="barcode" type="text" size="15" /></td></tr>
+     <tr><td>&nbsp;</td><td><input type="submit" value="Sign Me Up" /></td></tr>
+  </tbody></table></form>];
+}
+
+sub public_signup_add_attender {
+  my ($program) = @_;
+  my $s = +{ program_id => $$program{id},
+             attender   => encode_entities($input{attender}),
+             phone      => encode_entities($input{phone} || ""),
+             flags      => "S", # Self-signup
+             comments   => (encode_entities($input{comments} | "") . "\n"
+                            . "Public Signup Additional Info:" . "\n"
+                            . "IP: " . $ENV{"REMOTE_ADDR"} . "\n"
+                            . "BC: " . encode_entities($input{barcode}) . "\n"
+                            . "UA: " . encode_entities($ENV{"HTTP_USER_AGENT"}) . "\n"
+                           ),
+           };
+  my (@count) = findrecord("resched_program_signup",
+                          "program_id" => $$s{program_id});
+  my (@dupe)  = grep { lc($$_{attender}) eq lc($$s{attender}) } @count;
+  return include::errordiv("Error: Duplicate Signup",
+                  qq[We already have ] . (join " and ", map {
+                    qq[someone named <q>$$_{attender}</q>] . (($$_{flags} =~ /W/) ? qq[ (on the waiting list)] : qq[ signed up])
+                  } @dupe) . qq[ for $$program{title}<!-- program $$program{id} -->.])
+    if @dupe;
+  my $title   = "Signed Up";
+  my $message = qq[I have added <q>$$s{attender}</q> to the signup list for $$program{title}.];
+  if (($$program{signuplimit} > 0) and ((scalar @count) >= $$program{signuplimit})) {
+    $$s{flags} .= "W";
+    $title   = "Waiting List";
+    $message = qq[<strong>This program is full.</strong>  There are ] . @count . qq[ people signed up ahead of you, out of $$program{signuplimit} permitted.
+       However, I have added <q>$$s{attender}</q> to the <strong>waiting list</strong> for this program.];
+  }
+  addrecord("resched_program_signup", $s);
+  my ($r) = findrecord("resched_program_signup",
+                       "program_id" => $$s{program_id},
+                       "attender"   => $$s{attender});
+  if ($r) {
+    return include::infobox($title, $message);
+  } else {
+    return include::errordiv("Unexpected Sign-Up Failure?",
+                             "I attempted to sign you up, but when I double-checked, I can't find the record of your having signed up.");
   }
 }
 
@@ -329,18 +437,18 @@ sub createprogram {
       return ((qq[<div class="info"><div><strong>Program Created</strong></div>
   Here is the signup sheet for your new program:</div>]
                . showprogram()),
-              "Program Created: $newprogramtitle",
+              "Program Created: $$newprogram{title}",
               redirectheader('showprogram'));
     } else {
-      return qq[<div class="error"><div><strong>Error</strong></div>
-                Something went wrong when attempting to add your new program to the database.
+      return include::errordiv("Error",
+                               qq[Something went wrong when attempting to add your new program to the database.
                 It may not have been successfully added.
-                <!-- DBI says: $DBI::errstr --></div>]
+                <!-- DBI says: $DBI::errstr -->]);
     }
   } else {
-    return qq[<div class="error"><div><strong>Error</strong></div>
-       I tried to find category $catid in the database, but I could not find it.
-       I am not programed to create a program with an unknown category.</div>]
+    return include::errordiv("Error",
+                             qq{I tried to find category $catid in the database, but I could not find it.
+                                I am not programed to create a program with an unknown category.});
   }
 }
 
@@ -381,7 +489,7 @@ sub dosignup {
     return (showprogram(), "Program Signup", redirectheader('showprogram'));
   } else {
     return qq[<div class="error"><div><strong>Error:</strong></div>
-     I cannot seem to find any record of program number $id in the database.</div>];
+     I cannot seem to find any record of program number $progid in the database.</div>];
   }
 }
 
@@ -488,6 +596,8 @@ sub showprogram {
     my $howmany = $input{showcanceled}
       ? qq[Altogether there have been $num people signed up for this program.]
       : qq[There are currently $num people signed up for this program$limit.];
+    my $selflink = ($$prog{flags} =~ /S/)
+      ? qq[<div id="selfsignuplink" class="p"><a href="program-signup.cgi?signmeup=form&amp;program_id=$$prog{id}">Self-Signup is enabled for this program.  Click here to go to the public self-signup form.</a></div>] : "";
     my $title = ($$prog{flags} =~ /X/)
       ? qq[Canceled: $$prog{title} <div>(was scheduled $when)</div>]
       : qq[$$prog{title}, $when];
@@ -530,6 +640,7 @@ sub showprogram {
        <span class="programagegroup">for $$prog{agegroup}</span>
        <span class="programcategory">(category: $$category{category})</span></div>
   <div id="programtotal">$howmany</div>
+  $selflink
 </div>
 $notes$programflags
 <form action="program-signup.cgi" method="post">\n  $hiddenpersist
@@ -640,10 +751,13 @@ sub listprograms {
 }
 
 sub getprogramlist {
-  my ($maxprogs, $cutoff) = @_;
+  my ($maxprogs, $cutoff, %arg) = @_;
   $cutoff ||= DateTime->now(time_zone => $include::localtimezone);
   $maxprogs = 12 if $maxprogs < 1;
   my @program = getsince('resched_program', 'endtime', $cutoff);
+  if ($arg{require_flag}) {
+    @program = grep { index($$_{flags}, $arg{require_flag}) >= 0 } @program;
+  }
   @program = sort {
     $$a{starttime} cmp $$b{starttime}
       or $$a{endtime} cmp $$b{endtime}

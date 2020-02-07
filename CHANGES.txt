@@ -27,6 +27,13 @@ Version 0.9.9:
     closing times.
   * bugfix: the minimum_password_length variable was not honored correctly.
   * bugfix: don't set salt_length too high.
+  * For program signup, public self-signup can now be enabled on a
+    per-program basis, by setting the Self-signup flag on the program
+    (then distributing the link to each program's self-signup form).
+    People who are not logged in can then access the self-signup form
+    and add their names and phone numbers to the list for the program.
+    The names added this way are flagged as self-signup, so staff can
+    tell which people signed themselves up online.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules
@@ -42,7 +49,7 @@ Version 0.9.8:
     everyone on staff joint read access to a shared low-volume
     "circulation desk" email account.  The implementation is quite
     minimal (there isn't even a reply or send feature yet) and at this
-    point still a bit rough around the edges, and it is not inteded to
+    point still a bit rough around the edges, and it is not intended to
     be practical for handling large volumes of mail.  If you get a lot
     of mail, you can train your staff to check it regularly using
     whatever client you want.  This is intended for use with an
