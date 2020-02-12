@@ -2176,23 +2176,32 @@ sub availstats {
   }
 
   my ($startstats, $endstats);
+  my $now = DateTime->now(time_zone => $include::localtimezone);
   if ($input{availstats} eq 'yesterday') {
-    $endstats = DateTime->now(time_zone => $include::localtimezone);
-    $endstats->set_hour(0); $endstats->set_minute(0); $endstats->set_second(1);
+    $endstats = DateTime->new(#time_zone => $include::localtimezone,
+                              year      => $now->year(),
+                              month     => $now->month(),
+                              day       => $now->mday(),
+                             );
     $startstats = $endstats->clone()->subtract( days => 1 );
   } elsif ($input{availstats} eq 'lastweek') {
-    $endstats = DateTime->now(time_zone => $include::localtimezone);
-    $endstats->set_hour(0); $endstats->set_minute(0); $endstats->set_second(1);
+    $endstats = DateTime->new(#time_zone => $include::localtimezone,
+                              year      => $now->year(),
+                              month     => $now->month(),
+                              day       => $now->mday(),
+                             );
     while ($endstats->wday > 1) { $endstats = $endstats->subtract( days => 1 ); }
     $startstats = $endstats->clone()->subtract( days => 7 );
   } elsif ($input{availstats} eq 'lastmonth') {
-    $endstats = DateTime->now(time_zone => $include::localtimezone);
-    $endstats->set_hour(0); $endstats->set_minute(0); $endstats->set_second(1);
-    $endstats->set_day(1); # First of the month.
+    $endstats = DateTime->new(#time_zone => $include::localtimezone,
+                              year      => $now->year(),
+                              month     => $now->month(),
+                              day       => 1,
+                             );
     $startstats = $endstats->clone()->subtract( months => 1 );
   } elsif ($input{availstats} eq 'lastyear') {
     $endstats = DateTime->new(
-                              year   => DateTime->now->year(),
+                              year   => $now->year(),
                               month  => 1,
                               day    => 1,
                              );
@@ -2212,6 +2221,7 @@ sub availstats {
     # This is where we start doing multiple date ranges.
     # TODO:  implement this.
   }
+  warn "endstats: $endstats\n";
 
   my $dur = $endstats - $startstats;
   my $hrd = human_readable_duration($dur);
@@ -2287,18 +2297,19 @@ sub gatherstats {
     @category = include::categories();
   }
   my ($startstats, $endstats);
+  my $now = DateTime->now(time_zone => $include::localtimezone);
   if ($input{stats} eq 'yesterday') {
     $endstats = DateTime->now(time_zone => $include::localtimezone);
-    $endstats->set_hour(0); $endstats->set_minute(0);
+    $endstats->set_hour(0); $endstats->set_minute(0); $endstats->set_second(0);
     $startstats = $endstats->clone()->subtract( days => 1 );
   } elsif ($input{stats} eq 'lastweek') {
     $endstats = DateTime->now(time_zone => $include::localtimezone);
-    $endstats->set_hour(0); $endstats->set_minute(0);
+    $endstats->set_hour(0); $endstats->set_minute(0);  $endstats->set_second(0);
     while ($endstats->wday > 1) { $endstats = $endstats->subtract( days => 1 ); }
     $startstats = $endstats->clone()->subtract( days => 7 );
   } elsif ($input{stats} eq 'lastmonth') {
     $endstats = DateTime->now(time_zone => $include::localtimezone);
-    $endstats->set_hour(0); $endstats->set_minute(0);
+    $endstats->set_hour(0); $endstats->set_minute(0);  $endstats->set_second(0);
     $endstats->set_day(1); # First of the month.
     $startstats = $endstats->clone()->subtract( months => 1 );
   } elsif ($input{stats} eq 'lastyear') {
@@ -2388,47 +2399,88 @@ sub getstatsforadaterange {
   for (@category) {
     ($category, @resid) = @$_;
     @resid = categoryitems($category, \@allcategory);
-    my ($totaltotalbookings, $totaltotalduration);
+    my ($totaltotalbookings, $totaldurinhours);
     push @gatheredstat, '<div>&nbsp;</div><table><thead><tr><th colspan="4"><strong>' . "$category</strong></th></tr>\n\n";
     # <div><strong>' . ucfirst $category . '</strong></div>' . "\n<table>\n";
     for $rid (@resid) {
       my %r = %{getrecord('resched_resources', $rid)};
-      my $db = dbconn();
-      my $q = $db->prepare('SELECT * FROM resched_bookings '
-                           . 'WHERE resource=? AND fromtime>=? AND fromtime<?'
-                           . 'AND bookedfor NOT IN (' . (join ',', map { '?' } keys %exclude) . ')');
-      $q->execute(
-                  $rid,
-                  DateTime::Format::MySQL->format_datetime($startstats),
-                  DateTime::Format::MySQL->format_datetime($endstats),
-                  (keys %exclude),
-                 );
-      my ($totalbookings, $totalduration);
-      while (my $b = $q->fetchrow_hashref()) {
-        ++$totalbookings;
-        use Data::Dumper; push @gatheredstat, '<!-- ' . Dumper($b) . ' -->' if $debug > 1;
-        if (not $$b{isfollowup}) {
-          my $begin = DateTime::From::MySQL($$b{fromtime});
-          #my $end = DateTime::From::MySQL(  ($$b{doneearly}) ? $$b{doneearly} : $$b{until}  );
-          my $end = DateTime::From::MySQL(  $$b{until}  );
-          my $dur = $end - $begin; # Should yield a DateTime::Duration object.
-          $totalduration = (ref $totalduration ? $totalduration + $dur : $dur);
-        }
-      }
-      my $durinhours = (ref $totalduration ? $totalduration->in_units('hours') : '0');
-      $totalbookings ||= 0;
+      my ($totalbookings, $durinhours) = get_resource_usage_for_a_date_range(\%r, $startstats, $endstats, \%exclude);
       push @gatheredstat, qq[<tr><td>$r{name}:</td>
               <td class="numeric">$totalbookings bookings</td>
               <td> totalling</td><td class="numeric">$durinhours hours.</td></tr>\n];
       $totaltotalbookings += $totalbookings;
-      $totaltotalduration = (ref $totaltotalduration ? $totaltotalduration + $totalduration : $totalduration);
+      $totaldurinhours    += $durinhours;
     }
-    my $durinhours = (ref $totaltotalduration ? $totaltotalduration->in_units('hours') : '0');
+    #my $durinhours = (ref $totaltotalduration ? $totaltotalduration->in_units('hours') : '0');
     push @gatheredstat, qq[<tr><td><strong>Subtotal:</strong></td>
               <td class="numeric">$totaltotalbookings bookings</td>
-              <td> totalling</td><td class="numeric">$durinhours hours.</td></tr></table>\n];
+              <td> totalling</td><td class="numeric">$totaldurinhours hours.</td></tr></table>\n];
   }
   return @gatheredstat;
+}
+
+sub get_resource_usage_for_a_date_range {
+  my ($r, $dtstart, $dtend, $exclude) = @_;
+  my ($stat) = findrecord("resched_usage",
+                          resource  => $$r{id},
+                          startdate => DateTime::Format::MySQL->format_datetime($dtstart),
+                          enddate   => DateTime::Format::MySQL->format_datetime($dtend),
+                          exclude   => join(";", sort { $a cmp $b } keys %$exclude),
+                         );
+  my ($totalbookings, $durinhours);
+  if (ref $stat) {
+    $totalbookings = $$stat{bookings};
+    $durinhours    = $$stat{hours};
+  } elsif ($dtstart->clone()->add( months => 1 ) lt $dtend) {
+    # Try adding together subranges.
+    my @subrange;
+    my $prev = $dtstart;
+    my $dt = $dtstart->clone()->add( months => 1 );
+    while ($dt lt $dtend) {
+      push @subrange, [$prev, $dt];
+      $prev = $dt;
+      $dt = $dt->clone()->add( months => 1);
+    }
+    push @subrange, [$prev, $dtend];
+    ($totalbookings, $durinhours) = (0,0);
+    #use Data::Dumper; die Dumper([ map { my ($s, $e) = @$_; $s->ymd() . " to " . $e->ymd() } @subrange ]);
+    for my $sr (@subrange) {
+      my ($s, $e) = @$sr;
+      my ($b, $h) = get_resource_usage_for_a_date_range($r, $s, $e, $exclude);
+      $totalbookings += $b;
+      $durinhours    += $h;
+    }
+  } else {
+    my $db = dbconn();
+    my $q = $db->prepare('SELECT * FROM resched_bookings '
+                         . 'WHERE resource=? AND fromtime>=? AND fromtime<?'
+                         . 'AND bookedfor NOT IN (' . (join ',', map { '?' } keys %$exclude) . ')');
+    $q->execute($$r{id}, $dtstart, $dtend, (keys %$exclude));
+    my $totalduration;
+    while (my $b = $q->fetchrow_hashref()) {
+      ++$totalbookings;
+      use Data::Dumper; push @gatheredstat, '<!-- ' . Dumper($b) . ' -->' if $debug > 1;
+      if (not $$b{isfollowup}) {
+        my $begin = DateTime::From::MySQL($$b{fromtime});
+        #my $end = DateTime::From::MySQL(  ($$b{doneearly}) ? $$b{doneearly} : $$b{until}  );
+        my $end = DateTime::From::MySQL(  $$b{until}  );
+        my $dur = $end - $begin; # Should yield a DateTime::Duration object.
+        $totalduration = (ref $totalduration ? $totalduration + $dur : $dur);
+      }
+    }
+    $durinhours = (ref $totalduration ? $totalduration->in_units('hours') : '0');
+    $totalbookings ||= 0;
+    if ($dtend->clone()->add(days => 1) lt DateTime->now(time_zone => $include::localtimezone)) {
+      addrecord("resched_usage", +{ resource  => $$r{id},
+                                    startdate => DateTime::Format::ForDB($dtstart),
+                                    enddate   => DateTime::Format::ForDB($dtend),
+                                    bookings  => $totalbookings,
+                                    hours     => $durinhours,
+                                    exclude   => join(";", sort { $a cmp $b } keys %$exclude),
+                                  });
+    }
+  }
+  return ($totalbookings, $durinhours);
 }
 
 sub searchresults {

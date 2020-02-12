@@ -34,6 +34,14 @@ Version 0.9.9:
     and add their names and phone numbers to the list for the program.
     The names added this way are flagged as self-signup, so staff can
     tell which people signed themselves up online.
+  * Usage statistics can now be cached, once gathered.  Sites upgrading
+    from earlier versions must run create-tables.pl to create the
+    table where they are stored.  Note that changing the list of
+    "excluded" booking names invalidates the cache, which will lead to
+    the stats being regathered.  Changing the list of resources or
+    their category assignments doesn't, because stats are cached on
+    a per-resource basis, so moving a resource to a new category just
+    retroactively moves its cached stats to the new category.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

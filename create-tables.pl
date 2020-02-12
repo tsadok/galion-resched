@@ -92,6 +92,17 @@ $db->prepare(
      )"
     )->execute();
 
+$db->prepare("CREATE TABLE IF NOT EXISTS
+              resched_usage (
+                id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                resource  integer NOT NULL,
+                startdate datetime,
+                enddate   datetime,
+                bookings  integer,
+                hours     decimal,
+                exclude   mediumtext
+              )"
+            )->execute();
 
 $db->prepare(
     "CREATE TABLE IF NOT EXISTS
