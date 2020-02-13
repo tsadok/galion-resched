@@ -2389,8 +2389,6 @@ sub gatherstats {
 
 sub getstatsforadaterange {
   my ($categories, $startstats, $endstats) = @_;
-  # TODO:  Make this return something that specifies the date range,
-  #        so that if we gather for multiple ranges the results make sense.
   my @category = @$categories;
   my @allcategory = include::categories();
   my (@gatheredstat);
@@ -2401,7 +2399,6 @@ sub getstatsforadaterange {
     @resid = categoryitems($category, \@allcategory);
     my ($totaltotalbookings, $totaldurinhours);
     push @gatheredstat, '<div>&nbsp;</div><table><thead><tr><th colspan="4"><strong>' . "$category</strong></th></tr>\n\n";
-    # <div><strong>' . ucfirst $category . '</strong></div>' . "\n<table>\n";
     for $rid (@resid) {
       my %r = %{getrecord('resched_resources', $rid)};
       my ($totalbookings, $durinhours) = get_resource_usage_for_a_date_range(\%r, $startstats, $endstats, \%exclude);
@@ -2411,7 +2408,6 @@ sub getstatsforadaterange {
       $totaltotalbookings += $totalbookings;
       $totaldurinhours    += $durinhours;
     }
-    #my $durinhours = (ref $totaltotalduration ? $totaltotalduration->in_units('hours') : '0');
     push @gatheredstat, qq[<tr><td><strong>Subtotal:</strong></td>
               <td class="numeric">$totaltotalbookings bookings</td>
               <td> totalling</td><td class="numeric">$totaldurinhours hours.</td></tr></table>\n];
@@ -2450,6 +2446,15 @@ sub get_resource_usage_for_a_date_range {
       $totalbookings += $b;
       $durinhours    += $h;
     }
+    addrecord("resched_usage", +{ resource  => $$r{id},
+                                  startdate => DateTime::Format::ForDB($dtstart),
+                                  enddate   => DateTime::Format::ForDB($dtend),
+                                  bookings  => $totalbookings,
+                                  hours     => $durinhours,
+                                  exclude   => join(";", sort { $a cmp $b } keys %$exclude),
+                                });
+    # No need to test that the add was successful, as this is a cache we're populating.
+    # Worst case scenario is the data have to be gathered/calculated again next time.
   } else {
     my $db = dbconn();
     my $q = $db->prepare('SELECT * FROM resched_bookings '
@@ -2478,6 +2483,8 @@ sub get_resource_usage_for_a_date_range {
                                     hours     => $durinhours,
                                     exclude   => join(";", sort { $a cmp $b } keys %$exclude),
                                   });
+      # No need to test that the add was successful, as this is a cache we're populating.
+      # Worst case scenario is the data have to be gathered/calculated again next time.
     }
   }
   return ($totalbookings, $durinhours);
