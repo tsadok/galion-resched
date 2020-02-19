@@ -256,6 +256,12 @@ table.formtable tbody th {
   text-align:          left;
 }
 
+table.table th,
+table.table td {
+  border-bottom:        1pt solid;
+  border-right:         1pt solid;
+}
+
 div.calmdaynum,
 div.calmdaynum a {
   font-size:           1.5em;
@@ -583,3 +589,9 @@ div.msgbody_html {
   border-radius:        0.5em;
   background-color:     #99AAAA;
 }
+
+
+div.statcategory {
+  font-size:            50%;
+}
+

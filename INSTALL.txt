@@ -10,12 +10,12 @@ be done when installing this software.
     with cgi execution, chmod ugo-x dbconfig.pl should do this.)
 
  2. Ensure that you have the prerequisite software installed.
-   * You need an RDBMS.  At this time MySQL is the only one supported,
+   * You need an RDBMS.  At this time MariaDB is the only one supported,
      though it would probably only require minor changes (mostly in
      db.pl) to support Postgres or any other reasonably capable DBMS.
      I've done Postgres support in another project (jonadabot) and
      will probably port that over once it has been tested a bit more,
-     but that hasn't been done yet, so for now MySQL.
+     but that hasn't been done yet, so for now MariaDB.
    * You need a web server, of course.  I've only tested with Apache.
      The web server must be configured to serve out the directory
      where you unzipped resched, and the .cgi extension must be
@@ -28,6 +28,12 @@ be done when installing this software.
      to use the Circ Desk Mail feature, add Mail::POP3Client.  If
      you wish to automaticallysend meeting room policy by email,
      add Email::Valid and Mail::Sendmail.
+   * If you want to see month-by-month and year-by-year graphs of
+     ReSched usage, you need my svg_graph library.  There is a public
+     git repository here:  https://github.com/tsadok/svg_graph.git
+     Either clone that repository, or download and unzip the library,
+     in a directory somewhere, then use config.cgi to specify that
+     directory path in the svg_graphs_install_dir variable.
 
  3. Open ajax.js in a text editor and change the basedir variable (on
     the second line) so that it contains the public URI of the resched
@@ -46,12 +52,14 @@ be done when installing this software.
     GRANT ALL PRIVILEGES ON resched.* TO username@localhost
           IDENTIFIED BY 'somepassword';
 
- 6. Also, if you have not already done so, check that the MySQL root
+ 6. Also, if you have not already done so, check that the MariaDB root
     user account is password protected.  (In modern distributions this
-    should be the case by default, but check.)
+    should happen when MariaDB is installed, but check.)
 
  7. Run the create-tables.pl Perl script.  This will create the empty
-    database tables.  
+    database tables.  If you are upgrading from a previous version,
+    this is safe to run; it will only create tables that do not exist
+    already.
 
  8. If you are upgrading from a previous version, check CHANGES.txt
     to see if there are fields you need to add to existing tables.
@@ -109,4 +117,4 @@ be done when installing this software.
 
 17. If you have questions or comments or bug reports, you can
     contact the author at the following address:
-        rescheddev@galionlibrary.net
+        rescheddev@galionlibrary.org

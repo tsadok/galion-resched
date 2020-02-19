@@ -164,6 +164,12 @@ table tbody th {
   text-align:           left;
 }
 
+table.table th,
+table.table td {
+  border-bottom:        1pt solid;
+  border-right:         1pt solid;
+}
+
 input[type=text], input[type=checkbox]
 textarea, select {
   border-style:         inset;

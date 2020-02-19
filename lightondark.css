@@ -253,6 +253,12 @@ table.searchresults td {
   border:              1px solid #223333;
 }
 
+table.table th,
+table.table td {
+  border-bottom:        1pt solid;
+  border-right:         1pt solid;
+}
+
 div.calmdaynum,
 div.calmdaynum a {
   font-size:           1.5em;

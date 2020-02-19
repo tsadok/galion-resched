@@ -412,7 +412,10 @@ our $footer = qq[<div class="footer">
 our $localtimezone = main::getvariable('resched', 'time_zone') || "America/New_York";
 
 sub categories {
-  my $categories = main::getvariable('resched', 'categories');
+  my ($catvariable) = @_;
+  my $categories = $catvariable
+    ? main::getvariable('resched', $catvariable) || main::getvariable('resched', 'categories')
+    : main::getvariable('resched', 'categories');
   my @category;
   if ($categories) {
     @category = map {

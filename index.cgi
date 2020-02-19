@@ -8,6 +8,8 @@ our $didyoumean_enabled = 1;
 $ENV{PATH}='';
 $ENV{ENV}='';
 
+use strict;
+use Carp;
 use DateTime;
 use DateTime::Span;
 use HTML::Entities qw(); sub encode_entities{ my $x = HTML::Entities::encode_entities(shift @_);
@@ -15,6 +17,7 @@ use HTML::Entities qw(); sub encode_entities{ my $x = HTML::Entities::encode_ent
                                               return $x; }
 use Math::SigFigs;
 use Data::Dumper;
+use File::Spec::Functions;
 
 require "./forminput.pl";
 require "./include.pl";
@@ -23,8 +26,10 @@ require "./db.pl";
 require "./datetime-extensions.pl";
 require "./prefs.pl";
 
-our %input = %{getforminput()};
+our %input = %{getforminput() || +{}};
 
+our @dt; # I suspect some bugs may be lurking here.
+our $debugtext;
 our $persistentvars = persist();
 our $hiddenpersist  = persist('hidden');
 my $datevars = join "&amp;", grep { $_ } map { $input{$_} ? "$_=$input{$_}" : '' } qw (year month mday magicdate startyear startmonth startmday endyear endmonth endmday);
@@ -112,6 +117,8 @@ if ($auth::user) {
       print include::standardoutput('Mark Resources Unavailable for Closed Dates:',
                                     daysclosedform(), $ab, $input{usestyle}, );
     }
+  } elsif ($input{action} eq "showgraph") {
+    showgraph();
   } elsif ($input{booking}) {
     # User wants to view details of a specific booking.
     my ($content, $title) = viewbooking();
@@ -161,7 +168,7 @@ if ($auth::user) {
           my @autochanges = @{updaterecord('resched_bookings', \%ob)};
           if (@autochanges) {
             push @result, qq[<div class="info">The following changes were made<!-- to record $ob{id} -->:\n<ul>\n]
-              . (join "\n", map { qq[<li>Changed $$_[0] to $$_[1] (was $$_[2])<!-- $$_[3] --></li>] } @changes)
+              . (join "\n", map { qq[<li>Changed $$_[0] to $$_[1] (was $$_[2])<!-- $$_[3] --></li>] } @autochanges)
               . '</ul></div>';
           } else {
             push @result, qq[<p class="info">The timeslot could not be auto-extended.</p>]
@@ -278,7 +285,7 @@ if ($auth::user) {
       # The main booking has been switched to the target resource.
       if (@targetbook) {
         push @listing, "<!-- target bookings:  " . encode_entities(Dumper(\@targetbook)) . " -->" if $debug;
-        for $tb (@targetbook) {
+        for my $tb (@targetbook) {
           $$tb{resource} = $mainres{id};
           my @changes = @{updaterecord('resched_bookings', $tb)};
           if (@changes) {
@@ -312,7 +319,7 @@ if ($auth::user) {
     if ($input{action} eq 'confirm') {
       my @cancellation;
       my $q = (dbconn()->prepare("DELETE FROM resched_bookings WHERE id=?"));
-      for $booking (split /,\s*/, $input{cancel}) {
+      for my $booking (split /,\s*/, $input{cancel}) {
         my $fb = getrecord('resched_bookings', $booking);
         if ($$fb{followedby}) {
           push @cancellation, "<p>I'm sorry, but I can't delete a booking after the patron has already finished early and been followed by someone else.  It would leave the poor followup booking orphaned.</p>";
@@ -335,7 +342,7 @@ if ($auth::user) {
                                    );
     } else {
       my @cancellation;
-      for $booking (split /,\s*/, $input{cancel}) {
+      for my $booking (split /,\s*/, $input{cancel}) {
         my %b = %{getrecord('resched_bookings', $booking)};
         my %r = %{getrecord('resched_resources', $b{resource})};
         my $ftime = include::datewithtwelvehourtime(DateTime::From::MySQL($b{fromtime}));
@@ -493,8 +500,8 @@ if ($auth::user) {
     my %rescat =
       map {
         my $cat = $_;
-        my $catname = shift @$cat;
-        map { $_ => $catname } categoryitems($catname, \@category); # @$cat;
+        my ($catname, @catitem) = @$cat;
+        map { $_ => $catname } @catitem; # categoryitems($catname, \@catitem); # @$cat;
       } @category;           ;
     my @rescb = map {[$rescat{$$_{id}}, qq[<div><span class="nobr"><input type="checkbox" value="$$_{id}" name="view" />&nbsp;$$_{name}</span></div>]]} sort { $$a{id} <=> $$b{id} } @res;
     %rescat = ();
@@ -829,7 +836,7 @@ sub makebooking {
               'Contact Information Missing', undef);
     }
     # Plus there'll be all those extra form fields, which have to be added to the notes:
-    $input{notes} .= "\n==============================\n" . assemble_extranotes($res);
+    $input{notes} .= "\n==============================\n" . assemble_extranotes(\%res);
   }
   my $redirect_header = redirect_header(\%res, $when); # tentatively
   my @booking_result = map {
@@ -951,6 +958,31 @@ sub assemble_extranotes {
       $extranotes .= qq[Send meeting room policy by U.S. Mail to $snail\n]
     }}
   return $extranotes;
+}
+
+sub categorycolor {
+  my ($category) = @_;
+  my ($catcolors) = getvariable("resched", "statgraphcolors");
+  my %cclr = map {
+    chomp;
+    (split /[:]/, $_);
+  } grep {
+    $_ and not /^#/
+  } split /^/, ($catcolors || "");
+  return $cclr{$category};
+}
+
+sub rescolor {
+  my ($resource) = @_;
+  if (not ref $resource) {
+    ($resource) = getrecord("resched_resources", $resource);
+  }
+  my $bgc = (ref $resource) ? ($$resource{bgcolor} || undef) : undef;
+  return if not defined $bgc;
+  my %bgfn       = ( darkonlight => 'lightbg', lightondark => 'darkbg', 'lowcontrast' => 'lowcontrastbg');
+  my $bgcolor    = getrecord("resched_booking_color", $bgc) || +{};
+  my $stylesht   = $input{usestyle} || 'lowcontrast';
+  return lc $$bgcolor{$bgfn{$stylesht} || 'lowcontrastbg'};
 }
 
 sub bookingstyle {
@@ -1215,10 +1247,11 @@ sub newbooking {
 
 sub aliassearch {
   my $alias = include::normalisebookedfor($input{alias});
+  my @arec;
   {
     my %a = map { $$_{id} => $_
                 } searchrecord('resched_alias', 'alias', $alias),
-                  searchrecord('resched_alias', 'canon', $alias);
+                searchrecord('resched_alias', 'canon', $alias);
     @arec = map { $a{$_} } sort { $$a <=> $$b } keys %a;
   }
   if (not scalar @arec) {
@@ -1297,7 +1330,6 @@ sub overview {
   my $cutoffwarn = "";
   my $cutoffmonths = getvariable('resched', 'privacy_cutoff_old_schedules');
   $cutoffmonths = 12 if not defined $cutoffmonths;
-  my $origdaycount = scalar @dt;
   if ($cutoffmonths > 0) {
     my $cutoff = DateTime->now(time_zone => $include::localtimezone)->clone()->subtract( months => $cutoffmonths );
     if ($begdt < $cutoff) {
@@ -1440,7 +1472,7 @@ sub doview {
       @res = split /,\s*/, $input{view};
     }
 
-    my %res;
+    my (%res, @thead, @tbody);
     for my $id (@res) {
       $res{$id} =
         {
@@ -1465,7 +1497,7 @@ sub doview {
     # For the table's start time, we just want the earliest of the
     # starttimes:
     my $t = $starttime[0]; for (@starttime) { $t = $_ if $_ < $t }
-    $tablestarttime=$t;
+    my $tablestarttime=$t;
 
 
     # What day(s) are we showing?
@@ -1548,10 +1580,10 @@ sub doview {
     my %endingtime = include::closingtimes();
     #warn Dumper(\%endingtime);
 
-    @col;
+    my @col;
     # For each day we're showing, we want columns for each resource.
-    for $dt (@dt) {
-      for $r (@res) {
+    for my $dt (@dt) {
+      for my $r (@res) {
         my $end = $endingtime{$dt->wday()};
         my $schedule = $s{$res{$r}->{schedule}};
         $$schedule{firsttime} =~ /(\d{2})[:](\d{2})[:]\d+/;
@@ -1611,7 +1643,7 @@ sub doview {
     my $maxnts; # Each iteration of the loop below calculates an $nts
                 # value (number of timeslots); we want the largest one
                 # for the next loop.
-    for $c (@col) {
+    for my $c (@col) {
       # We must construct the column.  First we place appointments
       # already booked, then we place the empty timeslots at the
       # correct intervals, then we calculate how many rows each one
@@ -1807,10 +1839,10 @@ sub doview {
       # Also, mark off the final closing time at the end of the day:
       $$c{tdcontent}[$nts] = "(closing)<!-- nts: $nts -->";
     }
-    for $c (@col) {
+    for my $c (@col) {
       # Calculate the rowspan values:
       my $rsp = 0;
-      for $tsn (reverse 0 .. $maxnts) {
+      for my $tsn (reverse 0 .. $maxnts) {
         if ($$c{tdcontent}[$tsn]) {
           $$c{tdrowspan}[$tsn] = ++$rsp;
           # Now, what about inserting some blank lines (if there's room) before the doneearly link?
@@ -1828,7 +1860,7 @@ sub doview {
     # Great, now create the actual rows...  but how many of them?
     my $lastendtime = (sort { $a <=> $b } map { $$_{end}->min() + (60*$$_{end}->hour()) } @col)[-1];
     my $numofrows = ($lastendtime - $tablestarttime) / $gcf;
-    for $row (0 .. $numofrows) {
+    for my $row (0 .. $numofrows) {
       my $rowtime = $tablestarttime + ($gcf * $row);
       my ($label, $beforeopen, $labelclass); {
         my $ampm = "<!-- am -->";
@@ -1839,7 +1871,7 @@ sub doview {
         if ($hour > 12) {
           $ampm = "<!-- pm -->"; $hour -= 12;
         }
-        $min  = sprintf "%02d", ($rowtime % 60);
+        my $min  = sprintf "%02d", ($rowtime % 60);
         $label = "<!-- $rowtime -->$hour:$min$ampm";
         if ($beforeopen) { $label = '<!-- before open -->'; $labelclass = 'beforeopen' }
       }
@@ -2130,7 +2162,7 @@ sub availstats_for_category {
 		 qq[<tr><th>$dow</th><td class="numeric">$avg</td>]
 		   . (join "", map { my $n = $_;
 				     $availstat{bydow}{$dow}{cnt}{total}
-				       ? (sprintf(qq[<td class="numeric"><div>%1d times</div>], $availstat{bytime}{$t}{cnt}{$n},)
+				       ? (sprintf(qq[<td class="numeric"><div>%1d times</div>], $availstat{bytime}{$dow}{cnt}{$n},)
 					  . qq[<div>] . threeplaces($availstat{bydow}{$dow}{cnt}{$n} * 100 / $availstat{bydow}{$dow}{cnt}{total}) . qq[%</div></td>])
 				       : qq[<td class="numeric">[none]</td>] # This datum notwithstanding, the column is numeric.
 				     } sort { $a <=> $b } grep { not /total/ } keys %{$availstat{overall}{cnt}}) . qq[</tr>] } @dow) . qq[
@@ -2294,7 +2326,13 @@ sub gatherstats {
   if ($input{resource}) {
     @category = (['Selected Resource(s)' => split /,\s*/, $input{resource}]);
   } else {
-    @category = include::categories();
+    @category = include::categories((($input{stats} eq "monthbymonth") or ($input{stats} eq "yearbyyear"))
+                                    ? 'statgraphcategories' : 'categories');
+  }
+  if ($input{stats} eq 'monthbymonth') {
+    return month_by_month_stats("months", \@category);
+  } elsif ($input{stats} eq 'yearbyyear') {
+    return month_by_month_stats("years", \@category);
   }
   my ($startstats, $endstats);
   my $now = DateTime->now(time_zone => $include::localtimezone);
@@ -2395,11 +2433,12 @@ sub getstatsforadaterange {
   my %exclude = map { (lc $_) => 1 } map { $_, qq[ $_ ] }
     split /,\s*/, (getvariable('resched', 'nonusers') || 'closed,maintenance,out of order');
   for (@category) {
-    ($category, @resid) = @$_;
-    @resid = categoryitems($category, \@allcategory);
+    my ($category, @resid) = @$_;
+    @resid = categoryitems($category, \@allcategory)
+      if not scalar @resid;
     my ($totaltotalbookings, $totaldurinhours);
     push @gatheredstat, '<div>&nbsp;</div><table><thead><tr><th colspan="4"><strong>' . "$category</strong></th></tr>\n\n";
-    for $rid (@resid) {
+    for my $rid (@resid) {
       my %r = %{getrecord('resched_resources', $rid)};
       my ($totalbookings, $durinhours) = get_resource_usage_for_a_date_range(\%r, $startstats, $endstats, \%exclude);
       push @gatheredstat, qq[<tr><td>$r{name}:</td>
@@ -2417,6 +2456,7 @@ sub getstatsforadaterange {
 
 sub get_resource_usage_for_a_date_range {
   my ($r, $dtstart, $dtend, $exclude) = @_;
+  my (@gatheredstat);
   my ($stat) = findrecord("resched_usage",
                           resource  => $$r{id},
                           startdate => DateTime::Format::MySQL->format_datetime($dtstart),
@@ -2488,6 +2528,268 @@ sub get_resource_usage_for_a_date_range {
     }
   }
   return ($totalbookings, $durinhours);
+}
+
+sub stat_graph_category_helper {
+  my ($category, $resources, $interval, $stathash, $resnames, $monthsort, $subcats) = @_;
+  $resources = +[ categoryitems($category, include::categories()) ]
+    if not scalar @$resources;
+  my %exclude = map { (lc $_) => 1 } map { $_, qq[ $_ ] }
+    split /,\s*/, (getvariable('resched', 'nonusers') || 'closed,maintenance,out of order');
+  for my $rid (@$resources) {
+    if ($rid =~ /^\d+$/) {
+      my ($res) = getrecord("resched_resources", $rid);
+      $$resnames{$rid} = $$res{name};
+      my @ru = findrecord("resched_usage", resource => $rid);
+      # We only want the ones that represent months.
+      my @monthru;
+      eval {
+        @monthru = grep {
+          my $u = $_;
+          my $s = DateTime::From::MySQL($$u{startdate});
+          my $e = DateTime::From::MySQL($$u{enddate});
+          my $month = $s->clone()->add( $interval => 1 );
+          (($s->mday == 1) and ($month->ymd() eq $e->ymd()));
+        } @ru;
+      }; croak qq[DateTime error in stat_graph_category_helper.  Verify whether '$interval' is a valid DateTime component.] if $@;
+      for my $usage (@monthru) {
+        my $s = DateTime::From::MySQL($$usage{startdate});
+        $$monthsort{$s->year() . " " . $s->month_abbr()} = (12 * $s->year()) + $s->month();
+        my $monthlabel = $s->year() . " " . $s->month_abbr;
+        if ($$usage{exclude} eq join(";", sort { $a cmp $b } keys %exclude)) {
+          # If there's more than one, we prefer the one that uses the current exclude list.
+          $$stathash{$category}{$rid}{$monthlabel} = $usage;
+        } else {
+          $$stathash{$category}{$rid}{$monthlabel} ||= $usage;
+        }
+      }
+    } else {
+      #warn "       - subcat: $rid\n";
+      $$subcats{$rid}{$category}++;
+    }}
+  # Add up the totals:
+  for my $rid (@$resources) {
+    for my $month (keys %{$$stathash{$category}{$rid}}) {
+      for my $field (qw(bookings hours)) {
+        $$stathash{$category}{total}{$month}{$field} += $$stathash{$category}{$rid}{$month}{$field};
+        $$stathash{TOTAL}{$month}{$field}            += $$stathash{$category}{$rid}{$month}{$field};
+      }}}
+}
+
+sub stat_graph_subcategory_helper {
+  my ($subcats, $stathash) = @_;
+  for my $sc (keys %$subcats) {
+    for my $parent (keys %{$$subcats{$sc}}) {
+      for my $ml (keys %{$$stathash{$sc}{total}}) {
+        for my $field (qw(bookings hours)) {
+          $$stathash{$parent}{$sc}{$ml}{$field}    = $$stathash{$sc}{total}{$ml}{$field};
+          $$stathash{$parent}{total}{$ml}{$field} += $$stathash{$sc}{total}{$ml}{$field};
+        }}}}
+}
+
+sub month_by_month_stats {
+  my ($interval, $categories) = @_;
+  $interval ||= "months";
+  my $title = ($interval eq "years") ? 'Year-By-Year Usage Statistics (Scheduled Resources)' : 'Month-By-Month Usage Statistics (Scheduled Resources)';
+  my @allcategory = include::categories();
+  my ($category, @resid, %stat, %monthsort, %resname, %subcat, @catinfo);
+  for (@$categories) {
+    ($category, @resid) = @$_;
+    stat_graph_category_helper($category, \@resid, $interval, \%stat, \%resname, \%monthsort, \%subcat);
+  }
+  stat_graph_subcategory_helper(\%subcat, \%stat);
+  # Now put together the info into nice tables and graphs for the user:
+  for (@$categories) {
+    ($category, @resid) = @$_;
+    @resid = categoryitems($category, \@allcategory)
+      if not scalar @resid;
+    push @catinfo, qq[<div class="statcategory">
+     <div class="h">$category</div>
+     <div class="p">
+       <table class="usagestats monthbymonthbookings table"><thead>
+         <tr><th><span class="booking">$category Bookings</span></th>
+             ] . (join "", map {
+           qq[<th>$_</th>]
+         } sort {
+           $monthsort{$a} <=> $monthsort{$b}
+         } keys %{$stat{$category}{total}}) . qq[</tr>
+       </thead><tbody>
+          ] . join("\n          ", map {
+            my $rid = $_;
+            my $name = (($rid eq "total") ? qq[$category (total)] : $resname{$rid}) || $rid;
+            qq[<tr><th>$name</th>] . (join "", map {
+              my $mon = $_;
+              qq[<td><span class="booking">$stat{$category}{$rid}{$mon}{bookings}</span></td>]
+            } sort {
+              $monthsort{$a} <=> $monthsort{$b}
+            } keys %{$stat{$category}{total}}) . qq[</tr>]
+          } (@resid, "total")) . qq[
+       </tbody></table>
+       <img alt="[graph: $category Bookings over time]" src="index.cgi?action=showgraph&amp;graph=$input{stats}&amp;field=bookings&amp;category=$category] .
+         (($input{resource}) ? qq[&amp;resource=$input{resource}] : ""). qq[" />
+     </div>
+     <div class="p">
+       <table class="usagestats monthbymonthhours table"><thead>
+         <tr><th><span class="booking">$category Hours</span></th>
+             ] . (join "", map {
+           qq[<th>$_</th>]
+         } sort {
+           $monthsort{$a} <=> $monthsort{$b}
+         } keys %{$stat{$category}{total}}) . qq[</tr>
+       </thead><tbody>
+          ] . join("\n          ", map {
+            my $rid = $_;
+            my $name = (($rid eq "total") ? qq[$category (total)] : $resname{$rid}) || $rid;
+            qq[<tr><th>$name</th>] . (join "", map {
+              my $mon = $_;
+              qq[<td><span class="hours">$stat{$category}{$rid}{$mon}{hours}</span></td>]
+            } sort {
+              $monthsort{$a} <=> $monthsort{$b}
+            } keys %{$stat{$category}{total}}) . qq[</tr>]
+          } (@resid, "total")) . qq[
+       </tbody></table>
+       <img alt="[graph: $category Hours Booked over time]" src="index.cgi?action=showgraph&amp;graph=$input{stats}&amp;field=hours&amp;category=$category] .
+         (($input{resource}) ? qq[&amp;resource=$input{resource}] : ""). qq[" />
+     </div>
+    </div>];
+  }
+  # TODO: TOTALS
+  my ($ivalsing) = $interval =~ /(.*)s$/;
+  print include::standardoutput($title,
+                                (include::infobox("Based on Cached Previously-Viewed Statistics",
+      qq[In order to show these statistics over a long period of time, it is necessary for
+         performance reasons to rely on cached statistics for each $ivalsing.  Only $interval whose data have been
+         previously gathered, will be shown here.  If some $interval are missing, try visiting their per-$ivalsing
+         pages (choose <q>last $ivalsing</q>, then <q>previous $ivalsing</q> at the bottom of that page, etc.) first,
+         then come back to the ${ivalsing}-by-$ivalsing statistics.]) . join qq[\n\n<hr />\n\n], @catinfo),
+                                undef, undef,
+                                qq[]
+                               );
+}
+
+sub svggraphs_not_enabled {
+  return qq[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   version="1.1"
+   width="300"
+   height="200"
+   id="svg2">
+  <defs
+     id="defs4" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     transform="translate(0,-852.36218)"
+     id="layer1">
+    <rect
+       width="280"
+       height="180"
+       x="10"
+       y="862.36218"
+       id="rect3753"
+       style="fill:#331f00;fill-opacity:1;stroke:none" />
+    <path
+       d="m 233.78125,26.8125 c -0.86059,0.02736 -1.63344,0.26407 -2.34375,0.6875 -0.71032,0.40983 -1.29529,0.94596 -1.71875,1.65625 -0.4098,0.71035 -0.59375,1.49293 -0.59375,2.3125 l 0,24.34375 c 0,1.31137 0.44219,2.42854 1.34375,3.34375 0.91521,0.90156 2.01086,1.34375 3.28125,1.34375 0.84691,0 1.61976,-0.19761 2.34375,-0.59375 0.72397,-0.4098 1.29528,-0.96352 1.71875,-1.6875 0.43711,-0.72397 0.65624,-1.52807 0.65625,-2.375 l 0,-8.875 c -1e-5,-0.66933 0.24064,-1.23671 0.71875,-1.6875 0.47808,-0.45077 1.04546,-0.68749 1.6875,-0.6875 0.62834,0.01367 1.15661,0.25825 1.59375,0.75 0.4371,0.47811 0.65623,1.04156 0.65625,1.65625 l 0,8.84375 c -2e-5,1.29771 0.45584,2.39729 1.34375,3.3125 0.90155,0.91522 1.98354,1.4317 3.28125,1.5 1.33866,0 2.49101,-0.45978 3.40625,-1.375 0.92886,-0.92888 1.37498,-2.08122 1.375,-3.40625 l 0,-11 c -2e-5,-1.13377 -0.21522,-2.22156 -0.625,-3.21875 -0.39616,-0.99716 -0.94595,-1.81698 -1.65625,-2.5 -0.71034,-0.69664 -1.58686,-1.26009 -2.625,-1.65625 -1.02451,-0.39612 -2.13195,-0.59373 -3.375,-0.59375 -1.27039,2e-5 -2.64974,0.23674 -4.125,0.6875 -0.60106,0.21858 -1.1645,0.45923 -1.65625,0.71875 l 0,-6.8125 c -1e-5,-0.84689 -0.20155,-1.6334 -0.625,-2.34375 -0.40981,-0.72395 -0.97719,-1.29526 -1.6875,-1.71875 -0.71033,-0.42343 -1.50077,-0.62496 -2.375,-0.625 z M 75.0625,29.28125 c -0.983542,3e-5 -1.867922,0.30131 -2.6875,0.875 -0.80596,0.56009 -1.412449,1.32508 -1.78125,2.28125 l -4.9375,13.75 L 60.75,32.4375 C 60.381172,31.46767 59.805932,30.70268 59,30.15625 c -0.805946,-0.54637 -1.739165,-0.81247 -2.75,-0.8125 -0.805943,3e-5 -1.514233,0.13701 -2.15625,0.4375 -0.860581,0.42349 -1.55708,1.02025 -2.0625,1.8125 -0.491759,0.79231 -0.71875,1.62579 -0.71875,2.5 0,0.60106 0.115461,1.21148 0.375,1.8125 L 61.09375,57.25 c 0.969849,2.24024 2.443129,3.34375 4.4375,3.34375 0.505405,0 1.076716,-0.07242 1.71875,-0.25 1.243043,-0.36882 2.262343,-1.39991 3,-3.09375 l 9.40625,-21.34375 c 0.245852,-0.5737 0.343722,-1.18412 0.34375,-1.8125 -2.8e-5,-0.90153 -0.227018,-1.72135 -0.71875,-2.5 -0.491787,-0.77859 -1.170697,-1.38901 -2.03125,-1.8125 -0.724005,-0.32781 -1.463544,-0.49997 -2.1875,-0.5 z m 20,0 c -3.387693,3e-5 -6.412472,0.84717 -9.0625,2.5 -2.431485,1.52995 -4.317574,3.463 -5.65625,5.8125 -1.325021,2.33588 -2.000001,4.8148 -2,7.4375 -10e-7,1.99437 0.412809,3.96654 1.21875,5.90625 0.696657,1.6392 1.620147,3.09097 2.78125,4.375 1.161094,1.28405 2.518913,2.33666 4.0625,3.15625 1.557229,0.80594 3.275089,1.35966 5.1875,1.6875 1.393305,0.21856 2.665044,0.34375 3.8125,0.34375 2.008,0 3.864709,-0.28369 5.53125,-0.84375 1.68015,-0.56006 3.15343,-1.37201 4.4375,-2.4375 1.29767,-1.07913 2.35421,-2.3548 3.1875,-3.84375 0.75127,-1.35233 1.24623,-2.66712 1.4375,-3.9375 0.19116,-1.01083 0.28121,-2.01254 0.28125,-2.96875 -4e-5,-3.29205 -1.50849,-4.93748 -4.5,-4.9375 l -8.125,0 c -0.764979,2e-5 -1.469339,0.21129 -2.125,0.59375 -0.642037,0.3825 -1.162447,0.88924 -1.53125,1.53125 -0.368836,0.62837 -0.56645,1.33273 -0.59375,2.125 -1.6e-5,1.18843 0.399133,2.21559 1.21875,3.0625 0.833241,0.84693 1.860401,1.28126 3.0625,1.28125 l 2.53125,0 c -0.601062,0.83326 -1.645812,1.38306 -3.09375,1.65625 -0.710339,0.17757 -1.418628,0.25001 -2.15625,0.25 -1.215755,1e-5 -2.311405,-0.22306 -3.28125,-0.6875 -0.956213,-0.4781 -1.746653,-1.13941 -2.375,-2 C 88.684129,48.46952 88.24587,47.40325 88,46.1875 c -0.08197,-0.45077 -0.12501,-0.89689 -0.125,-1.375 -1e-5,-0.36881 0.04303,-0.74251 0.125,-1.125 0.20489,-1.20206 0.621629,-2.27226 1.25,-3.1875 0.628347,-0.9152 1.401197,-1.59804 2.34375,-2.0625 0.942525,-0.47808 2.030314,-0.71873 3.21875,-0.71875 1.47526,2e-5 3.04248,0.39524 4.75,1.1875 0.204878,0.08198 0.52375,0.21896 0.90625,0.4375 l 1.75,0.9375 0.0312,0 c 0.81957,0.34152 1.58849,0.50002 2.3125,0.5 0.98349,2e-5 1.83456,-0.29153 2.53125,-0.90625 0.98349,-0.86056 1.46872,-1.84075 1.46875,-2.90625 -3e-5,-1.78944 -1.17203,-3.46032 -3.5625,-5.03125 -1.17479,-0.71029 -2.4426,-1.2816 -3.78125,-1.71875 -1.393342,-0.43709 -2.819651,-0.72078 -4.28125,-0.84375 -0.819618,-0.0546 -1.437898,-0.09372 -1.875,-0.09375 z m 45.8125,0 c -3.38769,3e-5 -6.41247,0.84717 -9.0625,2.5 -2.43148,1.52995 -4.31757,3.463 -5.65625,5.8125 -1.32502,2.33588 -2,4.8148 -2,7.4375 0,1.99437 0.41281,3.96654 1.21875,5.90625 0.69666,1.6392 1.62015,3.09097 2.78125,4.375 1.1611,1.28405 2.51891,2.33666 4.0625,3.15625 1.55723,0.80594 3.30634,1.35966 5.21875,1.6875 1.3933,0.21856 2.63379,0.34375 3.78125,0.34375 2.008,0 3.86471,-0.28369 5.53125,-0.84375 1.68015,-0.56006 3.15343,-1.37201 4.4375,-2.4375 1.29767,-1.07913 2.35421,-2.3548 3.1875,-3.84375 0.75126,-1.35233 1.24622,-2.66712 1.4375,-3.9375 0.19116,-1.01083 0.28121,-2.01254 0.28125,-2.96875 -4e-5,-3.29205 -1.5085,-4.93748 -4.5,-4.9375 l -8.125,0 c -0.76498,2e-5 -1.46934,0.21129 -2.125,0.59375 -0.64204,0.3825 -1.16245,0.88924 -1.53125,1.53125 -0.36884,0.62837 -0.56645,1.33273 -0.59375,2.125 -2e-5,1.18843 0.43038,2.21559 1.25,3.0625 0.83324,0.84693 1.82915,1.28126 3.03125,1.28125 l 2.53125,0 c -0.60106,0.83326 -1.61456,1.38306 -3.0625,1.65625 -0.71034,0.17757 -1.44988,0.25001 -2.1875,0.25 -1.21576,1e-5 -2.31141,-0.22306 -3.28125,-0.6875 -0.95621,-0.4781 -1.74665,-1.13941 -2.375,-2 -0.62837,-0.87423 -1.06663,-1.9405 -1.3125,-3.15625 -0.0819,-0.45077 -0.12501,-0.89689 -0.125,-1.375 -1e-5,-0.36881 0.043,-0.74251 0.125,-1.125 0.20489,-1.20206 0.62163,-2.27226 1.25,-3.1875 0.62835,-0.9152 1.43245,-1.59804 2.375,-2.0625 0.94253,-0.47808 1.99906,-0.71873 3.1875,-0.71875 1.47526,2e-5 3.07373,0.39524 4.78125,1.1875 0.20488,0.08198 0.4925,0.21896 0.875,0.4375 l 1.75,0.9375 0.0312,0 c 0.81957,0.34152 1.61974,0.50002 2.34375,0.5 0.98349,2e-5 1.80331,-0.29153 2.5,-0.90625 0.98349,-0.86056 1.46871,-1.84075 1.46875,-2.90625 -4e-5,-1.78944 -1.17203,-3.46032 -3.5625,-5.03125 -1.17479,-0.71029 -2.4426,-1.2816 -3.78125,-1.71875 -1.39334,-0.43709 -2.81965,-0.72078 -4.28125,-0.84375 -0.81962,-0.0546 -1.4379,-0.09372 -1.875,-0.09375 z m -101.28125,0.0625 c -0.751313,3e-5 -1.477193,0.0431 -2.1875,0.125 -1.80313,0.21859 -3.423119,0.66078 -4.84375,1.34375 -1.420645,0.68303 -2.584785,1.52044 -3.5,2.53125 -0.819602,0.88793 -1.420292,1.87597 -1.84375,2.96875 -0.4098,1.09282 -0.625001,2.20606 -0.625,3.3125 -1e-6,1.37968 0.291549,2.65142 0.90625,3.8125 0.628358,1.16111 1.522467,2.10612 2.65625,2.84375 1.051814,0.65569 2.327484,1.18396 3.84375,1.59375 l 2.78125,0.8125 0.4375,0.0625 2.21875,0.5625 0.53125,0.15625 0.8125,0.28125 c 0.163905,0.05464 0.25784,0.0977 0.3125,0.125 0.286844,0.17759 0.437485,0.41824 0.4375,0.71875 -1.5e-5,0.2732 -0.146726,0.51385 -0.40625,0.71875 -0.177595,0.15026 -0.508255,0.3185 -1,0.46875 -0.341514,0.12291 -0.719144,0.18751 -1.15625,0.1875 -0.423472,1e-5 -0.908703,-0.06065 -1.46875,-0.15625 -0.177592,-0.04094 -0.418242,-0.084 -0.71875,-0.125 l -0.46875,-0.125 -1.1875,-0.28125 -1.6875,-0.4375 -1.84375,-0.5 C 31.101985,50.23453 30.616755,50.18751 30.125,50.1875 c -1.202083,1e-5 -2.207722,0.6065 -3,1.78125 -0.42346,0.64203 -0.64652,1.39729 -0.6875,2.3125 -1e-6,0.99719 0.18002,1.82674 0.5625,2.46875 0.396139,0.64203 1.122018,1.28183 2.1875,1.9375 1.598214,0.9562 4.055613,1.52751 7.375,1.71875 0.846908,0.0547 1.457328,0.09375 1.8125,0.09375 4.699022,0 8.25207,-1.46542 10.65625,-4.375 1.570875,-1.85775 2.343724,-3.89842 2.34375,-6.125 -2.6e-5,-0.77861 -0.09004,-1.50842 -0.28125,-2.21875 -0.191265,-0.71031 -0.496475,-1.39315 -0.90625,-2.0625 -0.396164,-0.66933 -0.881393,-1.27975 -1.46875,-1.8125 -0.573742,-0.54639 -1.248722,-1.02376 -2,-1.40625 -0.98354,-0.5054 -2.177059,-0.95152 -3.625,-1.375 L 40.3125,40.3125 38.9375,40 38.09375,39.78125 37.8125,39.6875 37,39.46875 C 36.699469,39.38681 36.462749,39.2968 36.3125,39.1875 36.14857,39.06458 36.09374,38.9276 36.09375,38.75 c -1e-5,-0.27318 0.09786,-0.51383 0.34375,-0.71875 0.286849,-0.2322 0.815119,-0.34373 1.59375,-0.34375 0.136588,0 0.24419,-0.0136 0.3125,0 0.08195,0 0.16803,0.01765 0.25,0.03125 L 39,37.78125 l 0.59375,0.15625 1.1875,0.28125 0.5,0.125 L 42.5,38.75 l 0.3125,0.125 c 0.969842,0.27322 1.860022,0.40627 2.625,0.40625 0.72396,2e-5 1.324649,-0.15062 1.84375,-0.4375 0.532718,-0.28684 0.996428,-0.74269 1.40625,-1.34375 0.450757,-0.62834 0.687477,-1.37574 0.6875,-2.25 -2.3e-5,-0.4371 -0.05092,-0.92232 -0.1875,-1.46875 -0.259563,-0.88787 -0.783903,-1.63134 -1.5625,-2.21875 -0.764981,-0.60101 -1.94671,-1.14687 -3.53125,-1.625 -1.434317,-0.40977 -2.942776,-0.59372 -4.5,-0.59375 z m 157.03125,7.1875 c -0.4508,2e-5 -0.85968,0.12521 -1.1875,0.34375 l -3.875,2.0625 0,-0.125 c -1.37967,-1.35232 -3.07994,-2.03123 -5.15625,-2.03125 -0.49177,2e-5 -1.20586,0.10369 -2.09375,0.28125 -1.58456,0.3142 -3.01874,0.97945 -4.34375,2.03125 -1.32503,1.03818 -2.39916,2.37055 -3.21875,3.96875 -0.80594,1.59823 -1.2794,3.33368 -1.375,5.21875 0,1.46163 0.16823,2.77248 0.46875,3.90625 0.30052,1.13379 0.7427,2.20792 1.34375,3.21875 0.88789,1.33869 1.95416,2.41675 3.15625,3.25 1.20207,0.8196 2.41712,1.34787 3.6875,1.59375 0.88789,0.16388 1.69592,0.25 2.40625,0.25 2.15827,0 3.85461,-0.66132 5.125,-2 l 0,-0.21875 3.84375,2.1875 c 1.325,0 2.43824,-0.43826 3.3125,-1.3125 0.87422,-0.87423 1.31248,-1.99533 1.3125,-3.375 l 0,-14.25 c -2e-5,-1.68016 -0.57133,-3.07129 -1.71875,-4.21875 -0.4508,-0.5054 -1.01818,-0.78123 -1.6875,-0.78125 z m 68.5625,0.34375 c -2.06267,2e-5 -3.88027,0.34827 -5.4375,1.03125 -1.54358,0.68302 -2.72924,1.58892 -3.5625,2.75 -0.83326,1.14746 -1.25,2.37615 -1.25,3.6875 0,0.79229 0.15457,1.59639 0.46875,2.375 0.31418,0.72399 0.69181,1.33834 1.15625,1.84375 0.4781,0.50543 1.14915,0.96521 1.96875,1.375 0.83326,0.39615 1.86827,0.75225 3.125,1.09375 l 0.78125,0.21875 1.09375,0.3125 0.84375,0.21875 0.40625,0.125 c 0.0273,0.0137 0.0352,0.0352 0.0625,0.0625 0.0409,0.0137 0.084,0.0352 0.125,0.0625 0.041,0.0137 0.0801,0.01765 0.0937,0.03125 0.30051,0.19125 0.43749,0.51405 0.4375,0.9375 -0.12295,0.24589 -0.34994,0.37501 -0.71875,0.375 l -0.53125,0 -0.25,0 c -0.75131,-0.09561 -1.57113,-0.33626 -2.5,-0.71875 l -0.59375,-0.21875 -0.84375,-0.25 c -0.80594,-0.25953 -1.50244,-0.37499 -2.0625,-0.375 -0.91522,1e-5 -1.70173,0.21914 -2.34375,0.65625 -0.64202,0.42347 -1.08028,1.01237 -1.3125,1.75 -0.12291,0.30053 -0.15625,0.63512 -0.15625,1.03125 0,1.29771 0.88438,2.50489 2.6875,3.625 1.46162,0.86058 3.47289,1.40251 6,1.59375 0.84691,0.0547 1.46126,0.0625 1.84375,0.0625 2.95054,0 5.30034,-0.70436 7.0625,-2.125 1.89872,-1.52991 2.84373,-3.36903 2.84375,-5.5 -2e-5,-1.01083 -0.25826,-1.96371 -0.75,-2.90625 -0.47812,-0.95619 -1.16489,-1.76422 -2.09375,-2.40625 C 270.79771,46.93808 269.87422,46.46071 269,46.1875 l -0.9375,-0.3125 -1.03125,-0.3125 -1.5,-0.5 -0.59375,-0.1875 -0.40625,-0.15625 c -0.0546,-0.0274 -0.084,-0.06645 -0.125,-0.09375 -0.041,-0.0274 -0.10165,-0.0352 -0.15625,-0.0625 -0.28687,-0.20489 -0.43751,-0.41616 -0.4375,-0.59375 -10e-6,-0.08195 0.0607,-0.1544 0.15625,-0.25 l 0.125,-0.125 0.0937,-0.09375 c 0.10927,-0.0273 0.5378,-0.03124 1.34375,-0.03125 0.0956,0 0.28143,0.03915 0.5,0.09375 l 0.65625,0.125 0.625,0.15625 1.28125,0.3125 c 0.86056,0.21857 1.52974,0.31251 2.0625,0.3125 0.34148,1e-5 0.70339,-0.043 1.03125,-0.125 0.72396,-0.17757 1.29527,-0.53368 1.71875,-1.09375 0.42344,-0.57371 0.62498,-1.20564 0.625,-1.875 -2e-5,-0.69664 -0.17611,-1.27188 -0.53125,-1.75 -0.71034,-0.94252 -2.05057,-1.70358 -4.03125,-2.25 -1.25674,-0.34148 -2.68304,-0.49998 -4.28125,-0.5 z m -102.375,0.09375 c -1.28405,2e-5 -2.39729,0.4598 -3.3125,1.375 -0.91522,0.91524 -1.375,2.01482 -1.375,3.3125 l 0,14.1875 c 0,1.28405 0.45978,2.36211 1.375,3.25 0.91521,0.87424 2.02845,1.3125 3.3125,1.3125 0.83325,-0.01366 1.60217,-0.21913 2.3125,-0.65625 0.71031,-0.43712 1.27769,-1.04361 1.6875,-1.78125 0.40979,-0.75129 0.59374,-1.54959 0.59375,-2.4375 l 0,-4.125 c -1e-5,-0.8879 0.043,-1.58832 0.125,-2.09375 0.0956,-0.51907 0.25017,-0.95733 0.46875,-1.3125 0.2322,-0.35515 0.59411,-0.68188 1.03125,-0.96875 0.45076,-0.28685 1.02208,-0.57054 1.71875,-0.84375 0.19123,-0.08195 0.32821,-0.1465 0.4375,-0.1875 0.10927,-0.04097 0.25598,-0.0703 0.40625,-0.125 1.48893,-0.50541 2.56699,-1.13342 3.25,-1.84375 0.68298,-0.72397 1.03123,-1.5653 1.03125,-2.5625 -1e-4,-0.21854 -0.0392,-0.56679 -0.0937,-1.03125 -0.15028,-0.76494 -0.52004,-1.44385 -1.09375,-2.03125 -0.56007,-0.58736 -1.24291,-0.98258 -2.0625,-1.1875 -0.32785,-0.10922 -0.70548,-0.15623 -1.15625,-0.15625 -1.27039,0.041 -2.45606,0.65142 -3.5625,1.8125 l -0.53125,0.53125 -0.25,0.28125 0,0.21875 -4.3125,-2.9375 z m 44.40625,0 c -1.32502,2e-5 -2.44613,0.47346 -3.375,1.375 -0.91523,0.88792 -1.37501,1.96991 -1.375,3.28125 l 0,24.46875 c -1e-5,1.29769 0.47343,2.43245 1.375,3.375 0.90155,0.94253 1.96596,1.40624 3.25,1.40625 1.2294,-1e-5 2.30353,-0.45979 3.21875,-1.375 0.92887,-0.92889 1.40624,-2.06365 1.40625,-3.375 l 0,-6.59375 0.40625,0.1875 0.46875,0.15625 c 1.13377,0.43712 2.35461,0.65625 3.625,0.65625 1.20207,0 2.39165,-0.18395 3.59375,-0.59375 1.81676,-0.65568 3.34674,-1.72587 4.5625,-3.1875 1.21571,-1.46161 2.01401,-3.23618 2.4375,-5.3125 0.20487,-0.84692 0.31247,-1.70584 0.3125,-2.59375 -3e-5,-0.61469 -0.0685,-1.38361 -0.21875,-2.3125 -0.28689,-1.65285 -0.81516,-3.13979 -1.59375,-4.4375 C 224.54752,40.79607 223.60644,39.77864 222.5,39 c -0.9289,-0.68298 -1.91302,-1.20339 -2.9375,-1.53125 -1.01086,-0.32782 -2.06346,-0.49998 -3.15625,-0.5 -2.14463,2e-5 -3.98768,0.64955 -5.53125,1.90625 l 0,0.1875 -3.65625,-2.09375 z m -19.4375,8.15625 c 0.40979,1e-5 0.8168,0.09395 1.28125,0.3125 1.07913,0.49177 1.73259,1.43678 1.9375,2.84375 0,0.56007 -0.004,0.99833 -0.0312,1.3125 -0.041,0.39615 -0.19163,0.80896 -0.4375,1.21875 -0.28687,0.56006 -0.6645,0.98074 -1.15625,1.28125 -0.49177,0.28687 -1.01611,0.43751 -1.5625,0.4375 -0.91523,1e-5 -1.69781,-0.3737 -2.3125,-1.125 -0.56007,-0.72398 -0.81251,-1.57504 -0.8125,-2.53125 0.0273,-0.16391 0.0312,-0.2794 0.0312,-0.375 0.0137,-0.10927 0.0175,-0.23839 0.0312,-0.375 0.16391,-0.91521 0.51609,-1.64109 1.0625,-2.1875 0.54639,-0.54639 1.21744,-0.81249 1.96875,-0.8125 z m 27.5,0.21875 c 0.66933,0.10929 1.23671,0.43209 1.6875,0.9375 0.46443,0.49177 0.75204,1.14523 0.875,1.9375 -2e-5,1.43431 -0.28763,2.51629 -0.875,3.28125 -0.58739,0.76496 -1.35238,1.15626 -2.28125,1.15625 -0.88791,1e-5 -1.61772,-0.34431 -2.21875,-1 C 211.88136,50.98692 211.5762,50.10647 211.5625,49 c -1e-5,-1.13377 0.33065,-2.01422 1,-2.65625 0.68299,-0.65567 1.58496,-0.99999 2.71875,-1 z"
+       transform="translate(0,852.36218)"
+       id="path3840"
+       style="font-size:41.96350861px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#c4ffc5;fill-opacity:1;stroke:none;font-family:Anja Eliane accent;-inkscape-font-specification:Anja Eliane accent" />
+    <path
+       d="m 217.84375,83.6875 c -1.27038,2e-5 -2.34845,0.44222 -3.25,1.34375 -0.92889,0.96989 -1.40626,2.09099 -1.40625,3.375 l 0,2.03125 -0.40625,0 c -1.10647,3e-5 -2.06906,0.3698 -2.875,1.09375 -0.80594,0.76498 -1.1875,1.70606 -1.1875,2.8125 0,1.01086 0.33852,1.86979 1.0625,2.59375 0.84692,0.84694 1.85648,1.25002 3.03125,1.25 l 0.34375,0 0,10.71875 c -1e-5,1.32502 0.47736,2.46764 1.40625,3.4375 0.91521,0.91522 1.99721,1.375 3.28125,1.375 1.31135,0 2.407,-0.45978 3.28125,-1.375 0.92887,-0.92888 1.40624,-2.06757 1.40625,-3.40625 l 0,-10.65625 0.5625,0 c 1.10645,-0.04096 2.06905,-0.47529 2.875,-1.28125 0.21855,-0.24586 0.39857,-0.49437 0.5625,-0.78125 0.17757,-0.3005 0.32425,-0.6233 0.40625,-0.9375 0.0819,-0.31416 0.0937,-0.60571 0.0937,-0.90625 -2e-5,-1.07912 -0.39523,-2.0202 -1.1875,-2.8125 -0.77863,-0.75127 -1.68453,-1.12497 -2.75,-1.125 l -0.53125,0 0,-1.9375 c -1e-5,-1.28401 -0.47738,-2.42663 -1.40625,-3.4375 -0.92889,-0.92885 -2.02847,-1.37498 -3.3125,-1.375 z M 97.28125,89.75 c -0.450801,3e-5 -0.828432,0.12522 -1.15625,0.34375 l -3.875,2.0625 0,-0.125 C 90.870324,90.67894 89.138806,90.00003 87.0625,90 c -0.491771,3e-5 -1.174611,0.1037 -2.0625,0.28125 -1.584568,0.31421 -3.049987,0.97946 -4.375,2.03125 -1.325024,1.03818 -2.399154,2.37055 -3.21875,3.96875 -0.805941,1.59824 -1.24813,3.33368 -1.34375,5.21875 -10e-7,1.46163 0.136979,2.77248 0.4375,3.90625 0.300518,1.13379 0.742708,2.20791 1.34375,3.21875 0.887896,1.33868 1.954165,2.41674 3.15625,3.25 1.202072,0.8196 2.417112,1.34787 3.6875,1.59375 0.887889,0.16388 1.695919,0.25 2.40625,0.25 2.158265,0 3.885854,-0.66132 5.15625,-2 l 0,-0.21875 3.8125,2.1875 c 1.324997,0 2.438237,-0.43826 3.3125,-1.3125 0.87421,-0.87424 1.31247,-2.02659 1.3125,-3.40625 l 0,-14.21875 c -3e-5,-1.68016 -0.57134,-3.07129 -1.71875,-4.21875 -0.450803,-0.50539 -1.018183,-0.78122 -1.6875,-0.78125 z m 99.125,0.25 c -2.30855,3e-5 -4.41377,0.54589 -6.3125,1.625 -1.89874,1.07916 -3.37596,2.54851 -4.46875,4.40625 C 184.54585,97.87537 184,99.85539 184,102 c 0.0137,2.14463 0.56344,4.15198 1.65625,5.96875 1.09279,1.80312 2.58367,3.22943 4.46875,4.28125 1.89873,1.05182 3.98636,1.5625 6.28125,1.5625 2.32219,0 4.44892,-0.5322 6.375,-1.625 1.28402,-0.73764 2.39726,-1.67086 3.3125,-2.75 0.9152,-1.0928 1.58044,-2.2648 2.03125,-3.5625 0.46441,-1.29769 0.71872,-2.6164 0.71875,-3.96875 -3e-5,-0.80593 -0.0861,-1.63155 -0.25,-2.4375 -0.16395,-0.80592 -0.43978,-1.59243 -0.78125,-2.34375 -0.32786,-0.75128 -0.73094,-1.45957 -1.25,-2.15625 -0.50544,-0.69664 -1.09827,-1.3501 -1.78125,-1.9375 -1.12014,-0.96984 -2.40554,-1.69964 -3.8125,-2.21875 -1.40699,-0.53271 -2.92331,-0.81247 -4.5625,-0.8125 z m -23.34375,0.125 c -1.87143,3e-5 -3.76145,0.60652 -5.6875,1.78125 -0.30053,0.19126 -0.49815,0.31065 -0.59375,0.40625 l 0,0.1875 -3.6875,-2.3125 c -1.2977,3e-5 -2.37969,0.45588 -3.28125,1.34375 -0.8879,0.87426 -1.34375,1.97777 -1.34375,3.34375 l 0,14.09375 c 0,1.2977 0.44219,2.43246 1.34375,3.375 0.92888,0.8879 2.02846,1.34375 3.3125,1.34375 1.28403,0 2.39334,-0.45585 3.28125,-1.34375 0.92887,-0.92888 1.37499,-2.06364 1.375,-3.375 l 0,-8.75 c -1e-5,-0.62835 0.24064,-1.19965 0.71875,-1.71875 0.43711,-0.45076 1.00056,-0.68748 1.65625,-0.6875 0.65567,2e-5 1.18787,0.2446 1.625,0.75 0.46442,0.43714 0.68748,1.00058 0.6875,1.65625 l 0,8.8125 c -2e-5,1.32502 0.47735,2.44219 1.40625,3.34375 0.92886,0.90156 2.06362,1.34375 3.375,1.34375 0.8469,-0.0137 1.60216,-0.23279 2.3125,-0.65625 0.71029,-0.42346 1.27767,-1.00843 1.6875,-1.71875 0.42343,-0.71032 0.62497,-1.50076 0.625,-2.375 l 0,-10.84375 c -3e-5,-1.20206 -0.26613,-2.35834 -0.8125,-3.4375 -0.54643,-1.07912 -1.33687,-1.98502 -2.375,-2.75 -1.03818,-0.76493 -2.22777,-1.30686 -3.59375,-1.59375 -0.80596,-0.15019 -1.49853,-0.21872 -2.03125,-0.21875 z m -65.25,0.0625 c -1.28404,3e-5 -2.36604,0.45981 -3.28125,1.375 -0.91523,0.91524 -1.37501,2.01482 -1.375,3.3125 l 0,14.1875 c -1e-5,1.28404 0.45977,2.3621 1.375,3.25 0.91521,0.87424 1.99721,1.3125 3.28125,1.3125 0.83326,-0.0137 1.60218,-0.21913 2.3125,-0.65625 0.71032,-0.43712 1.27769,-1.04361 1.6875,-1.78125 0.40979,-0.7513 0.62499,-1.58085 0.625,-2.46875 l 0,-4.09375 c -1e-5,-0.88789 0.043,-1.58832 0.125,-2.09375 0.0956,-0.51907 0.25018,-0.95733 0.46875,-1.3125 0.23221,-0.35515 0.56287,-0.68188 1,-0.96875 0.45077,-0.28685 1.02208,-0.57054 1.71875,-0.84375 0.19123,-0.08195 0.32821,-0.1465 0.4375,-0.1875 0.10927,-0.04096 0.25598,-0.0703 0.40625,-0.125 1.48893,-0.5054 2.56698,-1.13341 3.25,-1.84375 0.68298,-0.72396 1.03123,-1.5653 1.03125,-2.5625 -1e-4,-0.21854 -0.0392,-0.56679 -0.0937,-1.03125 -0.15028,-0.76494 -0.52005,-1.44385 -1.09375,-2.03125 -0.56008,-0.58735 -1.24291,-0.98257 -2.0625,-1.1875 -0.32785,-0.10922 -0.70548,-0.15622 -1.15625,-0.15625 -1.27039,0.04101 -2.45605,0.62018 -3.5625,1.78125 l -0.53125,0.53125 -0.25,0.3125 0,0.21875 -4.3125,-2.9375 z m 24.5,0 c -1.76215,3e-5 -3.39,0.28765 -4.90625,0.875 -1.51627,0.5874 -2.83104,1.41302 -3.9375,2.4375 -1.0928,1.01086 -1.96932,2.20438 -2.625,3.625 -0.64202,1.407 -0.99025,2.89393 -1.03125,4.4375 0,1.74849 0.30914,3.36848 0.9375,4.84375 0.62836,1.47528 1.56551,2.75095 2.78125,3.84375 1.21574,1.0928 2.68115,1.93021 4.375,2.53125 1.70749,0.58738 3.5584,0.90625 5.59375,0.90625 0.9835,0 1.92065,-0.0782 2.78125,-0.1875 1.22938,-0.15026 2.41897,-0.39484 3.59375,-0.75 0.95617,-0.3415 1.69964,-0.65457 2.21875,-0.96875 0.53271,-0.32784 0.96704,-0.7152 1.28125,-1.125 0.32781,-0.4098 0.56846,-0.85592 0.71875,-1.375 0.0546,-0.19124 0.0625,-0.471 0.0625,-0.8125 -3e-5,-0.94254 -0.33069,-1.73297 -1,-2.375 -0.65571,-0.64201 -1.51857,-0.96874 -2.625,-0.96875 -0.40982,1e-5 -1.12784,0.12913 -2.125,0.375 -1.29772,0.35517 -2.37185,0.55275 -3.21875,0.59375 -0.87426,1e-5 -1.60407,-0.043 -2.21875,-0.125 -0.61471,-0.0956 -1.13119,-0.20714 -1.5,-0.34375 -0.35517,-0.15025 -0.72887,-0.38697 -1.125,-0.6875 -0.45079,-0.45077 -0.6954,-0.69925 -0.75,-0.78125 l 10.9375,0 c 1.36597,1e-5 2.31884,-0.28368 2.90625,-0.84375 0.58735,-0.56005 0.87497,-1.54024 0.875,-2.90625 -0.041,-1.01083 -0.28952,-2.02825 -0.78125,-3.09375 -0.47813,-1.07912 -1.13945,-2.10628 -2,-3.0625 -0.84695,-0.96984 -1.84865,-1.7818 -2.96875,-2.4375 -1.83046,-1.03813 -3.91416,-1.584 -6.25,-1.625 z m -0.53125,6.9375 c 1.69382,2e-5 2.63883,0.67893 2.84375,2.03125 0.0273,0.10929 0.0625,0.24234 0.0625,0.40625 l -5,0 c 0,-0.08195 0.008,-0.17982 0.0625,-0.34375 0.35515,-1.13376 1.03406,-1.84785 2.03125,-2.09375 z m 64.625,1.0625 c 1.14743,2e-5 2.0494,0.5674 2.71875,1.6875 0.36881,0.56007 0.56249,1.25657 0.5625,2.0625 -1e-4,0.17759 -0.008,0.46914 -0.0625,0.90625 -0.23223,1.68019 -1.08723,2.66824 -2.5625,2.96875 -0.34151,0.0683 -0.57425,0.12501 -0.65625,0.125 -0.91523,1e-5 -1.70174,-0.38735 -2.34375,-1.125 -0.62837,-0.73763 -0.93751,-1.68264 -0.9375,-2.84375 -1e-5,-0.79227 0.19367,-1.4927 0.5625,-2.09375 0.68299,-1.1201 1.58496,-1.68748 2.71875,-1.6875 z M 88.4375,98.3125 c 0.409786,2e-5 0.848046,0.12521 1.3125,0.34375 1.079124,0.49178 1.701334,1.43678 1.90625,2.84375 -2e-5,0.56007 -0.004,0.99833 -0.03125,1.3125 -0.041,0.39615 -0.191636,0.80896 -0.4375,1.21875 -0.286876,0.56007 -0.664505,0.98074 -1.15625,1.28125 -0.491774,0.28687 -1.016114,0.43751 -1.5625,0.4375 -0.915232,1e-5 -1.666561,-0.37369 -2.28125,-1.125 -0.56007,-0.72397 -0.843761,-1.57504 -0.84375,-2.53125 0.02731,-0.16391 0.03124,-0.2794 0.03125,-0.375 0.01365,-0.10927 0.01758,-0.23839 0.03125,-0.375 0.163909,-0.91521 0.54734,-1.64109 1.09375,-2.1875 0.546388,-0.54638 1.186187,-0.84373 1.9375,-0.84375 z"
+       transform="translate(0,852.36218)"
+       id="path3869"
+       style="font-size:41.96350861px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#fffec4;fill-opacity:1;stroke:none;font-family:Anja Eliane accent;-inkscape-font-specification:Anja Eliane accent" />
+    <path
+       d="m 148.34375,133.625 c -1.28405,0.0274 -2.3797,0.52231 -3.28125,1.4375 -0.90156,0.91525 -1.34375,2.0109 -1.34375,3.28125 l 0,24.09375 c 0,1.3797 0.4246,2.51835 1.3125,3.40625 0.88789,0.8879 1.9972,1.3125 3.28125,1.3125 l 3.6875,-2.25 0,0.15625 c 1.32501,1.448 3.0859,2.1875 5.3125,2.1875 0.5737,0 1.27021,-0.0822 2.0625,-0.21875 1.61187,-0.2868 3.08907,-0.98735 4.46875,-2.09375 1.37964,-1.1202 2.47529,-2.51125 3.28125,-4.21875 0.81958,-1.7075 1.24998,-3.5466 1.25,-5.5 -2e-5,-0.7923 -0.10369,-1.60815 -0.28125,-2.46875 -0.32786,-1.5845 -0.88158,-3.0069 -1.6875,-4.25 -0.80596,-1.24305 -1.82919,-2.2702 -3.03125,-3.0625 -1.2021,-0.80591 -2.56384,-1.33811 -4.09375,-1.625 -0.66935,-0.15019 -1.32282,-0.24997 -1.9375,-0.25 -1.10648,3e-5 -2.29607,0.23282 -3.59375,0.65625 -0.40981,0.13663 -0.65045,0.2227 -0.71875,0.25 l 0,-6.09375 c -1e-5,-0.86055 -0.21521,-1.6334 -0.625,-2.34375 -0.40981,-0.72395 -0.96353,-1.32651 -1.6875,-1.75 -0.71033,-0.43709 -1.50077,-0.65622 -2.375,-0.65625 z m 79.28125,0 c -1.31138,3e-5 -2.41096,0.45981 -3.3125,1.375 -0.88792,0.90159 -1.34377,1.99724 -1.34375,3.28125 l 0,6.53125 c -0.21858,-0.10925 -0.45923,-0.2168 -0.71875,-0.3125 -1.39334,-0.49173 -2.73357,-0.74997 -4.03125,-0.75 -1.78947,3e-5 -3.49554,0.49499 -5.09375,1.4375 -1.32503,0.76498 -2.42853,1.77849 -3.34375,3.0625 -0.91522,1.2841 -1.57261,2.7574 -1.96875,4.4375 -0.19126,0.8197 -0.28125,1.71365 -0.28125,2.65625 0,0.7376 0.0509,1.52415 0.1875,2.34375 0.46444,2.4452 1.50919,4.4936 3.09375,6.1875 1.59821,1.6802 3.48823,2.73285 5.6875,3.15625 0.79227,0.1369 1.47118,0.21875 2.03125,0.21875 2.17192,0 3.92496,-0.74345 5.25,-2.21875 l 0,-0.15625 3.84375,2.28125 c 0.87421,0 1.64707,-0.19765 2.34375,-0.59375 0.69664,-0.3962 1.26009,-0.9284 1.65625,-1.625 0.40978,-0.7103 0.59373,-1.5359 0.59375,-2.4375 l 0,-24.125 c -2e-5,-0.83323 -0.18397,-1.61974 -0.59375,-2.34375 -0.40982,-0.72395 -0.9772,-1.29526 -1.6875,-1.71875 -0.71034,-0.43709 -1.47927,-0.6738 -2.3125,-0.6875 z m -52.84375,0.0625 c -0.87425,3e-5 -1.68228,0.20157 -2.40625,0.625 -0.72398,0.40983 -1.29529,0.97721 -1.71875,1.6875 -0.42346,0.71035 -0.625,1.46168 -0.625,2.28125 l 0,24.3125 c 0,1.3114 0.44612,2.41485 1.375,3.34375 0.92888,0.8879 2.02452,1.34375 3.28125,1.34375 1.25671,0 2.35629,-0.45585 3.3125,-1.34375 0.88789,-0.9289 1.34374,-2.0363 1.34375,-3.375 l 0,-24.1875 c -1e-5,-0.83323 -0.21521,-1.60215 -0.625,-2.3125 -0.39615,-0.71029 -0.94594,-1.29526 -1.65625,-1.71875 -0.69667,-0.43709 -1.448,-0.64255 -2.28125,-0.65625 z M 73.6875,136.40625 c -0.928885,3e-5 -1.762364,0.21916 -2.5,0.65625 -0.737642,0.42349 -1.326543,0.99872 -1.75,1.75 -0.423461,0.75132 -0.625001,1.5848 -0.625,2.5 l 0,20.59375 c -10e-7,0.6284 0.115459,1.24275 0.375,1.84375 0.437118,0.9699 1.069058,1.7388 1.875,2.3125 0.819596,0.5601 1.660935,0.84375 2.5625,0.84375 l 11.3125,0 c 1.174741,0 2.21369,-0.4167 3.15625,-1.25 0.846898,-0.8059 1.281229,-1.7763 1.28125,-2.9375 -2.1e-5,-0.56 -0.125212,-1.1059 -0.34375,-1.625 -0.218582,-0.5327 -0.531651,-0.97495 -0.96875,-1.34375 -0.915239,-0.8742 -1.993299,-1.3125 -3.25,-1.3125 l -6.3125,0 0,-2.65625 5.5,0 c 1.147422,0 2.182442,-0.3815 3.125,-1.1875 0.874219,-0.8332 1.312479,-1.8174 1.3125,-2.9375 -2.1e-5,-0.5328 -0.09396,-1.03945 -0.3125,-1.53125 -0.21858,-0.5054 -0.52772,-0.9573 -0.9375,-1.3125 -0.409819,-0.4097 -0.895048,-0.7053 -1.46875,-0.9375 -0.573737,-0.24586 -1.162637,-0.37498 -1.75,-0.375 l -5.46875,0 0,-2.5625 6.625,0 c 0.751281,3e-5 1.434121,-0.21124 2.0625,-0.59375 0.642,-0.38245 1.162409,-0.87554 1.53125,-1.53125 0.382458,-0.65565 0.562479,-1.37761 0.5625,-2.15625 -2.1e-5,-0.79226 -0.180042,-1.51421 -0.5625,-2.15625 -0.368841,-0.64199 -0.88925,-1.1624 -1.53125,-1.53125 -0.628379,-0.38245 -1.272109,-0.56247 -1.96875,-0.5625 l -11.53125,0 z m 64.15625,6.9375 c -0.4508,3e-5 -0.82843,0.094 -1.15625,0.3125 l -3.875,2.0625 0,-0.125 c -1.37968,-1.35231 -3.11119,-2.03122 -5.1875,-2.03125 -0.49177,3e-5 -1.17461,0.1037 -2.0625,0.28125 -1.58457,0.31421 -3.04999,1.01071 -4.375,2.0625 -1.32502,1.03818 -2.39915,2.3393 -3.21875,3.9375 -0.80594,1.5983 -1.24815,3.33365 -1.34375,5.21875 0,1.4616 0.13698,2.77245 0.4375,3.90625 0.30052,1.1338 0.77396,2.20795 1.375,3.21875 0.8879,1.3387 1.92292,2.4168 3.125,3.25 1.20207,0.8196 2.44836,1.34795 3.71875,1.59375 0.88789,0.1639 1.66467,0.25 2.375,0.25 2.15827,0 3.88585,-0.6613 5.15625,-2 l 0,-0.21875 3.84375,2.1875 c 1.32499,0 2.40698,-0.4383 3.28125,-1.3125 0.87421,-0.8743 1.31247,-1.9953 1.3125,-3.375 l 0,-14.21875 c -3e-5,-1.68019 -0.57134,-3.10253 -1.71875,-4.25 -0.45081,-0.50539 -1.01819,-0.74997 -1.6875,-0.75 z m -32.125,0.34375 c -1.87144,3e-5 -3.79271,0.60652 -5.71875,1.78125 -0.300532,0.19127 -0.49814,0.3419 -0.59375,0.4375 l 0,0.15625 -3.6875,-2.3125 c -1.297704,3e-5 -2.379693,0.45588 -3.28125,1.34375 -0.887901,0.87426 -1.343751,2.00903 -1.34375,3.375 l 0,14.09375 c -10e-7,1.2977 0.442189,2.40125 1.34375,3.34375 0.928877,0.8879 2.059706,1.34375 3.34375,1.34375 1.284033,0 2.362092,-0.45585 3.25,-1.34375 0.928869,-0.9289 1.37499,-2.03235 1.375,-3.34375 l 0,-8.78125 c -1e-5,-0.6283 0.24064,-1.19975 0.71875,-1.71875 0.43711,-0.4508 1.00055,-0.6875 1.65625,-0.6875 0.65566,0 1.18786,0.27585 1.625,0.78125 0.46442,0.4371 0.71873,0.9693 0.71875,1.625 l 0,8.8125 c -2e-5,1.325 0.4461,2.44215 1.375,3.34375 0.92886,0.9015 2.06363,1.34375 3.375,1.34375 0.8469,-0.0136 1.60216,-0.23275 2.3125,-0.65625 0.7103,-0.4234 1.27768,-0.9772 1.6875,-1.6875 0.42344,-0.7103 0.62498,-1.5007 0.625,-2.375 l 0,-10.875 c -2e-5,-1.202 -0.26612,-2.32705 -0.8125,-3.40625 -0.54642,-1.07912 -1.33686,-2.01627 -2.375,-2.78125 -1.03818,-0.76493 -2.22777,-1.27561 -3.59375,-1.5625 -0.80596,-0.15019 -1.46728,-0.24997 -2,-0.25 z m 88.25,0.0625 c -1.76215,3e-5 -3.42125,0.3189 -4.9375,0.90625 -1.51627,0.58741 -2.83105,1.38177 -3.9375,2.40625 -1.09281,1.01091 -1.96932,2.23565 -2.625,3.65625 -0.64202,1.407 -0.959,2.86265 -1,4.40625 0,1.7484 0.30914,3.36845 0.9375,4.84375 0.62836,1.4753 1.53425,2.75095 2.75,3.84375 1.21573,1.0928 2.68115,1.9614 4.375,2.5625 1.70748,0.5873 3.58965,0.875 5.625,0.875 0.98351,0 1.88941,-0.047 2.75,-0.15625 1.22938,-0.1502 2.41897,-0.42615 3.59375,-0.78125 0.95618,-0.3415 1.69965,-0.65465 2.21875,-0.96875 0.53272,-0.3279 0.96705,-0.7152 1.28125,-1.125 0.32782,-0.4098 0.56847,-0.8559 0.71875,-1.375 0.0547,-0.1912 0.0937,-0.471 0.0937,-0.8125 -2e-5,-0.9426 -0.36193,-1.7329 -1.03125,-2.375 -0.6557,-0.642 -1.51856,-0.96875 -2.625,-0.96875 -0.40982,0 -1.12784,0.1292 -2.125,0.375 -1.29771,0.3552 -2.37184,0.55275 -3.21875,0.59375 -0.87425,0 -1.60406,-0.043 -2.21875,-0.125 -0.61471,-0.0956 -1.09994,-0.20715 -1.46875,-0.34375 -0.35517,-0.1503 -0.72888,-0.387 -1.125,-0.6875 -0.4508,-0.4508 -0.72665,-0.69925 -0.78125,-0.78125 l 10.9375,0 c 1.36598,0 2.3501,-0.28365 2.9375,-0.84375 0.58736,-0.56 0.87498,-1.509 0.875,-2.875 -0.041,-1.0108 -0.32076,-2.0595 -0.8125,-3.125 -0.47812,-1.0791 -1.13944,-2.1063 -2,-3.0625 -0.84694,-0.96982 -1.8174,-1.7818 -2.9375,-2.4375 -1.83045,-1.03813 -3.91415,-1.584 -6.25,-1.625 z m -0.5625,6.96875 c 1.69383,0 2.67009,0.67895 2.875,2.03125 0.0273,0.1093 0.0312,0.24235 0.0312,0.40625 l -5,0 c 0,-0.0819 0.0391,-0.2111 0.0937,-0.375 0.35514,-1.1338 1.00281,-1.8166 2,-2.0625 z m 26.53125,0.96875 c 0.15024,0 0.39089,0.0387 0.71875,0.0937 1.33866,0.3142 2.15455,1.2631 2.46875,2.875 l 0,1.40625 c -0.16394,0.9972 -0.51612,1.74845 -1.0625,2.28125 -0.53276,0.5327 -1.19408,0.81675 -2,0.84375 -0.91523,0 -1.68415,-0.33465 -2.3125,-1.03125 -0.62837,-0.6967 -0.93751,-1.6299 -0.9375,-2.75 0,-0.3142 0.004,-0.51955 0.0312,-0.65625 0.16391,-0.9425 0.53368,-1.7036 1.09375,-2.25 0.56005,-0.5464 1.22137,-0.8125 2,-0.8125 z M 129,151.90625 c 0.40979,0 0.84805,0.0939 1.3125,0.3125 1.07912,0.4917 1.73258,1.43675 1.9375,2.84375 0,0.5601 -0.0352,0.9984 -0.0625,1.3125 -0.041,0.3962 -0.16039,0.80895 -0.40625,1.21875 -0.28688,0.56 -0.69576,0.98075 -1.1875,1.28125 -0.49178,0.2869 -1.01611,0.4375 -1.5625,0.4375 -0.91523,0 -1.66656,-0.3737 -2.28125,-1.125 -0.56007,-0.724 -0.84376,-1.57505 -0.84375,-2.53125 0.0273,-0.1639 0.0312,-0.279 0.0312,-0.375 0.0137,-0.1093 0.0488,-0.2384 0.0625,-0.375 0.16391,-0.9152 0.51609,-1.6411 1.0625,-2.1875 0.54639,-0.5464 1.18619,-0.8125 1.9375,-0.8125 z m 26.40625,0 c 1.1201,0 2.00056,0.3307 2.65625,1 0.65567,0.6694 0.96874,1.6104 0.96875,2.8125 -0.0137,0.6147 -0.1252,1.16445 -0.34375,1.65625 -0.21857,0.4917 -0.52378,0.887 -0.90625,1.1875 -0.36883,0.3005 -0.76799,0.49775 -1.21875,0.59375 -0.27322,0.055 -0.50994,0.0625 -0.6875,0.0625 -0.87426,0 -1.60407,-0.31305 -2.21875,-0.96875 -0.61471,-0.6693 -0.9238,-1.5458 -0.9375,-2.625 0,-0.3278 0.004,-0.6076 0.0312,-0.8125 0.13659,-0.8059 0.4418,-1.4321 0.90625,-1.9375 0.47808,-0.5191 1.06698,-0.84575 1.75,-0.96875 z"
+       transform="translate(0,852.36218)"
+       id="path3889"
+       style="font-size:41.96350861px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:middle;fill:#ffbcb0;fill-opacity:1;stroke:none;font-family:Anja Eliane accent;-inkscape-font-specification:Anja Eliane accent" />
+  </g>
+</svg>
+];
+}
+
+sub showgraph {
+  my $interval = "month";
+  if ($input{graph} eq "yearbyyear") {
+    $interval = "year";
+  }
+  my ($libdir) = getvariable('resched', 'svg_graphs_install_dir');
+  if ($libdir) {
+    eval {
+      do "" . catfile($libdir, "svg_graph.pl");
+    };
+    if ($@) {
+      print include::standardoutput("Error: Code Library Problem",
+                                    (include::errordiv("Error loading SVG Graphs library.")),
+                                    "Failed to load svg_graphs.pl from $libdir: '$@'.  I cannot create a graph without loading this library, sorry.  Check that the svg_graphs_install_dir variable is correct, and that the example scripts that ship with that library can be run from there, and that the user that I am running as, has read access to there.");
+      exit 0;
+    } else {
+      my ($category, @resid, %stat, %monthsort, %resname, %subcat, @catinfo, @res);
+      my @allcategory = include::categories("statgraphcategories");
+      my ($cat) = grep { $$_[0] eq $input{category} } @allcategory;
+      if ($cat) {
+        my $dummy;
+        ($dummy, @res) = @$cat;
+      } else {
+        @res = categoryitems($input{category}, \@allcategory);
+      }
+      for (grep { my $c = $_;
+                  $$c[0] eq $input{category} or
+                    (grep { $$c[0] eq $_ } @res)} @allcategory) {
+        ($category, @resid) = @$_;
+        stat_graph_category_helper($category, \@resid, $interval . "s", \%stat, \%resname, \%monthsort, \%subcat);
+      }
+      stat_graph_subcategory_helper(\%subcat, \%stat);
+      my $ucfield = ucfirst($input{field});
+      my @label = sort { $monthsort{$a} <=> $monthsort{$b} } keys %{$stat{$input{category}}{total}};
+      if ($input{graph} eq "yearbyyear") { @label = map { /(\d+)/; $1; } @label; }
+      my $maxchars = 1;
+      for my $l (map { $resname{$_} || $_ } @res) {
+        my $chars = length($l);
+        # This assumes all chars are roughly the same width, so it's not perfect.
+        # If your longest resource name has a tone of Ws in it, or something,
+        # it'll go past the edge of the legend box.
+        $maxchars = $chars if $chars > $maxchars;
+      }
+      my $lwidth = 20 + (8 * $maxchars);
+      my $imagecontent = svg(linegraph( title    => ucfirst($input{category}) . " " . $ucfield,
+                                        xlabels  => [ @label ],
+                                        data     => [ map {
+                                          my $rid = $_;
+                                          my $color = ($rid =~ /^\d+$/) ? rescolor($rid) : categorycolor($rid);
+                                          +{ name      => $resname{$rid} || $rid,
+                                             color     => $color,
+                                             values    => [ map {
+                                               my $mon = $_;
+                                               $stat{$input{category}}{$rid}{$mon}{$input{field}}
+                                             } sort { $monthsort{$a} <=> $monthsort{$b} } keys %{$stat{$input{category}}{total}} ],
+                                           }, } @res ],
+                                        legendwidth => $lwidth,
+                                      ));
+      print qq[Content-type: image/svg+xml\n\n] . $imagecontent;
+      exit 0;
+    }
+  } else {
+    print qq[Content-type: image/svg+xml\n\n] . svggraphs_not_enabled() . qq[\n<!-- libdir not set -->\n];
+    exit 0;
+  }
 }
 
 sub searchresults {
@@ -2592,7 +2894,7 @@ sub extendbooking {
   } else {
     if ($newuntil > $until) {
       $booking{until} = DateTime::Format::MySQL->format_datetime($newuntil);
-      @changes = @{updaterecord('resched_bookings', \%booking)};
+      updaterecord('resched_bookings', \%booking);
       return qq[<div class="info">The booking has been extended.</div>],
         redirect_header(\%resource, $when, 30);
     } else {
@@ -3118,7 +3420,7 @@ sub updatealias {
     }
   } else {
     return (include::errordiv('Error - Missing Alias', qq[Sorry, but I couldn't find alias #$id.]),
-            "Alias Not Found: $alias");
+            "Alias Not Found: $id");
   }
   return (include::errordiv('Programming Error (Bug)', qq[There is a fallthrough condition in the updatealias subroutine.]),
           'PROGRAMMING ERROR');
@@ -3198,7 +3500,7 @@ sub parseshowwith {
 sub parseswitchwith {
   my ($sw, $r) = @_; # That's (switchwith, id) for a resource we were just working with.
   #warn "parseswitchwith('$sw', $r)\n";
-  @category = include::categories();
+  my @category = include::categories();
   my %category = map { my @x = @$_; my $name = shift @x; ($name, [categoryitems($name, \@category)]) } @category;
   if ($category{$sw}) {
     #use Data::Dumper; warn Dumper($category{$sw});
@@ -3238,7 +3540,7 @@ sub usersidebar {
     # of AI that I don't know how to write.  Rather than spew errors,
     # though, we'll just naively give them the "next" n days starting
     # the day after the last day they were looking at.
-    my $numofdays = @dt;
+    my $numofdays = scalar @dt;
     if ($numofdays == 1) {
       my $thisday = $dt[0];
       my $today = DateTime->now(time_zone => $include::localtimezone);
@@ -3421,8 +3723,10 @@ sub usersidebar {
 
 sub categoryitems {
   my ($catname, $categories) = @_;
-  $categories ||= [include::cagegories()];
+  $categories = [include::categories()] if not scalar @$categories;
+  #use Data::Dumper; warn Dumper(+{ categoryitems_categories => $categories });
   my ($cat) = grep { $$_[0] eq $catname } @$categories;
+  croak "categoryitems(): category not found: '$catname' (possible categories: " . (join ", ", map { $$_[0] } @$categories) . ")" if not $cat;
   my ($cn, @id) = @$cat;
   @id = map { my @r = ($_);
               if (not $r[0] =~ /^\d+$/) {
