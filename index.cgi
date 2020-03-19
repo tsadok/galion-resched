@@ -2439,13 +2439,17 @@ sub getstatsforadaterange {
     my ($totaltotalbookings, $totaldurinhours);
     push @gatheredstat, '<div>&nbsp;</div><table><thead><tr><th colspan="4"><strong>' . "$category</strong></th></tr>\n\n";
     for my $rid (@resid) {
-      my %r = %{getrecord('resched_resources', $rid)};
-      my ($totalbookings, $durinhours) = get_resource_usage_for_a_date_range(\%r, $startstats, $endstats, \%exclude);
-      push @gatheredstat, qq[<tr><td>$r{name}:</td>
+      if ($rid =~ /(\d+)/) {
+        my %r = %{getrecord('resched_resources', $rid) || +{}};
+        my ($totalbookings, $durinhours) = get_resource_usage_for_a_date_range(\%r, $startstats, $endstats, \%exclude);
+        push @gatheredstat, qq[<tr><td>$r{name}:</td>
               <td class="numeric">$totalbookings bookings</td>
               <td> totalling</td><td class="numeric">$durinhours hours.</td></tr>\n];
-      $totaltotalbookings += $totalbookings;
-      $totaldurinhours    += $durinhours;
+        $totaltotalbookings += $totalbookings;
+        $totaldurinhours    += $durinhours;
+      } else {
+        warn "getstatsforadaterange: failed to get stats for subcategory, '$rid'";
+      }
     }
     push @gatheredstat, qq[<tr><td><strong>Subtotal:</strong></td>
               <td class="numeric">$totaltotalbookings bookings</td>
@@ -2456,7 +2460,12 @@ sub getstatsforadaterange {
 
 sub get_resource_usage_for_a_date_range {
   my ($r, $dtstart, $dtend, $exclude) = @_;
+
   my (@gatheredstat);
+
+  croak "get_resource_usage_for_a_date_range(): resource is undef" if not ref $r;
+  croak "resource has no id: " . Dumper($r) if not $$r{id};
+
   my ($stat) = findrecord("resched_usage",
                           resource  => $$r{id},
                           startdate => DateTime::Format::MySQL->format_datetime($dtstart),
@@ -3665,6 +3674,8 @@ sub usersidebar {
             <li><a href="./?stats=lastweek&amp;].persist(undef,['magicdate']).qq[">last week</a></li>
             <li><a href="./?stats=lastmonth&amp;].persist(undef,['magicdate']).qq[">last month</a></li>
             <li><a href="./?stats=lastyear&amp;].persist(undef,['magicdate']).qq[">last year</a></li>
+            <li><a href="./?stats=monthbymonth&amp;].persist(undef,['magicdate']).qq[">month-by-month</a></li>
+            <li><a href="./?stats=yearbyyear&amp;].persist(undef,['magicdate']).qq[">year-by-year</a></li>
           </ul></li>
         <li><strong>Availability</strong><ul>
             <li><a href="./?availstats=yesterday&amp;].persist(undef,['magicdate']).qq[">yesterday</a></li>
