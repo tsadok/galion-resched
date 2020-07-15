@@ -55,10 +55,13 @@ my %signupflag = ('R' => ['R', 'Reminded',    'This person has received a remind
                  );
 
 sub respondtouser { # This is the non-AJAX way.
-  my ($content, $title, $redirect) = @_;
+  my ($content, $title, $redirect, %o) = @_;
   $content or die "No content.";
   $title ||= 'Program Signup';
-  print include::standardoutput($title, $content, $ab, $input{usestyle}, $redirect);
+  print include::standardoutput($title, $content,
+                                $o{omitsidebar} ? "<!-- signmeup needs no auth -->" : $ab,
+                                $input{usestyle}, $redirect, undef,
+                                $o{omitsidebar});
   exit 0;
 }
 
@@ -102,7 +105,7 @@ if ($auth::user) {
     respondtouser(listprograms(), "Upcoming Programs");
   }
 } elsif ($input{signmeup}) {
-  respondtouser(public_signup());
+  respondtouser(public_signup(), undef, undef, omitsidebar => 1);
 } else {
   respondtouser(qq[You probably need to log in.], "Not Authorized");
 }
