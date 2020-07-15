@@ -189,9 +189,10 @@ sub standardoutput {
   # This returns the complete http headers and the html
   # calling code must define sub main::usersidebar that
   # returns an appropriate div.
-  my ($title, $content, $ab, $style, $meta, $favicon) = @_;
+  my ($title, $content, $ab, $style, $meta, $favicon, $omitsidebar) = @_;
   #$style   ||= 'lowcontrast'; # redundant: include::style() does this on its own.
-  my $cws = contentwithsidebar($content, "$ab\n".main::usersidebar());
+  my $cws = $omitsidebar ? $content
+    : contentwithsidebar($content, "$ab\n"."<!-- fi: '$favicon'; os: '$omitsidebar' -->".main::usersidebar());
   my $css = include::style($style);
   $favicon ||= main::getvariable('resched', 'bookmark_icon') || 'resched.ico';
   return qq[Content-type: $include::content_type\n$auth::cookie
@@ -206,6 +207,7 @@ $include::doctype
    <title>$title</title>
    <link rel="SHORTCUT ICON" href="$favicon" />
    $ajaxscript
+   <meta charset="UTF-8" />
    $meta
    $css
 </head>

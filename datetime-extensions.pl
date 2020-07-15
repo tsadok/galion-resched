@@ -76,6 +76,7 @@ sub DateTime::NormaliseInput {
   # a problem, ||= your own defaults into the hash beforehand.  Input
   # fields that do not match the magic pattern are unchanged.
   my %input = %{shift@_};
+  my %originput = %input;
   for (grep { $_ =~ m/_datetime_year$/ } keys %input) {
     /^(.*)[_]datetime_year/;
     my $prefix = $1;
@@ -90,7 +91,31 @@ sub DateTime::NormaliseInput {
       /${prefix}_datetime_/;
     } keys %input;
     push @DateTime::NormaliseInput::Debug, "<!-- " . Dumper(\%dt) . " -->";
-    $input{"${prefix}_datetime"} = DateTime->new(%dt);
+    eval {
+      $input{"${prefix}_datetime"} = DateTime->new(%dt);
+    };
+    my $timerows = "";
+    if (not ref $input{"${prefix}_datetime"}) {
+      if ($input{$originput{$prefix . "_datetime_hour"}} or
+          $input{$originput{$prefix . "_datetime_minute"}}) {
+        $timerows = qq[
+           <tr><th>Hour:</th>
+               <td>] . $originput{$prefix . "_datetime_hour"} . qq[</td></tr>
+           <tr><th>Minute:</th>
+               <td>] . $originput{$prefix . "_datetime_minute"} . qq[</td></tr>];
+      }
+      push @DateTime::NormaliseInput::Debug, include::errordiv("Date/Time Error",
+                                                               qq[DateTime could not make sense of the following inputs, for the '$prefix' Date/Time:
+       <table><tbody>
+           <tr><th>Year:</th>
+               <td>] . $originput{$prefix . "_datetime_year"} . qq[</td></tr>
+           <tr><th>Month:</th>
+               <td>] . $originput{$prefix . "_datetime_month"} . qq[</td></tr>
+           <tr><th>Day:</th>
+               <td>] . $originput{$prefix . "_datetime_day"} . qq[</td></tr>
+           $timerows
+       </tbody></table>\n]);
+    }
   }
   push @DateTime::NormaliseInput::Debug, "<!-- " . Dumper(\%input) . " -->";
   return \%input;

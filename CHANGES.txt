@@ -51,7 +51,13 @@ Version 0.9.9:
     moved several retired things into a "Legacy" category to get them
     out of the day-to-day signup pages, but for viewing historical
     data I want them included in their respective former places.)
-  * 
+  * Explicitly tell browsers that the character set is UTF-8.  (Browsers
+    on certain badly outdated legacy systems assume other character sets
+    by default.)  This is relevant e.g. for the previous/next arrows in
+    the CircDeskMail component, but potentially also for names with
+    non-ASCII characters in them.
+  * The software now gives better error messages when DateTime throws
+    an exception due to incorrect user input.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

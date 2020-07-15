@@ -373,62 +373,7 @@ if ($auth::user) {
                                   $ab, $input{usestyle}
                                  );
   } elsif ($input{frequser}) {
-    my $formhtml = frequserform();
-    my $start = DateTime->new(
-                              year  => parsenum($input{startyear}),
-                              month => parsenum($input{startmonth}),
-                              day  => parsenum($input{startmday}),
-                             );
-    my $end = DateTime->new(
-                            year  => parsenum($input{endyear}),
-                            month => parsenum($input{endmonth}),
-                            day   => parsenum($input{endmday}),
-                            hour  => 23,
-                           );
-    my @res = split /,/, $input{resource};
-    my %rawcount = %{countfield('resched_bookings', 'bookedfor', $start, $end,
-                             (@res ? ('resource' => \@res) : ())
-                            )};
-    my $rawn = scalar (keys %rawcount);
-    my (%count, %realkey, @ck); for my $rawkey (keys %rawcount) {
-      my $consolikey = include::dealias(include::normalisebookedfor($rawkey));
-      push @ck, $consolikey;
-      $realkey{$consolikey} = $realkey{$consolikey} ? $realkey{$consolikey} . " / $rawkey" : $rawkey;
-      $count{$consolikey} = defined $count{$consolikey}
-        ? $count{$consolikey} + $rawcount{$rawkey}
-        : $rawcount{$rawkey};
-    }
-    for my $ck (include::uniq(@ck)) {
-      my $CK =
-        #join ' ', map { ucfirst lc $_ } split /\s+/, $ck;
-        include::capitalise($ck);
-      $realkey{$ck} = qq[$CK</td><td> <cite style="font-size: 70%">($realkey{$ck})</cite>]
-        unless lc $realkey{$ck} eq lc $CK;
-    }
-    my (@metacount, $fullcount);
-    my $list = join "\n", map {
-      $metacount[$count{$_}]++; $fullcount++;
-      qq[<tr><td class="numeric">$count{$_}:</td>
-             <td><a href="./?search=].uriencode($_).qq[&amp;$persistentvars">$realkey{$_}</a></td></tr>]
-    } sort {
-      $count{$b} <=> $count{$a}
-    } grep {
-      $count{$_} >= $input{frequser}
-    } keys %count;
-    $list ||= qq[<tr><td>none found with frequency >= $input{frequser}</td></tr>];
-    my $n = scalar (keys %count);
-    print include::standardoutput('Frequent Users',
-                                 qq[
-      <div>Found $n distinct users (under $rawn names)<!-- res: @res -->.  Listing the top $fullcount.</div>
-      <table><tbody>$list</tbody></table>
-      <div>&nbsp;</div>
-      <div>Meta Count: <ul>] . (join "\n", (map {
-        qq[<li>$metacount[$_] users booked $_ time(s).</li>]
-      } grep {
-        $metacount[$_] } 1 .. $#metacount)) . qq[</ul></div>
-      <div>&nbsp;</div>
-      $formhtml]# . '<pre>Metacount: ' . Dumper(\@metacount) . '</pre>'
-                                  , $ab, $input{usestyle});
+    frequsersearch();
   } elsif ($input{test} eq 'n11n') {
     my $raw = $input{rawname};
     my $nrm = include::normalisebookedfor($raw);
@@ -528,6 +473,7 @@ if ($auth::user) {
    <tr><td>$resexplan $reslist</td>
        <td><p>Year:  <input type="text" name="year" value="$input{year}"></input></p>
            <p>Month: <select name="month">].(join $/, map {
+             # DateTime cannot choke here, because all values are hardcoded (month goes from 1 .. 12)
              my $dt = DateTime->new( year => 1974, month => $_ , day => 15);
              my $selected = (($input{month} == $dt->month())?' selected="selected"':"");
              (qq[<option value="$_"$selected>].($dt->month_name)."</option>")
@@ -555,9 +501,84 @@ if ($auth::user) {
 
 exit 0; # Subroutines follow.
 
+sub frequsersearch {
+  my $formhtml = frequserform();
+  my ($start, $end);
+  eval {
+    $start = DateTime->new(
+                           year  => parsenum($input{startyear}),
+                           month => parsenum($input{startmonth}),
+                           day  => parsenum($input{startmday}),
+                          );
+    $end = DateTime->new(
+                         year  => parsenum($input{endyear}),
+                         month => parsenum($input{endmonth}),
+                         day   => parsenum($input{endmday}),
+                         hour  => 23,
+                        );
+  };
+  if (not ref $start) {
+    print include::standardoutput("Date/Time Error",
+                                  dterrormsag($input{startyear}, $input{startmonth}, $input{startmday}, undef, undef,
+                                              qq[ (for the start date)]));
+    exit 0;
+  }
+  if (not ref $end) {
+    print include::standardoutput("Date/Time Error",
+                                  dterrormsag($input{endyear}, $input{endmonth}, $input{endmday}, undef, undef,
+                                              qq[ (for the end date)]));
+    exit 0;
+  }
+  my @res = split /,/, $input{resource};
+  my %rawcount = %{countfield('resched_bookings', 'bookedfor', $start, $end,
+                              (@res ? ('resource' => \@res) : ())
+                             )};
+  my $rawn = scalar (keys %rawcount);
+  my (%count, %realkey, @ck); for my $rawkey (keys %rawcount) {
+    my $consolikey = include::dealias(include::normalisebookedfor($rawkey));
+    push @ck, $consolikey;
+    $realkey{$consolikey} = $realkey{$consolikey} ? $realkey{$consolikey} . " / $rawkey" : $rawkey;
+    $count{$consolikey} = defined $count{$consolikey}
+      ? $count{$consolikey} + $rawcount{$rawkey}
+      : $rawcount{$rawkey};
+  }
+  for my $ck (include::uniq(@ck)) {
+    my $CK =
+      #join ' ', map { ucfirst lc $_ } split /\s+/, $ck;
+      include::capitalise($ck);
+    $realkey{$ck} = qq[$CK</td><td> <cite style="font-size: 70%">($realkey{$ck})</cite>]
+      unless lc $realkey{$ck} eq lc $CK;
+  }
+  my (@metacount, $fullcount);
+  my $list = join "\n", map {
+    $metacount[$count{$_}]++; $fullcount++;
+    qq[<tr><td class="numeric">$count{$_}:</td>
+             <td><a href="./?search=].uriencode($_).qq[&amp;$persistentvars">$realkey{$_}</a></td></tr>]
+           } sort {
+             $count{$b} <=> $count{$a}
+           } grep {
+             $count{$_} >= $input{frequser}
+           } keys %count;
+  $list ||= qq[<tr><td>none found with frequency >= $input{frequser}</td></tr>];
+  my $n = scalar (keys %count);
+  print include::standardoutput('Frequent Users',
+                                qq[
+      <div>Found $n distinct users (under $rawn names)<!-- res: @res -->.  Listing the top $fullcount.</div>
+      <table><tbody>$list</tbody></table>
+      <div>&nbsp;</div>
+      <div>Meta Count: <ul>] . (join "\n", (map {
+        qq[<li>$metacount[$_] users booked $_ time(s).</li>]
+      } grep {
+        $metacount[$_] } 1 .. $#metacount)) . qq[</ul></div>
+      <div>&nbsp;</div>
+      $formhtml]# . '<pre>Metacount: ' . Dumper(\@metacount) . '</pre>'
+                                , $ab, $input{usestyle});
+}
+
 sub viewbooking {
   # User wants to view details of a specific booking.
   my @bookinglisting;
+  my ($lateerror, $earlyerror) = ("", "");
   push @bookinglisting, "<!-- Global Input Hash:  " . Dumper(\%input) . " -->\n" if $debug;
   for (split /,\s*/, $input{booking}) {
     if (/(\d+)/) {
@@ -581,25 +602,41 @@ sub viewbooking {
         } else {
           if ($input{latestart}) {
             warn "latestart has a value: $input{latestart}" if $debug;
-            $newb{latestart} = DateTime::Format::ForDB(DateTime->new(
-                                                                     year   => $newb{fromtime_datetime}->year,
-                                                                     month  => $newb{fromtime_datetime}->month,
-                                                                     day    => $newb{fromtime_datetime}->mday,
-                                                                     hour   => $input{booking_late_datetime_hour},
-                                                                     minute => $input{booking_late_datetime_minute},
-                                                                    ));
+            eval {
+              $newb{latestart} = DateTime::Format::ForDB(DateTime->new(
+                                                                       year   => $newb{fromtime_datetime}->year,
+                                                                       month  => $newb{fromtime_datetime}->month,
+                                                                       day    => $newb{fromtime_datetime}->mday,
+                                                                       hour   => $input{booking_late_datetime_hour},
+                                                                       minute => $input{booking_late_datetime_minute},
+                                                                      ));
+            };
+            $lateerror .= dterrormsg($newb{fromtime_datetime}->year(),
+                                     $newb{fromtime_datetime}->month(),
+                                     $newb{fromtime_datetime}->mday(),
+                                     $input{booking_late_datetime_hour},
+                                     $input{booking_late_datetime_minute},
+                                     qq[ (for the late start time)]) if $@;
           } elsif ($input{waslatestart}) {
             $newb{latestart} = undef;
           }
           if ($input{doneearlycheckbox}) {
             warn "doneearlycheckbox has a value: $input{doneearlycheckbox}" if $debug;
-            $newb{doneearly} = DateTime::Format::ForDB(DateTime->new(
-                                                                     year   => $newb{until_datetime}->year,
-                                                                     month  => $newb{until_datetime}->month,
-                                                                     day    => $newb{until_datetime}->mday,
-                                                                     hour   => $input{booking_doneearly_datetime_hour},
-                                                                     minute => $input{booking_doneearly_datetime_minute},
-                                                                    ));
+            eval {
+              $newb{doneearly} = DateTime::Format::ForDB(DateTime->new(
+                                                                       year   => $newb{until_datetime}->year,
+                                                                       month  => $newb{until_datetime}->month,
+                                                                       day    => $newb{until_datetime}->mday,
+                                                                       hour   => $input{booking_doneearly_datetime_hour},
+                                                                       minute => $input{booking_doneearly_datetime_minute},
+                                                                      ));
+            };
+            $earlyerror .= dterrormsg($newb{until_datetime}->year,
+                                      $newb{until_datetime}->month,
+                                      $newb{until_datetime}->mday,
+                                      $input{booking_doneearly_datetime_hour},
+                                      $input{booking_doneearly_datetime_minute},
+                                      qq[ (for the done early time)]) if $@;
             if ($input{followupname}) {
               my %fb;
               if ($b{followedby}) {
@@ -714,14 +751,14 @@ sub viewbooking {
               <tr><td>From<sup><a href="#footnote1">1</a></sup>:</td>
                   <td>].(DateTime::Form::Fields($fromdt, 'booking_fromtime',undef,undef,'FieldsK',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td>
-                  <td>$waslat<input type="checkbox" name="latestart" id="cblatestart" onchange="cbvistoggle('cblatestart', 'showstart');" ]
+                  <td>$lateerror$waslat<input type="checkbox" name="latestart" id="cblatestart" onchange="cbvistoggle('cblatestart', 'showstart');" ]
                     .($b{latestart} ? ' checked="checked" ' : '').qq[ />&nbsp;<label for="cblatestart">$startword</label> <span$showstart id="showstart">at
                       ].(DateTime::Form::Fields($latedt, 'booking_late', 'skipdate',undef,'FieldsL',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</span></td></tr>
               <tr><td>Until<sup><a href="#footnote2">2</a></sup>:</td>
                   <td>].(DateTime::Form::Fields($untidt, 'booking_until',undef,undef,'FieldsM',
                                                 time_list_quarter_hours_first => getvariable('resched', 'time_list_quarter_hours_first'))).qq[</td>
-                  <td><input type="checkbox" id="cbdoneearly" name="doneearlycheckbox" onchange="cbvistoggle('cbdoneearly', 'showdone');" ]
+                  <td>$earlyerror<input type="checkbox" id="cbdoneearly" name="doneearlycheckbox" onchange="cbvistoggle('cbdoneearly', 'showdone');" ]
                                                   .($b{doneearly}?' checked="checked" ' : '').qq[ />&nbsp;<label for="cbdoneearly">Done early</label>
                       <span$showdone id="showdone">at
                       ].(DateTime::Form::Fields($earldt,'booking_doneearly', 'skipdate',undef,'FieldsN',
@@ -747,31 +784,42 @@ sub viewbooking {
 
 sub markdaysclosed {
   my @dc;
+  my $dterrors = "";
   for my $n (1..10) {
     if ($input{'year'.$n} and $input{'month'.$n} and $input{'mday'.$n}) {
-      my $dt = DateTime->new(
-                             year    => $input{'year'.$n},
-                             month   => $input{'month'.$n},
-                             day     => $input{'mday'.$n},
-                            );
+      my ($dt, $wc, $cu);
+      eval {
+        $dt = DateTime->new(
+                            year    => $input{'year'.$n},
+                            month   => $input{'month'.$n},
+                            day     => $input{'mday'.$n},
+                           );
+      }; $dterrors .= dterrormsg($input{'year'.$n}, $input{'month'.$n}, $input{'mday'.$n}, undef, undef,
+                                 qq[ (for the date)]) if $@;
       my %ot = include::openingtimes();
       my ($hour, $minute) = @{$ot{$dt->dow()} || [ 8, 0]};
-      my $wc = DateTime->new(
-                             year    => $dt->year(),
-                             month   => $dt->month(),
-                             day     => $dt->day(),
-                             hour    => $hour,   # This gets overridden below, based on schedule.
-                             minute  => $minute, # ditto.
-                            );
+      eval {
+        $wc = DateTime->new(
+                            year    => $dt->year(),
+                            month   => $dt->month(),
+                            day     => $dt->day(),
+                            hour    => $hour,   # This gets overridden below, based on schedule.
+                            minute  => $minute, # ditto.
+                           );
+      }; $dterrors .= dterrormsg($dt->year(), $dt->month(), $dt->day(), $hour, $minute,
+                                 qq[ (for the opening time)]) if $@;
       my %ct = include::closingtimes();
-      my ($hour, $minute) = @{$ct{$dt->dow()} || [ 18, 0]};
-      my $cu = DateTime->new(
-                             year    => $dt->year(),
-                             month   => $dt->month(),
-                             day     => $dt->day(),
-                             hour    => $hour,   # This gets overridden below, based on schedule.
-                             minute  => $minute, # ditto.
-                             );
+      ($hour, $minute) = @{$ct{$dt->dow()} || [ 18, 0]};
+      eval {
+        $cu = DateTime->new(
+                            year    => $dt->year(),
+                            month   => $dt->month(),
+                            day     => $dt->day(),
+                            hour    => $hour,   # This gets overridden below, based on schedule.
+                            minute  => $minute, # ditto.
+                           );
+      }; $dterrors .= dterrormsg($dt->year(), $dt->month(), $dt->day(), $hour, $minute,
+                                 qq[ (for the closing time)]) if $@;
       addrecord('resched_days_closed', +{ whenclosed  => DateTime::Format::ForDB($wc),
                                           closeduntil => DateTime::Format::ForDB($cu),
                                           reason      => encode_entities($input{notes}),
@@ -789,13 +837,14 @@ sub markdaysclosed {
                      } @resource;
                    } @dc;
   my $content = join "\n", @result;
-  return ($content, 'Marking Closed Dates');
+  return ($dterrors . $content, 'Marking Closed Dates');
 }
 
 sub makebooking {
   my %res = %{getrecord('resched_resources', $input{resource})};
   my %sch = %{getrecord('resched_schedules', $res{schedule})};
   my @restobook = (\%res);
+  my ($errors) = "";
   if ($res{combine}) {
     for my $r (map { getrecord('resched_resources', $_) } split /,\s*/, $res{combine}) {
       push @restobook, $r if $input{"combiner$$r{id}"};
@@ -805,20 +854,26 @@ sub makebooking {
   if ($input{recur} eq 'listed') {
     for my $n (grep { $input{'recurlistmday'.$_} and $input{'recurlistyear'.$_} and $input{'recurlistmonth'.$_}
                     } map { /recurlistmday(\d+)/; $1 } grep { /^recurlistmday/ } keys %input) {
-      push @when, DateTime->new(
-                                year   => $input{'recurlistyear'.$n},
-                                month  => $input{'recurlistmonth'.$n},
-                                day    => $input{'recurlistmday'.$n},
-                                hour   => $when->hour,
-                                minute => $when->minute,
-                               );
+      eval {
+        push @when, DateTime->new(
+                                  year   => $input{'recurlistyear'.$n},
+                                  month  => $input{'recurlistmonth'.$n},
+                                  day    => $input{'recurlistmday'.$n},
+                                  hour   => $when->hour,
+                                  minute => $when->minute,
+                                 );
+      }; $errors .= dterrormsg($input{'recurlistyear'.$n}, $input{'recurlistmonth'.$n}, $input{'recurlistmday'.$n},
+                               $when->hour, $when->minute, qq[ (for the booking time)]) if $@;
     }
   } elsif ($input{recur}) {
     my $udt;
     if ($input{recurstyle} eq 'until') {
-      $udt = DateTime->new(year  => $input{recuruntilyear},  month  => $input{recuruntilmonth},
-                           day   => $input{recuruntilmday},
-                           hour  => $when->hour,             minute => $when->minute);
+      eval {
+        $udt = DateTime->new(year  => $input{recuruntilyear},  month  => $input{recuruntilmonth},
+                             day   => $input{recuruntilmday},
+                             hour  => $when->hour,             minute => $when->minute);
+      }; $errors .= dterrormsg($input{recuruntilyear}, $input{recuruntilmonth}, $input{recuruntilmday},
+                               $when->hour, $when->minute, qq[ (for the <q>until</q> time)]) if $@;
     }
     my $next = nextrecur($when)->clone();
     # TODO:  Study the logic of this while loop:
@@ -855,7 +910,7 @@ sub makebooking {
                  . (join "\n", map { "<li>" . $_ . "</li>" } @booking_result)
                  . '</ul></div>'
                 );
-  return ($content, 'Booking Resource: ' . $res{name}, $redirect_header);
+  return ($errors . $content, 'Booking Resource: ' . $res{name}, $redirect_header);
 }
 
 sub assemble_extranotes {
@@ -1001,7 +1056,7 @@ sub newbooking {
   my @when = ($when);
   my $monthoptions = join "\n", map {
     my $dt = DateTime->new( year  => 1970,
-                            month => $_,
+                            month => $_, # DateTime will never choke here, because the values are all hardcoded ($_ goes from 1 to 12).
                             day   => 1);
     my $abbr = $dt->month_abbr;
     my $selected = ($_ == $when->month) ? ' selected="selected"' : '';
@@ -1218,7 +1273,7 @@ sub newbooking {
                  <div><input type="radio" name="recurstyle" value="until" id="BookThruRadio" />Book through
                       <input type="text" name="recuruntilyear" size="6" value="].$when->year.qq[" onchange="document.getElementById('BookThruRadio').checked = 'checked';" />
                       <select name="recuruntilmonth" onchange="document.getElementById('BookThruRadio').checked = 'checked';">].(join $/, map {
-                        my $dt = DateTime->new( year => 1974, month => $_ , day => 7);
+                        my $dt = DateTime->new( year => 1974, month => $_ , day => 7); # DateTime will never choke here because all values are hardcoded.
                         my $selected = (($dt->month() == $when->month())?qq[ selected="selected"]:"");
                         (qq[<option value="$_"$selected>].($dt->month_name)."</option>")
                       } 1 .. 12).qq[</select>
@@ -1302,6 +1357,7 @@ sub overview {
   # User wants to just see a broad overview for certain resource(s).
   my @res = split /,\s*/, $input{overview};
   my %res;
+  my $errors = "";
   my %alwaysclosed = map { $_ => 1 } daysclosed(0);
   for my $id (@res) { $res{$id} = +{ %{getrecord('resched_resources', $id)} }; }
   my %sch = map { $_ => scalar getrecord('resched_schedules', $_)
@@ -1313,20 +1369,31 @@ sub overview {
   $input{endyear} ||= $input{startyear};
   $input{endmonth} ||= $input{startmonth};
 
-  my $begdt = DateTime->new(
-                            year  => $input{startyear},
-                            month => $input{startmonth},
-                            day   => ($input{startmday} || 1),
-                           );
-  my $enddt = DateTime->new(
-                            year   => $input{endyear},
-                            month  => $input{endmonth},
-                            day    => ($input{endmday} ||
-                                       last_mday_of_month(year   => $input{endyear},
-                                                          month  => $input{endmonth})),
-                            #hour   => 23, # i.e., _after_ the dt that starts this day, but before the next day.
-                           );
-
+  my ($begdt, $enddt);
+  eval {
+    $begdt = DateTime->new(
+                           year  => $input{startyear},
+                           month => $input{startmonth},
+                           day   => ($input{startmday} || 1),
+                          );
+  };
+  $errors .= dterrormsg($input{startyear}, $input{startmonth}, ($input{startmday} || 1), undef, undef,
+                        qq[ (for the start date)]) if $@;
+  my $ldom;
+  eval {
+    $ldom = last_mday_of_month(year   => $input{endyear},
+                               month  => $input{endmonth});
+  }; $errors .= include::errordiv("Date / Time Error", qq[Failed to find the last day of the month (year: $input{endyear}; month: $input{endmonth})]) if $@;
+  eval {
+    $enddt = DateTime->new(
+                           year   => $input{endyear},
+                           month  => $input{endmonth},
+                           day    => ($input{endmday} || $ldom),
+                           #hour   => 23, # i.e., _after_ the dt that starts this day, but before the next day.
+                          );
+  };
+  $errors .= dterrormsg($input{endyear}, $input{endmonth}, ($input{endmday} || $ldom),
+                        undef, undef, qq[ (for the end date)]) if $@;
   my $cutoffwarn = "";
   my $cutoffmonths = getvariable('resched', 'privacy_cutoff_old_schedules');
   $cutoffmonths = 12 if not defined $cutoffmonths;
@@ -1341,13 +1408,21 @@ sub overview {
                                                                     If this is a problem, ask your ReSched site administrator
                                                                     about the privacy policy configuration.");
       if (($enddt < $cutoff) || ($enddt <= $begdt)) {
-        $enddt = DateTime->new(
-                               year   => $begdt->year,
-                               month  => $begdt->month,
-                               day    => last_mday_of_month(year   => $begdt->year,
-                                                            month  => $begdt->month),
-                               #hour   => 23, # i.e., _after_ the dt that starts this day, but before the next day.
-                              );
+        my $ldom;
+        eval {
+          $ldom = last_mday_of_month(year   => $begdt->year,
+                                     month  => $begdt->month);
+        }; $errors .= include::errordiv("Date / Time Error", qq[Failed to get last day of month (year=] . $begdt->year() . qq[; month=] . $begdt->month() . qq[)]) if $@;
+        eval { $enddt = DateTime->new(
+                                      year   => $begdt->year,
+                                      month  => $begdt->month,
+                                      day    => $ldom,
+                                      #hour   => 23, # i.e., _after_ the dt that starts this day, but before the next day.
+                                     );
+             };
+        $errors .= dterrormsg($begdt->year, $begdt->month, $ldom, undef, undef,
+                              qq[ (for the end date, which had to be pushed out)]
+                             ) if $@;
       }
     }
   }
@@ -1415,7 +1490,7 @@ sub overview {
       </form>
     ];
   my $labeltext = join ", ", map { qq[<span class="resourcename">${$res{$_}}{name}</span>] } @res;
-  return (qq[<div class="overviewheader">Overview: $labeltext</div>$cutoffwarn] . (join "\n", @calendar), "Overview");
+  return ($errors . qq[<div class="overviewheader">Overview: $labeltext</div>$cutoffwarn] . (join "\n", @calendar), "Overview");
 }
 
 sub daysclosed {
@@ -1424,6 +1499,7 @@ sub daysclosed {
   return @num if not $form;
   my @answer;
   for my $num (@num) {
+    # DateTime will never choke here, because all values are hardcoded.
     my $dt = DateTime->new( year => 1970, month => 1, day => 1 );
     while (($dt->dow() %7) ne ($num %7)) {
       $dt = $dt->add(days => 1);         }
@@ -1439,7 +1515,7 @@ sub daysopen {
   my ($form) = @_;
   # $form should be 0 for number, 1 for abbreviation, 2 for full day name.
   my %alwaysclosed = map { $_ => 1 } daysclosed(0);
-  my $dt = DateTime->new( year => 1978, month => 1, day => 1 ); # This date corresponds to a Sunday.
+  my $dt = DateTime->new( year => 1978, month => 1, day => 1 ); # This date corresponds to a Sunday.  DateTime will not choke, because the numbers are hardcoded.
   my @dow;
   for (0 .. 6) {
     if (not $alwaysclosed{$dt->dow() % 7}) {
@@ -1457,252 +1533,251 @@ sub daysopen {
 
 sub doview {
   # User wants to see the hour-by-hour schedule for certain resource(s).
-  # This was originally inlined above, but it was long, so I factored
-  # it out to a subroutine for maintainability.
-    my $now = DateTime->now(time_zone => $include::localtimezone);
-    my %alwaysclosed = map { $_ => 1 } daysclosed(0);
-    my @category = include::categories();
-    my %category = map { my @x = @$_; my $name = shift @x;
-                         @x = categoryitems($name, \@category);
-                         ($name, \@x) } @category;
-    my @res;
-    if ($input{category} and $category{$input{category}}) {
-      @res = categoryitems($input{category}, \@category);
-    } else {
-      @res = split /,\s*/, $input{view};
-    }
+  my $now = DateTime->now(time_zone => $include::localtimezone);
+  my $errors = "<!-- Errors: -->  ";
+  my %alwaysclosed = map { $_ => 1 } daysclosed(0);
+  my @category = include::categories();
+  my %category = map { my @x = @$_; my $name = shift @x;
+                       @x = categoryitems($name, \@category);
+                       ($name, \@x) } @category;
+  my @res;
+  if ($input{category} and $category{$input{category}}) {
+    @res = categoryitems($input{category}, \@category);
+  } else {
+    @res = split /,\s*/, $input{view};
+  }
 
-    my (%res, @thead, @tbody);
-    for my $id (@res) {
-      $res{$id} =
-        {
-         %{getrecord('resched_resources', $id)},
-         # Bookings are filled in below, after we know what dates we want.
-        };
-    }
-    my @s = map {       scalar getrecord('resched_schedules', $_) } include::uniq(map { $res{$_}{schedule} } @res);
-    my %s = map { $_ => scalar getrecord('resched_schedules', $_) } include::uniq(map { $res{$_}{schedule} } @res);
+  my (%res, @thead, @tbody);
+  for my $id (@res) {
+    $res{$id} =
+      {
+       %{getrecord('resched_resources', $id)},
+       # Bookings are filled in below, after we know what dates we want.
+      };
+  }
+  my @s = map {       scalar getrecord('resched_schedules', $_) } include::uniq(map { $res{$_}{schedule} } @res);
+  my %s = map { $_ => scalar getrecord('resched_schedules', $_) } include::uniq(map { $res{$_}{schedule} } @res);
 
-    # We want the starttimes as numbers of minutes since midnight.
-    my @starttime = include::uniq(map { $$_{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2; } @s);
-    # (These are used to calculate the gcf and also for the table's start time for the first row.)
+  # We want the starttimes as numbers of minutes since midnight.
+  my @starttime = include::uniq(map { $$_{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2; } @s);
+  # (These are used to calculate the gcf and also for the table's start time for the first row.)
 
-    my $gcf = include::schedule_start_offset_gcf(@s);
-    # $gcf now is the number of minutes per table row.  We can get the
-    # rowspan figure for each cell by dividing the duration it
-    # represents by this $gcf figure.  We can also calculate the times
-    # to label each row with using this figure and the time from the
-    # row above.
+  my $gcf = include::schedule_start_offset_gcf(@s);
+  # $gcf now is the number of minutes per table row.  We can get the
+  # rowspan figure for each cell by dividing the duration it
+  # represents by this $gcf figure.  We can also calculate the times
+  # to label each row with using this figure and the time from the
+  # row above.
 
-    # For the table's start time, we just want the earliest of the
-    # starttimes:
-    my $t = $starttime[0]; for (@starttime) { $t = $_ if $_ < $t }
-    my $tablestarttime=$t;
+  # For the table's start time, we just want the earliest of the
+  # starttimes:
+  my $t = $starttime[0]; for (@starttime) { $t = $_ if $_ < $t }
+  my $tablestarttime=$t;
 
 
-    # What day(s) are we showing?
-    my $year  = ($input{year}  || ((localtime)[5] + 1900));
-    my $month = ($input{month} || ((localtime)[4] + 1));
-    my $prevday;
-    @dt = map {
-      my $mday = $_;
-      if ($mday <= $prevday) {
-        # $mday = 1;
-        $month++;
-        if ($month > 12) {
-          $year++; $month=1;
-        }
-      } $prevday = $mday;
-      my $dt = DateTime->new(year   => $year,
-                             month  => $month,
-                             day    => $mday,
-                             hour   => int($t / 60),
-                             minute => $t % 60,
-                            );
-      ($alwaysclosed{$dt->dow() % 7})
-        ? () # We are always closed that day.
-        : $dt;
-    } map {
-      if (/(\d+)-(\d+)/) {
-        $1 .. $2
-      } else {
-        $_
+  # What day(s) are we showing?
+  my $year  = ($input{year}  || ((localtime)[5] + 1900));
+  my $month = ($input{month} || ((localtime)[4] + 1));
+  my $prevday;
+  @dt = map {
+    my $mday = $_;
+    if ($mday <= $prevday) {
+      # $mday = 1;
+      $month++;
+      if ($month > 12) {
+        $year++; $month=1;
       }
-    } split /,/, ($input{mday}  ||  (localtime)[3]);
-    # Each of these DateTime values is a starting time for the top row
-    # in a set of columns (one column per resource).
-
-    my $cutoffmonths = getvariable('resched', 'privacy_cutoff_old_schedules');
-    $cutoffmonths = 12 if not defined $cutoffmonths;
-    my $origdaycount = scalar @dt;
-    if ($cutoffmonths > 0) {
-      my $cutoff = $now->clone()->subtract( months => $cutoffmonths );
-      @dt = grep { $_ gt $cutoff } @dt;
+    } $prevday = $mday;
+    my ($dt);
+    eval {
+      $dt = DateTime->new(year   => $year,
+                          month  => $month,
+                          day    => $mday,
+                          hour   => int($t / 60),
+                          minute => $t % 60,
+                         );
+    }; $errors .= dterrormsg($year, $month, $mday, int($t / 60), ($t % 60),
+                             qq[ (for what day(s) we are showing)]) if $@;
+    ($alwaysclosed{$dt->dow() % 7})
+      ? () # We are always closed that day.
+      : $dt;
+  } map {
+    if (/(\d+)-(\d+)/) {
+      $1 .. $2
+    } else {
+      $_
     }
-    if (not @dt) {
-      if ($origdaycount > 0) {
-        print include::standardoutput("Error: Old Schedules Unvailable",
-                                      include::errordiv("Old Schedules Unavailable",
-                                                        qq[Sorry, but schedules more than $cutoffmonths months old are
+  } split /,/, ($input{mday}  ||  (localtime)[3]);
+  # Each of these DateTime values is a starting time for the top row
+  # in a set of columns (one column per resource).
+
+  my $cutoffmonths = getvariable('resched', 'privacy_cutoff_old_schedules');
+  $cutoffmonths = 12 if not defined $cutoffmonths;
+  my $origdaycount = scalar @dt;
+  if ($cutoffmonths > 0) {
+    my $cutoff = $now->clone()->subtract( months => $cutoffmonths );
+    @dt = grep { $_ gt $cutoff } @dt;
+  }
+  if (not @dt) {
+    if ($origdaycount > 0) {
+      print include::standardoutput("Error: Old Schedules Unvailable",
+                                    include::errordiv("Old Schedules Unavailable",
+                                                      qq[Sorry, but schedules more than $cutoffmonths months old are
                                                            unavailable.  If this is a problem, ask your ReSched site
                                                            administrator about the privacy policy configuration.]));
-      } else {
-        print include::standardoutput("Error: No Dates Specified",
-                                      include::errordiv("No Dates", qq[Did you forget to specify which dates you wanted to see the schedule for?]));
-      }
+    } else {
+      print include::standardoutput("Error: No Dates Specified",
+                                    include::errordiv("No Dates", qq[Did you forget to specify which dates you wanted to see the schedule for?]));
     }
+  }
 
-    # Now we can fill in the bookings:
-    {
-      my $mindt = $dt[0];
-      my $maxdt = $dt[-1]->clone()->add(days => 1);
-      for my $id (@res) {
-        $res{$id}{bookings} = [ get_timerange_bookings($id, $mindt, $maxdt) ];
-      }
+  # Now we can fill in the bookings:
+  {
+    my $mindt = $dt[0];
+    my $maxdt = $dt[-1]->clone()->add(days => 1);
+    $debugtext .= "<div>mindt " . $mindt->ymd() . " " . $mindt->hms() . "; maxdt " . $maxdt->ymd() . " " . $maxdt->hms() . "</div>";
+    for my $id (@res) {
+      $res{$id}{bookings} = [ get_timerange_bookings($id, $mindt, $maxdt) ];
+      $debugtext .= "<div>res $id has " . @{$res{$id}{bookings}} . " bookings:</div><table><tbody><tr><td>&nbsp;</td><td>
+          " . (join "\n          ", map {
+            my $b = $_;
+            qq[<div>b$$b{id}</div>]
+          } @{$res{$id}{bookings}}) . "
+          </td></tr></tbody></table>\n";
     }
+  }
 
-    $debugtext .= "<p><div><strong>Viewing Schedules for @res:</strong></div>$/<pre>".encode_entities(Dumper(\%res))."</pre></p>
+  $debugtext .= "<p><div><strong>Viewing Schedules for @res:</strong></div>$/<pre>".encode_entities(Dumper(\%res))."</pre></p>
 <p><div><strong>Schedules:</strong></div>$/<pre>".encode_entities(Dumper(\@s))."</pre></p>
 <p>$gcf</p>
 <p>Starting Times:<pre>".encode_entities(Dumper(@dt))."</pre></p>\n" if $debug;
 
-#    my %endingtime =
-#      (
-#       #(map { $_ => [20, 30] } (1..4)), # 8:30pm Monday - Thursday,
-#       #5 => [18, 0], # 6pm on Friday,
-#       #6 => [17, 0], # 5pm on Saturday,
-#       #7 => [8, 0],  # 8am on Sunday (i.e., we're not open at all).  This should never get used, though, because we filter out Sundays entirely.
-#       (map { $_ => [20, 20] } (1..4)), # 8:20pm Monday - Thursday,
-#       5 => [17, 50], # 5:50pm on Friday,
-#       6 => [16, 50], # 4:50pm on Saturday,
-#       7 => [8, 0],  # 8am on Sunday (i.e., we're not open at all).  This should never get used, though, because we filter out Sundays entirely.
-#      );
-    my %endingtime = include::closingtimes();
-    #warn Dumper(\%endingtime);
+  my %endingtime = include::closingtimes();
 
-    my @col;
-    # For each day we're showing, we want columns for each resource.
-    for my $dt (@dt) {
-      for my $r (@res) {
-        my $end = $endingtime{$dt->wday()};
-        my $schedule = $s{$res{$r}->{schedule}};
-        $$schedule{firsttime} =~ /(\d{2})[:](\d{2})[:]\d+/;
-        my ($beghour, $begmin) = ($1, $2);
-        push @col,
-          +{
-            res => $res{$r},
-            # cdt => DateTime->new( # DateTime for current row.
-            #                      year   => $dt->year(),
-            #                      month  => $dt->month(),
-            #                      day    => $dt->day(),
-            #                      hour   => $dt->hour(),
-            #                      minute => $dt->minute(),
-            #                     ),
-            cdt => $dt->clone(),
-            sdt => DateTime->new( # DateTime for first timeslot at beginning of day.
-                                 year   => $dt->year(),
-                                 month  => $dt->month(),
-                                 day    => $dt->day(),
-                                 hour   => $beghour,
-                                 minute => $begmin,
-                                ),
-            end => DateTime->new( # DateTime for end of day
-                                 year   => $dt->year(),
-                                 month  => $dt->month(),
-                                 day    => $dt->day(),
-                                 hour   => $$end[0],
-                                 minute => $$end[1],
-                                ),
-            # rsp => (($$schedule{intervalmins}) / $gcf),
-          };
-      }
+  my @col;
+  # For each day we're showing, we want columns for each resource.
+  for my $dt (@dt) {
+    for my $r (@res) {
+      my $end = $endingtime{$dt->wday()};
+      my $schedule = $s{$res{$r}->{schedule}};
+      $$schedule{firsttime} =~ /(\d{2})[:](\d{2})[:]\d+/;
+      my ($beghour, $begmin) = ($1, $2);
+      my ($sdt, $edt);
+      eval {
+        $sdt = DateTime->new( # DateTime for first timeslot at beginning of day.
+                             year   => $dt->year(),
+                             month  => $dt->month(),
+                             day    => $dt->day(),
+                             hour   => $beghour,
+                             minute => $begmin,
+                            );
+        $debugtext .= "<div>r$r sdt " . $sdt->hms() . "</div>";
+      }; $errors .= dterrormsg($dt->year, $dt->month(), $dt->day(), $beghour, $begmin,
+                               qq[ (for the beginning of a timeslot)]) if $@;
+      eval {
+        $edt = DateTime->new( # DateTime for end of day
+                               year   => $dt->year(),
+                               month  => $dt->month(),
+                               day    => $dt->day(),
+                               hour   => $$end[0],
+                               minute => $$end[1],
+                            );
+        $debugtext .= "<div>r$r edt " . $edt->hms() . "</div>";
+      }; $errors .= dterrormsg($dt->year, $dt->month(), $dt->day(), $$end[0], $$end[1],
+                               qq[ (for the end of a timeslot)]) if $@;
+      push @col,
+        +{
+          res => $res{$r},
+          sdt => $sdt,
+          end => $edt,
+          dbg => "",
+          # rsp => (($$schedule{intervalmins}) / $gcf),
+         };
     }
+  }
 
-    $debugtext .= "<p>\%endingtime: ".(encode_entities(Dumper(\%endingtime)))."</p>
-<p><div><strong>Columns:</strong></div><div><pre>".encode_entities(Dumper(\@col))."</pre></div></p>";
+  $debugtext .= "<p>\%endingtime: ".(encode_entities(Dumper(\%endingtime)))."</p>\n"
+    #. "<p><div><strong>Columns:</strong></div>\n<div><pre>".encode_entities(Dumper(\@col))."</pre></div></p>"
+    ;
 
-    push @thead, (qq[<tr><th rowspan="2" class="label">Time Range</th>]
-                  .(join '',
-                    map {
-                      my $dt = $_;
-                      my $thclass  = ($dt->ymd eq $now->ymd) ? 'todayth' : 'dateth';
-                      qq[<th colspan="].(scalar @res). qq[" class="$thclass"><a href="./?view=$input{view}&amp;year=].
-                          ($dt->year())."&amp;month=".($dt->month)."&amp;mday=".($dt->mday()).
-                          '&amp;' . persist(undef, ['magicdate']) . '">'
-                          .($dt->day_name()) . ", " .($dt->ymd())."</a></th>"
-                        } @dt
-                   )."<!-- dt: @dt --></tr>\n");
-    push @thead, ("<tr>".( join '',
-                           map {
-                             "<!-- res: @res -->".join'', map {
-                               my $r = $_;
-                               my $s = bookingstyle($res{$r}{bgcolor});
-                               qq[<th class="res$res{$r}{id}"$s><a href="./?view=$res{$r}{id}&amp;year=$input{year}&amp;month=$input{month}&amp;mday=$input{mday}&amp;]. persist(undef, ['magicdate']) .qq[">$res{$r}{name}</a></th>]} @res
+  push @thead, (qq[<tr><th rowspan="2" class="label">Time Range</th>]
+                .(join '',
+                  map {
+                    my $dt = $_;
+                    my $thclass  = ($dt->ymd eq $now->ymd) ? 'todayth' : 'dateth';
+                    qq[<th colspan="].(scalar @res). qq[" class="$thclass"><a href="./?view=$input{view}&amp;year=].
+                      ($dt->year())."&amp;month=".($dt->month)."&amp;mday=".($dt->mday()).
+                      '&amp;' . persist(undef, ['magicdate']) . '">'
+                      .($dt->day_name()) . ", " .($dt->ymd())."</a></th>"
+                    } @dt
+                 )."<!-- dt: @dt --></tr>\n");
+  push @thead, ("<tr>".( join '',
+                         map {
+                           "<!-- res: @res -->".join'', map {
+                             my $r = $_;
+                             my $s = bookingstyle($res{$r}{bgcolor});
+                             qq[<th class="res$res{$r}{id}"$s><a href="./?view=$res{$r}{id}&amp;year=$input{year}&amp;month=$input{month}&amp;mday=$input{mday}&amp;]. persist(undef, ['category']) .qq[">$res{$r}{name}</a></th>]} @res
                            } @dt
-                         )."<!-- dt: @dt --></tr>\n");
-    my $maxnts; # Each iteration of the loop below calculates an $nts
-                # value (number of timeslots); we want the largest one
-                # for the next loop.
-    for my $c (@col) {
-      # We must construct the column.  First we place appointments
-      # already booked, then we place the empty timeslots at the
-      # correct intervals, then we calculate how many rows each one
-      # takes up.
-      #use Data::Dumper; warn Dumper(+{ col => $c });
-      my @b = grep {
-        # We don't want followup bookings.  (Those get picked up later
-        # under the booking they follow up.)
-        not $$_{isfollowup}
-      } grep {
-        # Of the bookings (which are already the ones for the entire
-        # timerange we're doing), we only want the bookings that are
-        # for the correct specific date.  (This is relevant if more
-        # than one date is being looked at side-by-side.)
-        my $bdt = DateTime::From::MySQL($$_{fromtime});
-        my $cdt = $$c{cdt};
-        (    ($bdt->year()  == $cdt->year())
-         and ($bdt->month() == $cdt->month())
-         and ($bdt->mday()  == $cdt->mday()))
-      } @{$$c{res}{bookings}};
+                       )."<!-- dt: @dt --></tr>\n");
+  my $maxnts; # Each iteration of the loop below calculates an $nts
+              # value (number of timeslots); we want the largest one
+              # for the next loop.
+  for my $c (@col) {
+    # We must construct the column.  First we place appointments
+    # already booked, then we place the empty timeslots at the
+    # correct intervals, then we calculate how many rows each one
+    # takes up.
+    my @b = grep {
+      # We don't want followup bookings.  (Those get picked up later
+      # under the booking they follow up.)
+      not $$_{isfollowup}
+    } grep {
+      # Of the bookings (which are already the ones for the entire
+      # timerange we're doing), we only want the bookings that are
+      # for the correct specific date.  (This is relevant if more
+      # than one date is being looked at side-by-side.)
+      my $bdt = DateTime::From::MySQL($$_{fromtime});
+      my $cdt = $$c{cdt};
+      my $result = $bdt cmp $cdt;
+      eval {
+        $result = (    ($bdt->year()  == $cdt->year())
+                       and ($bdt->month() == $cdt->month())
+                       and ($bdt->mday()  == $cdt->mday()));
+      };
+      $result;
+    } @{$$c{res}{bookings}};
+    $debugtext .= "<div>res $$c{res}{id}, " . @{$$c{res}{bookings}} . " bookings to consider placing</div>";
 
-      for $b (@b) {
-        my $fromtime = DateTime::From::MySQL($$b{fromtime});
-        # But, what timeslots are we taking up, then?
-        my $msm = ((60*$fromtime->hour())+$fromtime->min()); # minutes since midnight.
-        my $msb = $msm - $tablestarttime; # minutes since beginning time of table.
-        my $ts = $msb / $gcf;
-        $ts = 0 if $ts < 0;
-        #use Data::Dumper; warn Dumper(+{ fromtime => $fromtime->hms(), msm => $msm, msb => $msb, ts => $ts });
+    for $b (@b) {
+      my $fromtime = DateTime::From::MySQL($$b{fromtime});
+      # But, what timeslots are we taking up, then?
+      my $msm = ((60*$fromtime->hour())+$fromtime->min()); # minutes since midnight.
+      my $msb = $msm - $tablestarttime; # minutes since beginning time of table.
+      my $ts = $msb / $gcf;
+      $ts = 0 if $ts < 0;
 
-        # So, how many timeslots long is this booking?
-        my $until    = DateTime::From::MySQL($$b{until});
-        #my $duration = DateTime->new(
-        #                             year   => $until->year(),
-        #                             month  => $until->month(),
-        #                             day    => $until->day(),
-        #                             hour   => $until->hour(),
-        #                             minute => $until->minute(),
-        #                            )->subtract_datetime($fromtime);
-        my $duration = $until->clone()->subtract_datetime($fromtime);
-        # We do not provide a mechanism for appointments spanning
-        # days, so we can just take hours and minutes here.
-        my $durmins = $duration->minutes + (60*$duration->hours) + (int ($duration->seconds / 60));
-        my $durts = int (0.75 + ($durmins / $gcf)); # duration in number of timeslots.
-        #use Data::Dumper(); warn Dumper(+{ durmins => $durmins, durts => $durts });
-        for my $i (1 .. ($durts-1)) { # timeslot 0 is the one we already marked, for a total of $durts slots.
-          #warn "ts $ts and i $i\n";
-          if (($ts + $i) >= 0) {
-            $$c{tscont}[$ts+$i] = 1;
-          } else {
-            warn "Mass Hysteria: ts $ts and i $i";
-          }
+      # So, how many timeslots long is this booking?
+      my $until    = DateTime::From::MySQL($$b{until});
+      my $duration = $until->clone()->subtract_datetime($fromtime);
+      # We do not provide a mechanism for appointments spanning
+      # days, so we can just take hours and minutes here.
+      my $durmins = $duration->minutes + (60*$duration->hours) + (int ($duration->seconds / 60));
+      my $durts = int (0.75 + ($durmins / $gcf)); # duration in number of timeslots.
+      #use Data::Dumper(); warn Dumper(+{ durmins => $durmins, durts => $durts });
+      for my $i (1 .. ($durts-1)) { # timeslot 0 is the one we already marked, for a total of $durts slots.
+        #warn "ts $ts and i $i\n";
+        if (($ts + $i) >= 0) {
+          $$c{tscont}[$ts+$i] = 1;
+        } else {
+          warn "Mass Hysteria: ts $ts and i $i";
         }
+      }
 
-        # We can't make the td element yet, because we don't know the
-        # rowspan value yet, but we *can* now calculate the *contents*
-        # of the td element:
-        my $x = $b; my $inits = ($$x{staffinitials} ? " --$$x{staffinitials}" : '');
-        $$c{tdcontent}[$ts] = "\n<!-- Actual Booking:  *********************************************************
+      # We can't make the td element yet, because we don't know the
+      # rowspan value yet, but we *can* now calculate the *contents*
+      # of the td element:
+      my $x = $b; my $inits = ($$x{staffinitials} ? " --$$x{staffinitials}" : '');
+      $$c{tdcontent}[$ts] = "\n<!-- Actual Booking:  *********************************************************
            fromtime => $$x{fromtime},    until => $$x{until},
            duration => ".encode_entities(Dumper(\$duration)).qq[
            durmins  => $durmins,         durts => $durts,
@@ -1716,212 +1791,217 @@ sub doview {
               :"")
                ."</a>
               <!-- Booked by $$x{bookedby} for timeslot from $$x{fromtime} to $$x{until} (done: $$x{doneearly}, followed by $$x{followedby}) -->";
-        my $bookingcount = 1;
-        my $foundfollowedbyempty;
-        while ($$x{followedby} and not $foundfollowedbyempty) {
-          my $p = $x;
-          $x = getrecord('resched_bookings', $$x{followedby});
-          if ($$x{id}) {
-            my $notes = ''; if ($$x{notes}) {
-              $notes = ' <abbr title="'.encode_entities($$x{notes}).qq["><img width="24" height="24" alt="[Notes]" src="notes.png" /></abbr>];
-            }
-            my ($fbytime) = ($$x{fromtime} =~ /(\d+[:]\d+)/);
-            my $fbytimeth = include::twelvehourtime($fbytime);
-            $$c{tdcontent}[$ts] .= qq[<hr class="doneearly"></hr>\n<!-- Followup Booking: ########################################################
+      my $bookingcount = 1;
+      my $foundfollowedbyempty;
+      while ($$x{followedby} and not $foundfollowedbyempty) {
+        my $p = $x;
+        $x = getrecord('resched_bookings', $$x{followedby});
+        if ($$x{id}) {
+          my $notes = ''; if ($$x{notes}) {
+            $notes = ' <abbr title="'.encode_entities($$x{notes}).qq["><img width="24" height="24" alt="[Notes]" src="notes.png" /></abbr>];
+          }
+          my ($fbytime) = ($$x{fromtime} =~ /(\d+[:]\d+)/);
+          my $fbytimeth = include::twelvehourtime($fbytime);
+          $$c{tdcontent}[$ts] .= qq[<hr class="doneearly"></hr>\n<!-- Followup Booking: ########################################################
            fromtime => $$x{fromtime},    until => $$x{until},
            --><a href="./?booking=$$x{id}&amp;$persistentvars">].
-              (
-               include::capitalise(include::dealias(include::normalisebookedfor($$x{bookedfor})))
-              ) ." ($fbytimeth)$notes</a>
+             (
+              include::capitalise(include::dealias(include::normalisebookedfor($$x{bookedfor})))
+             ) ." ($fbytimeth)$notes</a>
               <!-- Booked by $$x{bookedby} for timeslot from $$x{fromtime} to $$x{until} (done: $$x{doneearly}, followed by $$x{followedby}) -->";
-            $bookingcount += 1; # I have the hr element styled so that this is enough.
-          } else {
-            $x = $p; $foundfollowedbyempty = 1;
-          }
+          $bookingcount += 1; # I have the hr element styled so that this is enough.
+        } else {
+          $x = $p; $foundfollowedbyempty = 1;
         }
-        # Question: is there room to insert some blank lines before
-        # the done early link?  That question gets addressed below,
-        # when calculating the rowspan values, but we'll need the
-        # bookingcount:
-        $$c{bookingcount}[$ts] = $bookingcount;
-        $$c{tdcontent}[$ts] .= "<!-- and now the done early link: -->"; my $donetext = "done early?";
-        my $extendlink = '';
-        my $currend = $until->hms();
-        $extendlink = qq[<a href="./?extend=$$x{id}&amp;$persistentvars&amp;currentend=$currend"><img src="/img/arrow-down-blue-v2.png" class="extendarrow" width="36" height="21" /></a>];
-        if ($$x{doneearly}) {
-          my $doneat = include::twelvehourtimefromdt(DateTime::From::MySQL($$x{doneearly}));
-          $donetext = "(available at $doneat)";
-          $extendlink = '';
-          $$c{tdcontent}[$ts] .= '<hr class="doneearly" />';
-        }
-        ++$uniqueid;
-        my $delink = ($input{useajax} eq 'off')
-          ? qq[<a href="./?doneearly=$$x{id}&amp;$persistentvars" class="avail">$donetext</a>]
-          : qq[<a class="avail" onclick="onemoment('dnid$uniqueid'); sendajaxrequest('ajax=doneearlyform&amp;containerid=dnid$uniqueid&amp;bookingid=$$x{id}&amp;$persistentvars')">$donetext</a>];
-        $$c{tdcontent}[$ts] .= qq[
+      }
+      # Question: is there room to insert some blank lines before
+      # the done early link?  That question gets addressed below,
+      # when calculating the rowspan values, but we'll need the
+      # bookingcount:
+      $$c{bookingcount}[$ts] = $bookingcount;
+      $$c{tdcontent}[$ts] .= "<!-- and now the done early link: -->"; my $donetext = "done early?";
+      my $extendlink = '';
+      my $currend = $until->hms();
+      $extendlink = qq[<a href="./?extend=$$x{id}&amp;$persistentvars&amp;currentend=$currend"><img src="/img/arrow-down-blue-v2.png" class="extendarrow" width="36" height="21" /></a>];
+      if ($$x{doneearly}) {
+        my $doneat = include::twelvehourtimefromdt(DateTime::From::MySQL($$x{doneearly}));
+        $donetext = "(available at $doneat)";
+        $extendlink = '';
+        $$c{tdcontent}[$ts] .= '<hr class="doneearly" />';
+      }
+      ++$uniqueid;
+      my $delink = ($input{useajax} eq 'off')
+        ? qq[<a href="./?doneearly=$$x{id}&amp;$persistentvars" class="avail">$donetext</a>]
+        : qq[<a class="avail" onclick="onemoment('dnid$uniqueid'); sendajaxrequest('ajax=doneearlyform&amp;containerid=dnid$uniqueid&amp;bookingid=$$x{id}&amp;$persistentvars')">$donetext</a>];
+      $$c{tdcontent}[$ts] .= qq[
           <div id="dnid$uniqueid">
              $extendlink
              <div style="text-align: right;" class="doneearly">$delink</div>
           </div>];
-        # Since these are actual bookings, not mere scheduled
-        # timeslots, we want to extend them downward for their
-        # duration, so that regularly scheduled timeslots cannot break
-        # in in the middle of them.  However, that's done below, after
-        # we place the regularly scheduled thingies, when we calculate
-        # the rowspan values.
-      }
-      # Now, the regularly scheduled empty timeslots (if they're not taken):
-      # How many timeslots are there total (on the table, counting between ones)?
-      my $esm = (60*$$c{end}->hour() + $$c{end}->min()); # Minutes since midnight at close (end of day).
+      # Since these are actual bookings, not mere scheduled
+      # timeslots, we want to extend them downward for their
+      # duration, so that regularly scheduled timeslots cannot break
+      # in in the middle of them.  However, that's done below, after
+      # we place the regularly scheduled thingies, when we calculate
+      # the rowspan values.
+    }
+    # Now, the regularly scheduled empty timeslots (if they're not taken):
+    # How many timeslots are there total (on the table, counting between ones)?
+    my $esm = (60*$$c{end}->hour() + $$c{end}->min()); # Minutes since midnight at close (end of day).
 
-      my $ssm = (60*$$c{sdt}->hour() + $$c{sdt}->min()); # Minutes since midnight for first timeslot.
+    my $ssm = (60*$$c{sdt}->hour() + $$c{sdt}->min()); # Minutes since midnight for first timeslot.
 
-      my $nts = int ((($esm - $tablestarttime) / $gcf) + 0.5); # If a timeslot is at least half there, show it.
-      $maxnts = $nts if $maxnts < $nts;
-      my $sts = int ((($ssm - $tablestarttime) / $gcf));
-      # $nts is number of (raw) timeslots.
-      # $sts is the first one to match the interval.
-      $$c{sch} = $s{$$c{res}{schedule}};
-      { # Calculate number of regularly scheduled appointment timeslots (tsl) for the column:
-        $$c{tsl} = int ((($esm - $ssm) / $$c{sch}{intervalmins}) + 0.5); # If a timeslot is at least half there, go ahead and prepare rows for it.
-      }
-      my $tsc; for $tsc (0..($$c{tsl}-1)) {
-        my $tsn = $sts + ($tsc * (int ($$c{sch}{intervalmins} / $gcf))); # Timeslot Number
-        my $msm = $ssm + ($tsn * $gcf);
-        my $when = DateTime->new(# This is WRONG for columns that start their first timeslot
-                                 # later than another displayed column, because $ssm is larger
-                                 # for some columns than for others (as it should be), and we
-                                 # don't know at this time the correct amount to subtract; this
-                                 # is FIXED later (where dectime() is called) once we have done
-                                 # some other calculations (so that we do know what to subtract)
-                                 # before the results are output to the user.
-                                 year   => $$c{sdt}->year(),
-                                 month  => $$c{sdt}->month(),
-                                 day    => $$c{sdt}->day(),
-                                 hour   => (int ($msm / 60) % 24),
-                                 minute => $msm % 60,
-                                );
-        my $whentext = $when->date() . " " . $when->time();# . "&amp;tsn=$tsn&amp;gcf=$gcf&amp;ssm=$ssm";
-        my $resid = $$c{res}{id};
-        if (not $$c{tscont}[$tsn]) {
-          my ($availstuff);
-          if (isroom($resid)
-              # or ($$c{sch}{intervalmins} ne $$c{sch}{durationmins}) # This MAY not matter, provided the page will reload anyway when the resource is booked.
-              # or (not $$c{sch}{durationlock}) # This MAY not matter too, provided the user can always do things the old way if a different duration is wanted.
-              or ($input{useajax} eq 'off')) {
-            $availstuff = qq[<!-- *** Regularly Scheduled Interval ***
+    my $nts = int ((($esm - $tablestarttime) / $gcf) + 0.5); # If a timeslot is at least half there, show it.
+    $maxnts = $nts if $maxnts < $nts;
+    my $sts = int ((($ssm - $tablestarttime) / $gcf));
+    # $nts is number of (raw) timeslots.
+    # $sts is the first one to match the interval.
+    $$c{sch} = $s{$$c{res}{schedule}};
+    { # Calculate number of regularly scheduled appointment timeslots (tsl) for the column:
+      $$c{tsl} = int ((($esm - $ssm) / $$c{sch}{intervalmins}) + 0.5); # If a timeslot is at least half there, go ahead and prepare rows for it.
+    }
+    my $tsc; for $tsc (0..($$c{tsl}-1)) {
+      my $tsn = $sts + ($tsc * (int ($$c{sch}{intervalmins} / $gcf))); # Timeslot Number
+      my $msm = $ssm + ($tsn * $gcf);
+      my $when;
+      eval {
+        $when = DateTime->new(# This is WRONG for columns that start their first timeslot
+                              # later than another displayed column, because $ssm is larger
+                              # for some columns than for others (as it should be), and we
+                              # don't know at this time the correct amount to subtract; this
+                              # is FIXED later (where dectime() is called) once we have done
+                              # some other calculations (so that we do know what to subtract)
+                              # before the results are output to the user.
+                              year   => $$c{sdt}->year(),
+                              month  => $$c{sdt}->month(),
+                              day    => $$c{sdt}->day(),
+                              hour   => (int ($msm / 60) % 24),
+                              minute => $msm % 60,
+                             );
+      }; $errors .= include::errordiv($$c{sdt}->year(), $$c{sdt}->month(), $$c{sdt}->day(),
+                             (int ($msm / 60) % 24), ($msm % 60),
+                             qq[ (for preliminary column start time)]) if $@;
+      my $whentext = $when->date() . " " . $when->time();# . "&amp;tsn=$tsn&amp;gcf=$gcf&amp;ssm=$ssm";
+      my $resid = $$c{res}{id};
+      if (not $$c{tscont}[$tsn]) {
+        my ($availstuff);
+        if (isroom($resid)
+            # or ($$c{sch}{intervalmins} ne $$c{sch}{durationmins}) # This MAY not matter, provided the page will reload anyway when the resource is booked.
+            # or (not $$c{sch}{durationlock}) # This MAY not matter too, provided the user can always do things the old way if a different duration is wanted.
+            or ($input{useajax} eq 'off')) {
+          $availstuff = qq[<!-- *** Regularly Scheduled Interval ***
              --><a href="./?action=newbooking&amp;resource=$resid&amp;when=$whentext&amp;]. persist() . qq[" class="avail">(available)</a>];
-          } else {
-            ++$uniqueid;
-            $availstuff = qq[<span id="unid$uniqueid"><!-- *** Regularly Scheduled Interval ***
+        } else {
+          ++$uniqueid;
+          $availstuff = qq[<span id="unid$uniqueid"><!-- *** Regularly Scheduled Interval ***
              --><a href="./?action=newbooking&amp;resource=$resid&amp;when=$whentext&amp;]. persist() . qq[" class="avail">(available)</a>
                 <input type="button" value="Quick!" onclick="onemoment('unid$uniqueid'); sendajaxrequest('ajax=newbookingform&amp;containerid=unid$uniqueid&amp;resource=$resid&amp;when=$whentext&amp;] . persist(undef, ['magicdate']) . qq[');" />
              </span>];
-          }
-          $$c{tdcontent}[$tsn] ||= $availstuff;
-          push @{$$c{contentnote}}, +{
-                                      tsc => $tsc,
-                                      tsn => $tsn,
-                                      con => $$c{tdcontent}[$tsn],
-                                      msm => $msm,
-                                      whe => $whentext,
-                                     };
         }
-      }
-      # If the very first timeslot at the top of the day isn't taken, put a blank td in it:
-      #$$c{tdcontent}[0] ||= "<!-- This Space Intentionally Left Blank -->";
-      if (not $$c{tdcontent}[0]) {
-        $$c{ssmoffset} += $gcf; # This still needs to be multiplied by
-                                # the rowspan value, which hasn't been
-                                # calculated yet.
-        $$c{tdcontent}[0] = "<!-- This Space Intentionally Left Blank ($$c{ssmoffset}) -->";
-      }
-      # Also, mark off the final closing time at the end of the day:
-      $$c{tdcontent}[$nts] = "(closing)<!-- nts: $nts -->";
-    }
-    for my $c (@col) {
-      # Calculate the rowspan values:
-      my $rsp = 0;
-      for my $tsn (reverse 0 .. $maxnts) {
-        if ($$c{tdcontent}[$tsn]) {
-          $$c{tdrowspan}[$tsn] = ++$rsp;
-          # Now, what about inserting some blank lines (if there's room) before the doneearly link?
-          my $bl = $rsp - $$c{bookingcount}[$tsn] - 1;
-          # Subtracting 1 accounts for the line the done early link takes for itself.
-          for (1..$bl) {
-            $$c{tdcontent}[$tsn] =~ s(<!-- and now the done early link: -->)(<div class="doneearlyspacer">&nbsp;</div><!-- and now the done early link: -->);
-          }
-          $rsp = 0;
-        } else {
-          $rsp++;
-        }
+        $$c{tdcontent}[$tsn] ||= $availstuff;
+        push @{$$c{contentnote}}, +{
+                                    tsc => $tsc,
+                                    tsn => $tsn,
+                                    con => $$c{tdcontent}[$tsn],
+                                    msm => $msm,
+                                    whe => $whentext,
+                                   };
       }
     }
-    # Great, now create the actual rows...  but how many of them?
-    my $lastendtime = (sort { $a <=> $b } map { $$_{end}->min() + (60*$$_{end}->hour()) } @col)[-1];
-    my $numofrows = ($lastendtime - $tablestarttime) / $gcf;
-    for my $row (0 .. $numofrows) {
-      my $rowtime = $tablestarttime + ($gcf * $row);
-      my ($label, $beforeopen, $labelclass); {
-        my $ampm = "<!-- am -->";
-        my $hour = int ($rowtime / 60);
-        if ($hour < 9) {
-          $beforeopen = 1;
-        }
-        if ($hour > 12) {
-          $ampm = "<!-- pm -->"; $hour -= 12;
-        }
-        my $min  = sprintf "%02d", ($rowtime % 60);
-        $label = "<!-- $rowtime -->$hour:$min$ampm";
-        if ($beforeopen) { $label = '<!-- before open -->'; $labelclass = 'beforeopen' }
-      }
-      $labelclass ||= 'label';
-      push @tbody, qq[<tr><!-- $row --><td class="$labelclass">$label</td>] .
-        (join $/, map {
-          $$_{tdcontent}[$row]
-            ? sub {
-              my ($c, $r) = @_;
-              my $class = ($$c{tdcontent}[$r] =~ /\(closed\)/) ? qq[ class="closed"] : qq[ class="res$$c{res}{id}"];
-              if ($$c{ssmoffset}) {
-                $$c{tdcontent}[$r] =~ s!(\d+[:]\d+[:]\d+)!dectime($1,$gcf,$$c{tdrowspan}[0])!eg; }
-              my $style = bookingstyle($$c{res}{bgcolor});
-              return qq[<td rowspan="$$_{tdrowspan}[$row]"$class$style>$$_{tdcontent}[$row]</td>\n              ];
-            }->($_, $row)
-              : "<!-- no tdcontent -->"
-        } @col)
-        . "</tr>";
+    # If the very first timeslot at the top of the day isn't taken, put a blank td in it:
+    #$$c{tdcontent}[0] ||= "<!-- This Space Intentionally Left Blank -->";
+    if (not $$c{tdcontent}[0]) {
+      $$c{ssmoffset} += $gcf; # This still needs to be multiplied by
+      # the rowspan value, which hasn't been
+      # calculated yet.
+      $$c{tdcontent}[0] = "<!-- This Space Intentionally Left Blank ($$c{ssmoffset}) -->";
     }
-    my $pagetitle = 'View Schedule'; # Sane default.
-    if ($input{view} =~ /^(\d+)$/) {
-      my %r = %{getrecord('resched_resources', $1)};
-      $pagetitle = $r{name};
-      # This is a slightly better title, but maybe we can do better.
-    }
-    my %specialview = map {
-      my ($name, @res) = @$_;
-      @res = categoryitems($name, \@category);
-      my $view = join ',', sort { $a <=> $b } @res;
-      ($view => $name)
-    } @category;
-    my $thisview = join ",", sort { $a <=> $b } split /,\s*/, $input{view};
-    if ($input{magicdate} eq 'today') {
-      $pagetitle = "Today's ";
-      if ($specialview{$thisview}) {
-        $pagetitle .= $specialview{$thisview};
+    # Also, mark off the final closing time at the end of the day:
+    $$c{tdcontent}[$nts] = "(closing)<!-- nts: $nts -->";
+  }
+  for my $c (@col) {
+    # Calculate the rowspan values:
+    my $rsp = 0;
+    for my $tsn (reverse 0 .. $maxnts) {
+      if ($$c{tdcontent}[$tsn]) {
+        $$c{tdrowspan}[$tsn] = ++$rsp;
+        # Now, what about inserting some blank lines (if there's room) before the doneearly link?
+        my $bl = $rsp - $$c{bookingcount}[$tsn] - 1;
+        # Subtracting 1 accounts for the line the done early link takes for itself.
+        for (1..$bl) {
+          $$c{tdcontent}[$tsn] =~ s(<!-- and now the done early link: -->)(<div class="doneearlyspacer">&nbsp;</div><!-- and now the done early link: -->);
+        }
+        $rsp = 0;
       } else {
-        $pagetitle .= "Schedule";
+        $rsp++;
       }
-    } elsif ($specialview{$thisview}) {
-      $pagetitle = $specialview{$thisview} . ' Schedule';
     }
-    if ($input{magicdate} eq 'monthataglance') {
-      $pagetitle .= ': Month at a Glance';
+  }
+  # Great, now create the actual rows...  but how many of them?
+  my $lastendtime = (sort { $a <=> $b } map { $$_{end}->min() + (60*$$_{end}->hour()) } @col)[-1];
+  my $numofrows = ($lastendtime - $tablestarttime) / $gcf;
+  for my $row (0 .. $numofrows) {
+    my $rowtime = $tablestarttime + ($gcf * $row);
+    my ($label, $beforeopen, $labelclass); {
+      my $ampm = "<!-- am -->";
+      my $hour = int ($rowtime / 60);
+      if ($hour < 9) {
+        $beforeopen = 1;
+      }
+      if ($hour > 12) {
+        $ampm = "<!-- pm -->"; $hour -= 12;
+      }
+      my $min  = sprintf "%02d", ($rowtime % 60);
+      $label = "<!-- $rowtime -->$hour:$min$ampm";
+      if ($beforeopen) { $label = '<!-- before open -->'; $labelclass = 'beforeopen' }
     }
-    my $updateargs   = qq[ajax=updates-p&since=] .
-      (DateTime::Format::ForDB($now)) . qq[&resource=$input{view}];
-    #warn "Update args: $updateargs\n";
-    my $updatesuri = updates_uri([split /,\s*/, $input{view}], $now);
-    my $updatescript = qq[<script language="javascript">
+    $labelclass ||= 'label';
+    push @tbody, qq[<tr><!-- row $row --><td class="$labelclass">$label</td>] .
+      (join $/, map {
+        $$_{tdcontent}[$row]
+          ? sub {
+            my ($c, $r) = @_;
+            my $class = ($$c{tdcontent}[$r] =~ /\(closed\)/) ? qq[ class="closed"] : qq[ class="res$$c{res}{id}"];
+            if ($$c{ssmoffset}) {
+              $$c{tdcontent}[$r] =~ s!(\d+[:]\d+[:]\d+)!dectime($1,$gcf,$$c{tdrowspan}[0])!eg; }
+            my $style = bookingstyle($$c{res}{bgcolor});
+            return qq[<td rowspan="$$_{tdrowspan}[$row]"$class$style>$$_{tdcontent}[$row]</td>\n              ];
+          }->($_, $row)
+            : "<!-- no tdcontent -->"
+          } @col)
+      . "</tr>\n";
+  }
+  my $pagetitle = 'View Schedule'; # Sane default.
+  if ($input{view} =~ /^(\d+)$/) {
+    my %r = %{getrecord('resched_resources', $1)};
+    $pagetitle = $r{name};
+    # This is a slightly better title, but maybe we can do better.
+  }
+  my %specialview = map {
+    my ($name, @res) = @$_;
+    @res = categoryitems($name, \@category);
+    my $view = join ',', sort { $a <=> $b } @res;
+    ($view => $name)
+  } @category;
+  my $thisview = join ",", sort { $a <=> $b } split /,\s*/, $input{view};
+  if ($input{magicdate} eq 'today') {
+    $pagetitle = "Today's ";
+    if ($specialview{$thisview}) {
+      $pagetitle .= $specialview{$thisview};
+    } else {
+      $pagetitle .= "Schedule";
+    }
+  } elsif ($specialview{$thisview}) {
+    $pagetitle = $specialview{$thisview} . ' Schedule';
+  }
+  if ($input{magicdate} eq 'monthataglance') {
+    $pagetitle .= ': Month at a Glance';
+  }
+  my $updateargs   = qq[ajax=updates-p&since=] .
+    (DateTime::Format::ForDB($now)) . qq[&resource=$input{view}];
+  #warn "Update args: $updateargs\n";
+  my $updatesuri = updates_uri([split /,\s*/, $input{view}], $now);
+  my $updatescript = qq[<script language="javascript">
        /* Issue a check for updates request periodically. */
        function checkforupdates() {
          sendajaxrequest('$updateargs');
@@ -1932,18 +2012,31 @@ sub doview {
        }
        window.setInterval(checkforupdates,  120000 );
     </script>];
-    my $nownote = qq[<div class="currenttime">The following is current as of ] . (include::datewithtwelvehourtime(DateTime->now( time_zone => $include::localtimezone ))) . qq[</div>];
-    print include::standardoutput($pagetitle,
+  my $nownote = qq[<div class="currenttime">The following is current as of ] . (include::datewithtwelvehourtime(DateTime->now( time_zone => $include::localtimezone ))) . qq[</div>];
+  print include::standardoutput($pagetitle,
        qq[
        <!-- table start time: $tablestarttime -->
        <!-- table end time:   $lastendtime -->
        <!-- number of rows:   $numofrows -->
+       @DateTime::NormaliseInput::Debug
+       $errors
        $messagetouser
        $nownote
+       <!-- always closed: ] . (join ", ", keys %alwaysclosed) . qq[  -->
+       <!-- categories: ] . (join "; ", map { my $cn = $_; "$cn: " . join(",", @{$category{$cn}}) } keys %category) . qq[  -->
+       <!-- res:  @res -->
+       ] . (join "\n       ", map {
+         my $c = $_;
+         qq[<!-- col r $$c{res}{id}, sdt $$c{sdt}, ] . (scalar @{$$c{res}{bookings}}) . qq[ bookings: ]
+           . (join " | ", map {
+             my $b = $_;
+             qq[b$$b{id} r$$b{resource} ]
+           } @{$$c{res}{bookings}}) . qq[ -->]
+       } @col) . qq[
        <table border="1" class="scheduletable">
        <thead>].(join"\n",@thead).qq[</thead>
        <tbody>].(join"\n",@tbody).qq[</tbody>
-       </table><!-- /table aleph -->],
+       </table><!-- /table aleph -->] . $debugtext,
                                   $ab, $input{usestyle},
                                   (($input{extend} ? $redirectheader : '')
                                    . $updatescript),
@@ -1959,19 +2052,26 @@ sub availstats_for_category {
   push @debugline, "endstats: $endstats";
   my (@resource, @month, @dow, @time, %monct, %dowct, %timect, %availstat);
   my ($catname, @resid) = @$category;
+  my $errors = "";
   @resid = categoryitems($catname, $categories);
   push @resource, $_ for @resid;
 
   @resource = include::uniq(@resource);
   push @debugline, "resources: @resource";
 
-  my $when = DateTime->new(
-                           year    => $startstats->year(),
-                           month   => $startstats->month(),
-                           day     => $startstats->day(),
-                           hour    => 0,
-                           minute  => 0,
-                          );
+  my $when;
+  eval {
+    # I don't _think_ DateTime can choke here, because the date
+    # numbers all come from an existing DateTime object (and hour and
+    # minute are optional anyhow); but I am being thorough today.
+    $when = DateTime->new(
+                          year    => $startstats->year(),
+                          month   => $startstats->month(),
+                          day     => $startstats->day(),
+                          hour    => 0,
+                          minute  => 0,
+                            );
+  }; $errors .= dterrormsg($startstats->year(), $startstats->month(), $startstats->day()) if $@;
 
   while ($when < $endstats) {
     push @month, $when->year . "_" . $when->month_abbr();
@@ -2001,13 +2101,19 @@ sub availstats_for_category {
   my %ot = include::openingtimes();
   my %ct = include::closingtimes();
 
-  my $day = DateTime->new(
-			  year    => $startstats->year(),
-			  month   => $startstats->month(),
-			  day     => $startstats->day(),
-			  hour    => 0,
-			  minute  => 0,
-			 );
+  my $day;
+  eval {
+    # I don't _think_ DateTime can choke here, because the date
+    # numbers all come from an existing DateTime object (and hour and
+    # minute are optional anyhow); but I am being thorough today.
+    $day = DateTime->new(
+                         year    => $startstats->year(),
+                         month   => $startstats->month(),
+                         day     => $startstats->day(),
+                         hour    => 0,
+                         minute  => 0,
+                        );
+  }; $errors .= dterrormsg($startstats->year(), $startstats->month(), $startstats->day()) if $@;
   my ($firstday, $lastday);
   while ($day->ymd() lt $endstats->ymd()) {
     my $nextday = $day->clone()->add( days => 1 );
@@ -2194,6 +2300,7 @@ sub availstats_for_category {
 
 sub availstats {
   my (@category);
+  my $errors = "";
   if (grep { $input{$_} } grep { /^categorycb\w+/ } keys %input) {
     $input{category} = ($input{category} ? qq[$input{category},] : '')
       . join(",", map { /categorycb(.*)/; $1 } grep { $input{$_} } grep { /^categorycb\w+/ } keys %input);
@@ -2210,45 +2317,63 @@ sub availstats {
   my ($startstats, $endstats);
   my $now = DateTime->now(time_zone => $include::localtimezone);
   if ($input{availstats} eq 'yesterday') {
-    $endstats = DateTime->new(#time_zone => $include::localtimezone,
-                              year      => $now->year(),
-                              month     => $now->month(),
-                              day       => $now->mday(),
-                             );
-    $startstats = $endstats->clone()->subtract( days => 1 );
-  } elsif ($input{availstats} eq 'lastweek') {
-    $endstats = DateTime->new(#time_zone => $include::localtimezone,
-                              year      => $now->year(),
-                              month     => $now->month(),
-                              day       => $now->mday(),
-                             );
-    while ($endstats->wday > 1) { $endstats = $endstats->subtract( days => 1 ); }
-    $startstats = $endstats->clone()->subtract( days => 7 );
-  } elsif ($input{availstats} eq 'lastmonth') {
-    $endstats = DateTime->new(#time_zone => $include::localtimezone,
-                              year      => $now->year(),
-                              month     => $now->month(),
-                              day       => 1,
-                             );
-    $startstats = $endstats->clone()->subtract( months => 1 );
-  } elsif ($input{availstats} eq 'lastyear') {
-    $endstats = DateTime->new(
-                              year   => $now->year(),
-                              month  => 1,
-                              day    => 1,
-                             );
-    $startstats = $endstats->clone()->subtract( years => 1 );
-  } elsif ($input{availstats} eq 'custom') {
-    $startstats = DateTime->new(
-                                year  => parsenum($input{startyear}),
-                                month => parsenum($input{startmonth}),
-                                day  => parsenum($input{startmday}),
+    eval {
+      $endstats = DateTime->new(#time_zone => $include::localtimezone,
+                                year      => $now->year(),
+                                month     => $now->month(),
+                                day       => $now->mday(),
                                );
-    $endstats = DateTime->new(
-                              year  => parsenum($input{endyear}),
-                              month => parsenum($input{endmonth}),
-                              day  => parsenum($input{endmday}),
-                             );
+      $startstats = $endstats->clone()->subtract( days => 1 );
+    }; $errors .= dterrormsg($now->year(), $now->month(), $now->day(), undef, undef,
+                             qq[ (for the end of the stats period (yesterday))]) if $@;
+  } elsif ($input{availstats} eq 'lastweek') {
+    eval {
+      $endstats = DateTime->new(#time_zone => $include::localtimezone,
+                                year      => $now->year(),
+                                month     => $now->month(),
+                                day       => $now->mday(),
+                               );
+      while ($endstats->wday > 1) { $endstats = $endstats->subtract( days => 1 ); }
+      $startstats = $endstats->clone()->subtract( days => 7 );
+    }; $errors .= dterrormsg($now->year(), $now->month(), $now->day(), undef, undef,
+                             qq[ (for the end of the stats period (lastweek))]) if $@;
+  } elsif ($input{availstats} eq 'lastmonth') {
+    eval {
+      $endstats = DateTime->new(#time_zone => $include::localtimezone,
+                                year      => $now->year(),
+                                month     => $now->month(),
+                                day       => 1,
+                               );
+      $startstats = $endstats->clone()->subtract( months => 1 );
+    }; $errors .= dterrormsg($now->year(), $now->month(), 1, undef, undef,
+                             qq[ (for the end of the stats period (lastmonth))]) if $@;
+  } elsif ($input{availstats} eq 'lastyear') {
+    eval {
+      $endstats = DateTime->new(
+                                year   => $now->year(),
+                                month  => 1,
+                                day    => 1,
+                               );
+      $startstats = $endstats->clone()->subtract( years => 1 );
+    }; $errors .= dterrormsg($now->year(), 1, 1, undef, undef,
+                             qq[ (for the end of the stats period (lastyear))]) if $@;
+  } elsif ($input{availstats} eq 'custom') {
+    eval {
+      $startstats = DateTime->new(
+                                  year  => parsenum($input{startyear}),
+                                  month => parsenum($input{startmonth}),
+                                  day  => parsenum($input{startmday}),
+                                 );
+    }; $errors .= dterrormsg(parsenum($input{startyear}), parsenum($input{startmonth}), parsenum($input{startmday}), undef, undef,
+                             qq[ (for the start of the stats period (custom))]) if $@;
+    eval {
+      $endstats = DateTime->new(
+                                year  => parsenum($input{endyear}),
+                                month => parsenum($input{endmonth}),
+                                day  => parsenum($input{endmday}),
+                               );
+    }; $errors .= dterrormsg(parsenum($input{endyear}), parsenum($input{endmonth}), parsenum($input{endmday}), undef, undef,
+                             qq[ (for the end of the stats period (custom))]) if $@;
   } elsif ($input{availstats} eq 'overtime') {
     # This is where we start doing multiple date ranges.
     # TODO:  implement this.
@@ -2274,8 +2399,8 @@ sub availstats {
                    [ 5 => 'May'],       [  6 => 'June'],     [  7 => 'July'],     [  8 => 'August'],
                    [ 9 => 'September'], [ 10 => 'October'],  [ 11 => 'November'], [ 12 => 'December']);
 
-  print include::standardoutput('Availability Statistics',
-                                qq[<h1>Availability Statistics</h1>]
+  print include::standardoutput('Availability Statistics', $errors
+                                . qq[<h1>Availability Statistics</h1>]
                                 . qq[<p>$prevlink | $nextlink</p>]
                                 . (join "\n\n", map { availstats_for_category($_, $startstats, $endstats, \@category) } @category)
                                 . qq[<div>&nbsp;</div><hr /><div>&nbsp;</div>
@@ -2323,6 +2448,7 @@ sub threeplaces {
 
 sub gatherstats {
   my (@category);
+  my $errors = "";
   if ($input{resource}) {
     @category = (['Selected Resource(s)' => split /,\s*/, $input{resource}]);
   } else {
@@ -2351,26 +2477,36 @@ sub gatherstats {
     $endstats->set_day(1); # First of the month.
     $startstats = $endstats->clone()->subtract( months => 1 );
   } elsif ($input{stats} eq 'lastyear') {
-    $endstats = DateTime->new(
-                              year => DateTime->now->year(),
-                              month => 1,
-                              day   => 1,
-                             );
-    $startstats = $endstats->clone()->subtract( years => 1 );
-  } elsif ($input{stats} eq 'custom') {
-    $startstats = DateTime->new(
-                                year  => parsenum($input{startyear}),
-                                month => parsenum($input{startmonth}),
-                                day  => parsenum($input{startmday}),
+    eval {
+      $endstats = DateTime->new(
+                                year => DateTime->now->year(),
+                                month => 1,
+                                day   => 1,
                                );
-    $endstats = DateTime->new(
-                              year  => parsenum($input{endyear}),
-                              month => parsenum($input{endmonth}),
-                              day  => parsenum($input{endmday}),
-                             );
+      $startstats = $endstats->clone()->subtract( years => 1 );
+    }; $errors .= dterrormsg(DateTime->now->year(), 1, 1, undef, undef,
+                             qq[ (for the end of the stats period (lastyear))]) if $@;
+  } elsif ($input{stats} eq 'custom') {
+    eval {
+      $startstats = DateTime->new(
+                                  year  => parsenum($input{startyear}),
+                                  month => parsenum($input{startmonth}),
+                                  day  => parsenum($input{startmday}),
+                                 );
+    }; $errors .= dterrormsg(parsenum($input{startyear}), parsenum($input{startmonth}), parsenum($input{startmday}), undef, undef,
+                             qq[ (for the start of the stats period (custom))]) if $@;
+    eval {
+      $endstats = DateTime->new(
+                                year  => parsenum($input{endyear}),
+                                month => parsenum($input{endmonth}),
+                                day  => parsenum($input{endmday}),
+                               );
+    }; $errors .= dterrormsg(parsenum($input{endyear}), parsenum($input{endmonth}), parsenum($input{endmday}), undef, undef,
+                             qq[ (for the end of the stats period (custom))]) if $@;
   } elsif ($input{stats} eq 'overtime') {
     # This is where we start doing multiple date ranges.
     # TODO:  implement this.
+    $errors .= include::errordiv("Not Implemented", qq[I haven't coded up the over-time stats yet, sorry.]);
   }
   my @gatheredstat = getstatsforadaterange(\@category, $startstats, $endstats);
   # Figure the previous/next links and send it all to the user:
@@ -2388,7 +2524,7 @@ sub gatherstats {
     . "&amp;startmonth=" . $endstats->month() . "&amp;endmonth=" . $nextend->month()
     . "&amp;startmday="  . $endstats->mday()  . "&amp;endmday="  . $nextend->mday()
     . '&amp;' . persist(undef, ['magicdate']) . qq[">next $hrd =&gt;</a>];
-  print include::standardoutput('Usage Statistics',
+  print include::standardoutput('Usage Statistics', $errors .
                                 qq[<div><strong>Gathering Usage Statistics</strong></div>
        <div><strong>Starting at 12:01 am on ] . $startstats->ymd() . qq[</strong></div>
        <div><strong>Ending at 12:01 am on ] . $endstats->ymd() . qq[</strong></div>
@@ -2953,27 +3089,44 @@ DAYSCLOSEDFORM
 
 sub frequserform {
   my ($now, $soy);
+  my $errors = "";
   if ($input{endyear} and $input{endmonth} and $input{endmday}) {
-    $now = DateTime->new(
-                         year  => $input{endyear},
-                         month => $input{endmonth},
-                         day   => $input{endmday},
-                        );
+    eval {
+      $now = DateTime->new(
+                           year  => $input{endyear},
+                           month => $input{endmonth},
+                           day   => $input{endmday},
+                          );
+    }; $errors .= dterrormsg($input{endyear}, $input{endmonth}, $input{endmday}, undef, undef,
+                             qq[ (for the <q>now</q> date)]) if $@;
   } else {
-    $now = DateTime->now(time_zone => $include::localtimezone);
+    eval {
+      $now = DateTime->now(time_zone => $include::localtimezone);
+    }; $errors .= errordiv("Date/Time Error", "DateTime choked trying to get the current date/time for the <q>$include::localtimezone</q> time zone.") if $@;
   }
   if ($input{startyear} and $input{startmonth} and $input{startmday}) {
-    $soy = DateTime->new(
-                         year  => $input{startyear},
-                         month => $input{startmonth},
-                         day   => $input{startmday},
-                        );
+    eval {
+      $soy = DateTime->new(
+                           year  => $input{startyear},
+                           month => $input{startmonth},
+                           day   => $input{startmday},
+                          );
+    }; $errors .= dterrormsg($input{startyear}, $input{startmonth}, $input{startmday}, undef, undef,
+                             qq[ (for the start-of-year date)]) if $@;
   } else {
-    $soy = DateTime->new(  year  => DateTime->now(time_zone => $include::localtimezone)->year(),
-                           month => 1,
-                           day   => 1,  );
+    my $year;
+    eval {
+      $year = DateTime->now(time_zone => $include::localtimezone)->year();
+    }; $errors .= errordiv("Date/Time Error", qq[DateTime choked on the <q>$include::localtimezone</q> time zone, when trying to get the current year]) if $@;
+    eval {
+      $soy = DateTime->new(  year  => $year,
+                             month => 1,
+                             day   => 1,  );
+    }; $errors .= dterrormsg($year, 1, 1, undef, undef,
+                             qq[ (for the start-of-year date)]) if $@;
   }
   my $monthoptionsoy = join "\n", map {
+    # DateTime cannot choke here because all values are hardcoded (months go from 1 .. 12).
     my $dt = DateTime->new( year  => 1970,
                             month => $_,
                             day   => 1);
@@ -2982,6 +3135,7 @@ sub frequserform {
     qq[<option value="$_"$selected>$abbr</option>];
   } 1..12;
   my $monthoptionnow = join "\n", map {
+    # DateTime cannot choke here because all values are hardcoded (months go from 1 .. 12).
     my $dt = DateTime->new( year  => 1970,
                             month => $_,
                             day   => 1);
@@ -2996,7 +3150,7 @@ sub frequserform {
     my $reslist = join ',', @r;
     qq[<option value="$reslist">$catname</option>]
   } include::categories();
-  return qq[<form action="index.cgi" method="post">
+  return $errors . qq[<form action="index.cgi" method="post">
        <div><span class="nobr">Look up users who used</span>
             <select name="resource">
               <option value="" selected="selected">anything</option>
@@ -3035,6 +3189,8 @@ sub human_readable_duration {
 
 
 sub last_mday_of_month {
+  # This has no place to put an error message, so the caller must wrap
+  # it in eval{} in case DateTime chokes on the inputs.
   my %arg = @_;
   my $dt;
   if ($arg{datetime}) {
@@ -3235,14 +3391,17 @@ sub attemptbooking {
         ($hour, $min) = @input{qw(untilhour untilmin)}; # This is for the new, better UI form.
       }
       if ($hour) {
-        $until = DateTime->new(
-                               time_zone => $include::localtimezone,
-                               year      => $when->year,
-                               month     => $when->month,
-                               day       => $when->mday,
-                               hour      => $hour,
-                               minute    => ($min || 0),
-                              );
+        eval {
+          $until = DateTime->new(
+                                 time_zone => $include::localtimezone,
+                                 year      => $when->year,
+                                 month     => $when->month,
+                                 day       => $when->mday,
+                                 hour      => $hour,
+                                 minute    => ($min || 0),
+                                );
+        }; return dterrormsg($when->year, $when->month, $when->mday, $hour, ($min || 0),
+                             qq[( for the <q>booked until</q> time)]) if $@;
       } else {
         # It wasn't specified, so default to a timeslot durationmins long:
         $until = $when->clone()->add( minutes => $sch{durationmins});
@@ -3319,14 +3478,18 @@ sub attemptbooking {
       }
     }
     if ($input{latestart}) {
-      my $late = DateTime->new(
-                               time_zone => $include::localtimezone,
-                               year      => $when->year,
-                               month     => $when->month,
-                               day       => $when->day,
-                               hour      => $input{latehour},
-                               minute    => $input{lateminute},
-                              );
+      my $late;
+      eval {
+        $late = DateTime->new(
+                              time_zone => $include::localtimezone,
+                              year      => $when->year,
+                              month     => $when->month,
+                              day       => $when->day,
+                              hour      => $input{latehour},
+                              minute    => $input{lateminute},
+                             );
+      }; return dterrormsg($when->year, $when->month, $when->day, $input{latehour}, $input{lateminute},
+                           qq[ (for the late start time)]) if $@;
       if (($when->hour >= 12)
           and ($late->hour < 12)) {
         $late = $late->add( hours => 12 );
@@ -3338,14 +3501,22 @@ sub attemptbooking {
       # Do implicit late start if AND ONLY IF we are making the booking during the timeslot.
       my $now = DateTime->now(time_zone => $include::localtimezone);
       if (($now >= $when) and ($now <= $until)) {
-        my $late = DateTime->new(
-                                 time_zone => $include::localtimezone,
-                                 year      => $when->year,
-                                 month     => $when->month,
-                                 day       => $when->day,
-                                 hour      => $now->hour,
-                                 minute    => $now->minute,
-                              );
+        my $late;
+        eval {
+          # This can choke e.g. if the booking is during a DST forward
+          # clock change, and the current day has no such change.  It
+          # would be kinda rare, for someone to be editing bookings
+          # during the wee hours of the morning, for another date, but
+          # it is possible in principle.
+          $late = DateTime->new(
+                                time_zone => $include::localtimezone,
+                                year      => $when->year,
+                                month     => $when->month,
+                                day       => $when->day,
+                                hour      => $now->hour,
+                                minute    => $now->minute,
+                               );
+        }; return dterrormsg($when->year, $when->month, $when->day, $now->hour, $now->minute) if $@;
         $booking{latestart} = DateTime::Format::ForDB($late);
       }
     }
@@ -3752,6 +3923,29 @@ sub categoryitems {
   return @id;
 }
 
+sub dterrormsg {
+  my ($year, $mon, $mday, $hour, $min, $purpose) = @_;
+  $purpose ||= "";
+  my $timerows = "";
+  if ($hour or $min) {
+    $timerows = qq[<tr><th>Hour</th>
+                              <td>$hour</td></tr>
+                          <tr><th>Minute</th>
+                              <td>$min</td></tr>];
+  }
+  return include::errordiv("Date/Time Error",
+                           qq[DateTime could not make sense of these inputs$purpose:
+                      <table><tbody>
+                          <tr><th>Year</th>
+                              <td>$year</td></tr>
+                          <tr><th>Month</th>
+                              <td>$mon</td></tr>
+                          <tr><th>Day</th>
+                              <td>$mday</td></tr>
+                          $timerows
+                      </tbody></table>\n]);
+}
+
 sub ordinalnumber {
   my ($n) = @_;
   return $n . include::ordinalsuffix($n);
@@ -3766,12 +3960,17 @@ sub uriencode {
 sub dectime {
   my ($t, $gcf, $x) = @_;
   $t =~ /(\d+)[:](\d+)[:](\d+)/;
-  my $dt = DateTime->new(
-                         hour   => $1,
-                         minute => $2,
-                         second => $3,
-                         year   => 1970, month => 1, day => 1,
-                        )->subtract(minutes => $gcf*$x);
+  my ($h, $m, $s) = ($1, $2, $3);
+  my $dt;
+  eval {
+    $dt = DateTime->new(
+                        hour   => $h,
+                        minute => $m,
+                        second => $s,
+                        year   => 1970, month => 1, day => 1,
+                       )->subtract(minutes => $gcf*$x);
+  }; return dterrormsg(1970, 1, 1, $h, $m,
+                       qq[ (for dectime($t, $gcf, $x))]) if $@;
   return $dt->hms();
 }
 
@@ -3787,24 +3986,24 @@ sub sanitycheckalias {
   # Otherwise, print an error message and exit.
   if (include::isalias($$arec{canon})) {
     print include::standardoutput("Error: Canonical Name Cannot Also Be An Alias",
-                                  errordiv('Invalid Alias',
-                                           qq[Thou shalt not use as a canonical name any sequence
+                                  include::errordiv('Invalid Alias',
+                                                    qq[Thou shalt not use as a canonical name any sequence
                                           of letters that is also an alias.]),
                                   $ab, $input{usestyle}); exit 0;
   } elsif (findrecord('resched_alias', 'canon', $$arec{alias})) {
     print include::standardoutput("Error: Canonical Name Cannot Also Be An Alias",
-                                  errordiv('Invalid Alias',
-                                           qq[Thou shalt not use as an alias any sequence
+                                  include::errordiv('Invalid Alias',
+                                                    qq[Thou shalt not use as an alias any sequence
                                               of letters that is also a canonical name.]),
                                   $ab, $input{usestyle}); exit 0;
   } elsif (not $$arec{alias}) {
     print include::standardoutput("Error: Alias Field Blank",
-                                  errordiv('Invalid Alias',
-                                           qq[Obviously you didn't really mean for the alias field to be blank.]),
+                                  include::errordiv('Invalid Alias',
+                                                    qq[Obviously you didn't really mean for the alias field to be blank.]),
                                   $ab, $input{usestyle}); exit 0;
   } elsif (not $$arec{canon}) {
     print include::standardoutput("Error: Canonical Name Blank",
-                                  errordiv('Invalid Alias', "The canonical name is not allowed to be blank."),
+                                  include::errordiv('Invalid Alias', "The canonical name is not allowed to be blank."),
                                   $ab, $input{usestyle}); exit 0;
   } else {
     return $arec;
