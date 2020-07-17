@@ -2036,8 +2036,8 @@ sub doview {
        <table border="1" class="scheduletable">
        <thead>].(join"\n",@thead).qq[</thead>
        <tbody>].(join"\n",@tbody).qq[</tbody>
-       </table><!-- /table aleph -->] . $debugtext,
-                                  $ab, $input{usestyle},
+       </table><!-- /table aleph -->]# . $debugtext
+                                , $ab, $input{usestyle},
                                   (($input{extend} ? $redirectheader : '')
                                    . $updatescript),
                                  );
