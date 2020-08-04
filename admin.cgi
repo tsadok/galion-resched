@@ -18,6 +18,7 @@ our $persistentvars = persist(undef,    [qw(category magicdate)]);
 our $hiddenpersist  = persist('hidden', [qw(category magicdate)]);
 
 my %resflag = (
+               C => ['C', 'Cleaned-after-use Tracking', 'Enable tracking whether this resource has been cleaned after each use.'],
                R => ['R', 'Room', 'This resource is a meeting room.'],
                S => ['S', 'StaffSchAux', 'This resource should be listed as an auxilliary schedule when showing staff schedules.'],
                T => ['T', 'TimeDuality', 'This resource can accept a second time, e.g. so that a room booked early for setup can show a meeting start time.'],

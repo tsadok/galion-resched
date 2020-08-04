@@ -84,6 +84,9 @@ if ($auth::user) {
     # This is actually the alias search.
     my ($content, $title) = aliassearch();
     print include::standardoutput($title, $content, $ab, $input{usestyle});
+  } elsif ($input{action} eq "markcleaned") {
+    my ($content, $title) = markcleaned();
+    print include::standardoutput($title, $content, $ab, $input{usestyle});
   } elsif ($input{overview}) {
     # User wants to just see a broad overview for certain resource(s).
     my ($content, $title) = overview();
@@ -595,6 +598,9 @@ sub viewbooking {
         $newb{until}    = DateTime::Format::ForDB($newb{until_datetime});
         my $origuntil = DateTime::From::MySQL($b{until});
         my $newuntil  = $newb{until_datetime};
+        $newb{flags}  = join "", map { my $flet = $_;
+                                       $input{"flag" . $flet} ? $flet : ""
+                                     } qw(C);
         if (($origuntil->mday ne $newuntil->mday)
             and not getvariable('resched', 'allow_extend_past_midnight')) {
           warn "Tried to extend past midnight, not allowed.";
@@ -729,6 +735,10 @@ sub viewbooking {
       my $startword = ($res{flags} =~ /R/) ? qq[Meeting starts] : qq[Started late];
       my $showstart = $b{latestart} ? "" : qq[ style="visibility: hidden"];
       my $showdone  = $b{doneearly} ? "" : qq[ style="visibility: hidden"];
+      my $cleaned = ($res{flags} =~ /C/)
+        ? (qq[<div class="bookingflag"><input type="checkbox" id="flagC" name="flagC" ] . (($b{flags} =~ /C/) ? ' checked="checked"' : '') . qq[ />
+              <label for="flagC">Cleaned after use</label></div>])
+        : "";
       #use Data::Dumper; warn Dumper(\%b);
       push @bookinglisting, qq[<form action="./" method="post">
            <input type="hidden" name="booking" value="$b{id}" />
@@ -770,6 +780,7 @@ sub viewbooking {
                   <td></td>
                   <td><a class="button" href="./?cancel=$b{id}&amp;$persistentvars">Cancel Booking</a></td></tr>
               <tr><td>Notes:</td><td colspan="2"><textarea cols="50" rows="$noteslines" name="booking_notes">$ben{notes}</textarea></td></tr>
+              <tr><td>Flags:</td><td colspan="2">$cleaned</td></tr>
            </tbody></table><!-- /table beth -->
         </form>];
     }
@@ -1790,7 +1801,12 @@ sub doview {
               ?' <abbr title="'.encode_entities($$x{notes}.$inits).qq["><img width="24" height="24" alt="[Notes]" src="notes.png"></img></abbr>]
               :"")
                ."</a>
-              <!-- Booked by $$x{bookedby} for timeslot from $$x{fromtime} to $$x{until} (done: $$x{doneearly}, followed by $$x{followedby}) -->";
+              <!-- Booked by $$x{bookedby} for timeslot from $$x{fromtime} to $$x{until} (done: $$x{doneearly}, followed by $$x{followedby}) -->"
+               . (($$c{res}{flags} =~ /C/)
+                  ? (($$b{flags} =~ /C/)
+                     ? qq(<div><abbr title="Cleaned After Use"><img src="clean.png" width="32" height="32" alt="[Clean]" /></abbr></div>)
+                     : qq[<div><a href="index.cgi?action=markcleaned&amp;booking=$$b{id}&amp;$ENV{QUERY_STRING}"><abbr title="Still Needs Cleaned!"><img src="needs-cleaned.png" width="32" height="32" alt="[Needs Cleaned]" /></abbr></a></div>])
+                  : "<!-- Cleanliness not tracked for this resource. -->");
       my $bookingcount = 1;
       my $foundfollowedbyempty;
       while ($$x{followedby} and not $foundfollowedbyempty) {
@@ -2043,6 +2059,18 @@ sub doview {
                                  );
     # ****************************************************************************************************************
 }# end of doview()
+
+sub markcleaned {
+  my ($b) = getrecord('resched_bookings', $input{booking});
+  if ($$b{id} eq $input{booking}) {
+    $$b{flags} =~ s/C//; # Don't duplicate it.
+    $$b{flags} .= "C";
+    updaterecord("resched_bookings", $b);
+    return doview();
+  } else {
+    return errordiv("Error: Booking Not Found", qq[I was going to mark a booking (number $input{booking}) as cleaned, but I could not find it in the database.]);
+  }
+}
 
 sub availstats_for_category {
   my ($category, $startstats, $endstats, $categories) = @_;

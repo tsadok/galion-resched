@@ -3,7 +3,7 @@
 
 # This only needs to be run once, but it *should* be idempotent.
 
-# Note that *before* you do this, you have to log into MySQL with an
+# Note that *before* you do this, you have to log into MariaDB with an
 # admin account (typically root), create the resched database, and
 # grant privileges on it to the user.  The database name, username,
 # and password also must match what's in dbconfig.pl
@@ -35,7 +35,8 @@ $db->prepare(
           staffinitials tinytext,
           latestart datetime,
           notes longtext,
-          tsmod timestamp
+          tsmod timestamp,
+          flags tinytext
      )"
     )->execute();
 
