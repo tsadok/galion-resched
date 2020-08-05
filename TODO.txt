@@ -17,10 +17,13 @@ Desired Changes:
  * Provide a statistical_categories variable, just like
    categories but used only by the statistics (not sidebar stuff)
    and in preference to categories.
- * Test recent versions of IE.
  * After a suitable deprecation period, we should remove support in
    auth.pl for checking the deprecated (unhashed) password field.  The
    hashedpass field should be used instead.
+    + NOTE: but there needs to be admin UI for resetting a user's
+      password, before this happens.
+ * Implement the ability for the admin to set temporary passwords
+   that must be changed before the user can do anything else.
  * The whole thing should be profiled for perf bottlenecks.
  * I have thought about adding a notes table, to allow notes
    to be attached to specific patrons (rather than just certain
@@ -45,5 +48,3 @@ Desired Changes:
    custom SQL in the gatherstatsforadaterange function.
  * The tutorial has never been written, and probably
    should be, and a link added to the sidebar.
- * Implement the ability for the admin to set temporary passwords
-   that must be changed before the user can do anything else.

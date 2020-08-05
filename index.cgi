@@ -796,6 +796,7 @@ sub viewbooking {
 sub markdaysclosed {
   my @dc;
   my $dterrors = "";
+  my %ctime = include::closingtimes();
   for my $n (1..10) {
     if ($input{'year'.$n} and $input{'month'.$n} and $input{'mday'.$n}) {
       my ($dt, $wc, $cu);
@@ -819,8 +820,7 @@ sub markdaysclosed {
                            );
       }; $dterrors .= dterrormsg($dt->year(), $dt->month(), $dt->day(), $hour, $minute,
                                  qq[ (for the opening time)]) if $@;
-      my %ct = include::closingtimes();
-      ($hour, $minute) = @{$ct{$dt->dow()} || [ 18, 0]};
+      ($hour, $minute) = @{$ctime{$dt->dow()} || [ 18, 0]};
       eval {
         $cu = DateTime->new(
                             year    => $dt->year(),
@@ -838,13 +838,15 @@ sub markdaysclosed {
                                         });
       push @dc, $wc;
     }}
-  $input{untilhour} = 20; $input{untilmin}  = 30; # TODO: closing times should NOT be hardcoded.
   my @resource = getrecord('resched_resources');
   my @result = map { my $dt = $_;
                      map {
                        my %s = %{getrecord('resched_schedules', $$_{schedule})};
                        my $when = DateTime::From::MySQL($s{firsttime});
-                       attemptbooking($_, $$_{schedule}, $dt->clone()->set( hour => $when->hour, minute=> $when->minute ) );
+                       my $dow = $dt->dow();
+                       $input{untilhour} = $ctime{$dt->dow()}[0] || 20;
+                       $input{untilmin}  = (defined $ctime{$dow}[1] ? $ctime{$dow}[1] : 30);
+                       attemptbooking($_, \%s, $dt->clone()->set( hour => $when->hour, minute=> $when->minute ) );
                      } @resource;
                    } @dc;
   my $content = join "\n", @result;
@@ -3404,7 +3406,10 @@ sub nonstandard_week_of_month {
 
 sub attemptbooking {
   my ($resource, $schedule, $when) = @_; # Two hashrefs and a DateTime object, respectively.
-  my %sch = %$schedule; my %res = %$resource;
+  croak "attemptbooking(): schedule is not a reference: $schedule" if not ref $schedule;
+  my %sch = %$schedule;
+  croak "attemptbooking(): resource is not a reference: $resource" if not ref $resource;
+  my %res = %$resource;
   my %closedwday = map { $_ => 1 } split /,\s*/, getvariable('resched', 'daysclosed');
   my $until; {
     if ($sch{durationlock}) {

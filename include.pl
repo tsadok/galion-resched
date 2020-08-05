@@ -352,7 +352,7 @@ sub include::check_for_collision {
   $q->execute($resid, $beg, $end);
   my (@answer, $r);
   while ($r = $q->fetchrow_hashref()) { push @answer, $r; }
-  #warn "Checked for collisions on resource $res from $beg until $end: found " . scalar @answer . " collision(s) on behalf of $ENV{REMOTE_ADDR}.\n"; # TODO:  Comment this out when we're sure all is well.
+  #warn "Checked for collisions on resource $res from $beg until $end: found " . scalar @answer . " collision(s) on behalf of $ENV{REMOTE_ADDR}.\n";
   return @answer;
 }
 

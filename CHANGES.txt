@@ -56,12 +56,14 @@ Version 0.9.9:
     by default.)  This is relevant e.g. for the previous/next arrows in
     the CircDeskMail component, but potentially also for names with
     non-ASCII characters in them.
+  * The software now gives better error messages when DateTime throws
+    an exception due to incorrect user input.
   * Add support for a "cleaned after use" flag for each resource,
     which provides each booking with a "cleaned after use" checkbox.
     Existing sites will need to add the flags field to the
     resched_bookings table in order to use this feature.
-  * The software now gives better error messages when DateTime throws
-    an exception due to incorrect user input.
+  * When marking closed dates, use applicable closing times for each
+    day of the week, rather than universal hardcoded values.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules
