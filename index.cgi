@@ -1750,7 +1750,7 @@ sub doview {
       # for the correct specific date.  (This is relevant if more
       # than one date is being looked at side-by-side.)
       my $bdt = DateTime::From::MySQL($$_{fromtime});
-      my $cdt = $$c{cdt};
+      my $cdt = $$c{sdt};
       my $result = $bdt cmp $cdt;
       eval {
         $result = (    ($bdt->year()  == $cdt->year())
@@ -1790,6 +1790,8 @@ sub doview {
       # rowspan value yet, but we *can* now calculate the *contents*
       # of the td element:
       my $x = $b; my $inits = ($$x{staffinitials} ? " --$$x{staffinitials}" : '');
+      my ($qstringsansmarkcleaned) = ($ENV{QUERY_STRING} =~ /action=markcleaned&(?:amp;)?booking=\d*(.*)/);
+      $qstringsansmarkcleaned ||= $ENV{QUERY_STRING};
       $$c{tdcontent}[$ts] = "\n<!-- Actual Booking:  *********************************************************
            fromtime => $$x{fromtime},    until => $$x{until},
            duration => ".encode_entities(Dumper(\$duration)).qq[
@@ -1807,7 +1809,7 @@ sub doview {
                . (($$c{res}{flags} =~ /C/)
                   ? (($$b{flags} =~ /C/)
                      ? qq(<div><abbr title="Cleaned After Use"><img src="clean.png" width="32" height="32" alt="[Clean]" /></abbr></div>)
-                     : qq[<div><a href="index.cgi?action=markcleaned&amp;booking=$$b{id}&amp;$ENV{QUERY_STRING}"><abbr title="Still Needs Cleaned!"><img src="needs-cleaned.png" width="32" height="32" alt="[Needs Cleaned]" /></abbr></a></div>])
+                     : qq[<div><a href="index.cgi?action=markcleaned&amp;booking=$$b{id}&amp;$qstringsansmarkcleaned"><abbr title="Still Needs Cleaned!"><img src="needs-cleaned.png" width="32" height="32" alt="[Needs Cleaned]" /></abbr></a></div>])
                   : "<!-- Cleanliness not tracked for this resource. -->");
       my $bookingcount = 1;
       my $foundfollowedbyempty;

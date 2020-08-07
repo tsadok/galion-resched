@@ -64,6 +64,8 @@ Version 0.9.9:
     resched_bookings table in order to use this feature.
   * When marking closed dates, use applicable closing times for each
     day of the week, rather than universal hardcoded values.
+  * Fixed a (possibly asymptomatic) bug related to displaying multiple
+    dates side-by-side in columns, in doview().
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules
