@@ -13,6 +13,7 @@ use HTML::Entities qw(); sub encode_entities{ my $x = HTML::Entities::encode_ent
                                               $x =~ s/[-][-]/&mdash;/g;
                                              return $x; }
 use Data::Dumper;
+use Carp;
 
 require "./forminput.pl";
 require "./include.pl";
