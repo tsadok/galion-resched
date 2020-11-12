@@ -305,6 +305,7 @@ $db->prepare(
           attender   mediumtext,
           phone      tinytext,
           flags      tinytext,
+          supdate    datetime,
           comments   longtext
      )"
      )->execute();

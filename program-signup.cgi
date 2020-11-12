@@ -32,7 +32,7 @@ my $ab = authbox(sub { my $x = getrecord('users', shift); "<!-- Hello, $$x{nickn
 my %categoryflag = (
                     'D' => ['D', 'Default',         'This is the default category for new programs.'],
                     'L' => ['L', 'Library program', 'Programs in this category are our official programs.', 'inherited'],
-                    'T' => ['T', 'Third-party',     'Programs in this party are unofficial or run by a third party.', 'inherited'],
+                    'T' => ['T', 'Third-party',     'Programs in this category are unofficial or run by a third party.', 'inherited'],
                     'X' => ['X', 'Obsolete',        'This category is no longer used for new programs.'],
                     '#' => ['#', 'DEBUG',           'Programs in this category are not real programs.  They exist only for testing the booking software.', 'inherited'],
                    );
@@ -354,6 +354,7 @@ sub public_signup_add_attender {
   my $s = +{ program_id => $$program{id},
              attender   => encode_entities($input{attender}),
              phone      => encode_entities($input{phone} || ""),
+             supdate    => DateTime::Format::ForDB(DateTime->now(time_zone => $include::localtimezone)),
              flags      => "S", # Self-signup
              comments   => (encode_entities($input{comments} | "") . "\n"
                             . "Public Signup Additional Info:" . "\n"
@@ -381,7 +382,8 @@ sub public_signup_add_attender {
   addrecord("resched_program_signup", $s);
   my ($r) = findrecord("resched_program_signup",
                        "program_id" => $$s{program_id},
-                       "attender"   => $$s{attender});
+                       "attender"   => $$s{attender},
+                      );
   if ($r) {
     return include::infobox($title, $message);
   } else {
@@ -486,6 +488,7 @@ sub dosignup {
                                   attender   => $attender,
                                   phone      => $phone,
                                   comments   => $comments,
+                                  supdate    => DateTime::Format::ForDB(DateTime->now(time_zone => $include::localtimezone)),
                                   flags      => $flags,
                                  });
       }}
@@ -631,8 +634,11 @@ sub showprogram {
       my $attender = include::capitalise(include::dealias($normal));
       my $rcalled  = ($$s{flags} =~ /R/) ? ' checked="checked"' : "";
       my $rcallcb  = ($$prog{flags} =~ /R/) ? qq[<input type="checkbox" name="flagR$$s{id}"$rcalled />] : '';
+      my $supdate  = ""; if ($$s{supdate}) {
+        $supdate = friendlydt(DateTime::From::DB($$s{supdate}));
+      }
       #use Data::Dumper; warn Dumper(+{ usealt => $usealt, order => $order, raw => $$s{attender}, normal => $normal, final => $attender });
-      return qq[<tr class="signup"><td class="numeric">$$s{num}</td><td><a href="program-signup.cgi?action=editsignup&amp;id=$$s{id}&amp;$persistentvars">$attender</a></td><td>$rcallcb$$s{phone}</td><td>$flags</td><td>$$s{comments}</td></tr>\n      ]
+      return qq[<tr class="signup"><td class="numeric">$$s{num}</td><td><a href="program-signup.cgi?action=editsignup&amp;id=$$s{id}&amp;$persistentvars">$attender</a></td><td>$rcallcb$$s{phone}</td><td>$supdate</td><td>$flags</td><td>$$s{comments}</td></tr>\n      ]
     };
     my $existingsignups = join "", map { $makerow->($_) } @signup;
     my $waitlistsignups = join "", map { $makerow->($_) } @waitlist;
@@ -653,7 +659,7 @@ $notes$programflags
     <table class="table signupsheet"><thead>
       <tr><td class="numeric"><a title="Click here to sort by this column." href="program-signup.cgi?action=showprogram&amp;program=$input{program}&amp;sortby=num&amp;$persistentvars&amp;showcanceled=$input{showcanceled}">#</a></td>
           <td><a title="Click here to sort by last name." href="program-signup.cgi?action=showprogram&amp;program=$input{program}&amp;sortby=lastname&amp;$persistentvars&amp;showcanceled=$input{showcanceled}">Attender</a></td>
-          <td>Phone</td><td>Flags</td><td>Comments</td></tr>
+          <td>Phone</td><td>Signed Up</td><td>Flags</td><td>Comments</td></tr>
     </thead><tbody>
       ]. $existingsignups . $waitlistnote . $waitlistsignups . $newsignup . qq[
     </tbody></table>
@@ -807,4 +813,38 @@ sub usersidebar {
    $resourcestoday
    $stylesection
 </div>]
+}
+
+sub friendlydt {
+  my ($dt) = @_;
+  carp "friendlydt(): not a valid DateTime object ($dt)" if not ref $dt;
+  my $now = DateTime->now(time_zone => $include::localtimezone);
+  if ($dt->ymd() eq $now->ymd()) {
+    return friendlytime_from_dt($dt, $now);
+  } elsif (($dt->clone->add( days => 1)->hms()) eq ($now->hms())) {
+    return "yesterday";
+  } elsif (($now->clone->add( days => 1)->hms()) eq ($dt->hms())) {
+    return "tomorrow";
+  } elsif ((($dt->year) eq ($now->year())) and
+           (abs($dt->month() - $now->month()) < 6)) {
+    return $dt->month_abbr() . " " . include::htmlordinal($dt->mday());
+  } else {
+    return $dt->year() . " " . $dt->month_abbr() . " " . include::htmlordinal($dt->mday());
+  }
+}
+
+sub friendlytime_from_dt {
+  my ($dt, $now) = @_;
+  carp "friendlydt(): not a valid DateTime object ($dt)" if not ref $dt;
+  $now ||= DateTime->now(time_zone => $include::localtimezone);
+  if (abs($dt->hour() - $now->hour()) > 3) {
+    my $h = $dt->clone()->add(minutes => 30)->hour();
+    return "Noon" if ($h == 12);
+    return "Midnight" if (($h % 24) == 0);
+    return (($h % 12) . (($h > 12) ? "pm" : "am"));
+  } else {
+    my $h = ($dt->hour() % 12) || 12;
+    return $h . ":" . sprintf("%02d", $dt->minute())
+      . (($dt->hour >= 12) ? "pm" : "am");
+  }
 }

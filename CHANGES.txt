@@ -66,6 +66,12 @@ Version 0.9.9:
     day of the week, rather than universal hardcoded values.
   * Fixed a (possibly asymptomatic) bug related to displaying multiple
     dates side-by-side in columns, in doview().
+  * Program signup now tracks when each person signed up, and this is
+    visible to the staff.  Existing sites will need to add the supdate
+    field to the resched_program_signup table.  The main rationale
+    behind this feature is that staff don't want to make reminder phone
+    calls to people who only signed up a few minutes ago.
+  * 
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

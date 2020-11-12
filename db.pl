@@ -32,6 +32,10 @@ use DBI();
 use Carp;
 require "./dbconfig.pl";
 
+sub DateTime::From::DB {
+  return DateTime::From::MySQL(@_);
+}
+
 sub washbookingrecord {
   my ($unwashed) = @_;
   my $washed;
