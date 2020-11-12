@@ -1822,12 +1822,17 @@ sub doview {
           }
           my ($fbytime) = ($$x{fromtime} =~ /(\d+[:]\d+)/);
           my $fbytimeth = include::twelvehourtime($fbytime);
+          my $isclean   = (($$c{res}{flags} =~ /C/)
+                           ? (($$x{flags} =~ /C/)
+                              ? qq(<div><abbr title="Cleaned After Use"><img src="clean.png" width="32" height="32" alt="[Clean]" /></abbr></div>)
+                              : qq[<div><a href="index.cgi?action=markcleaned&amp;booking=$$x{id}&amp;$qstringsansmarkcleaned"><abbr title="Still Needs Cleaned!"><img src="needs-cleaned.png" width="32" height="32" alt="[Needs Cleaned]" /></abbr></a></div>])
+                           : "<!-- Cleanliness not tracked for this resource. -->");
           $$c{tdcontent}[$ts] .= qq[<hr class="doneearly"></hr>\n<!-- Followup Booking: ########################################################
            fromtime => $$x{fromtime},    until => $$x{until},
            --><a href="./?booking=$$x{id}&amp;$persistentvars">].
              (
               include::capitalise(include::dealias(include::normalisebookedfor($$x{bookedfor})))
-             ) ." ($fbytimeth)$notes</a>
+             ) ." ($fbytimeth)$isclean$notes</a>
               <!-- Booked by $$x{bookedby} for timeslot from $$x{fromtime} to $$x{until} (done: $$x{doneearly}, followed by $$x{followedby}) -->";
           $bookingcount += 1; # I have the hr element styled so that this is enough.
         } else {
