@@ -231,6 +231,11 @@ my %cfgvar =
                      description => "If true, attempt to use the 'circ desk mail' feature.",
                      sortkey     => 4001,
                    },
+   mail_sidebar_link_text => +{ default     => "Circ Desk Mail",
+                                description => "If mail_enable is true, a link will be generated in the sidebar, pointing to the mail feature, with this name.  However, if this name is blank, the link will not appear after all.",
+                                sortkey     => 4002,
+                                allowblank  => 1,
+                              },
    mail_folders => +{ default     => 'old stuff,spam',
                       description => "Comma-separated list of mail folders for the 'circ desk mail' feature.",
                       sortkey     => 4005,
@@ -347,7 +352,7 @@ sub savechanges {
       ++$changecount;
     }
   }
-  my $title = $changecount ? include::sgorpl($changecount, 'changes') . ' saved' : 'Nothing Changed';
+  my $title = $changecount ? include::sgorpl($changecount, 'change') . ' saved' : 'Nothing Changed';
   my $notice = $changecount
     ? qq[<div class="info">Saved changes to ] . include::sgorpl($changecount, 'variable') . qq[</div>]
     : qq[<div class="error">No changes were made!</div>];
@@ -444,7 +449,7 @@ sub calculate_octimes {
 sub configform {
   for my $var (keys %cfgvar) {
     my $value = getvariable('resched', $var);
-    if ($value eq '0') {
+    if (($value eq '0') or ($cfgvar{$var}{allowblank})) {
       ${$cfgvar{$var}}{value} = $value;
     } else {
       ${$cfgvar{$var}}{value} = $value || ${$cfgvar{$var}}{default};

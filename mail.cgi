@@ -8,7 +8,6 @@ $ENV{ENV}='';
 
 use HTML::Entities qw();
 use Email::MIME;
-use MIME::Base64;
 use HTML::TreeBuilder;
 use Image::Size;
 
@@ -17,6 +16,7 @@ require "./include.pl";
 require "./auth.pl";
 require "./db.pl";
 require "./datetime-extensions.pl";
+require "./parsemail.pl";
 our %html_mail_policy;
 do "./html-mail-policy.pl" if -e "./html-mail-policy.pl"; # See html-mail-policy.pl.sample
 %html_mail_policy = default_html_mail_policy() if not keys %html_mail_policy;
@@ -219,99 +219,6 @@ sub msgbody {
   }
 }
 
-sub parse_message_parts {
-  my ($body, $headers) = @_;
-  if ($headers =~ m!^Content-Type:\s+multipart/?(\w+);\s+boundary=["'](.*?)['"]\s*$!im) {
-    my ($multitype, $boundary) = ($1, $2);
-    warn ("multipart\n") if $debug =~ /parse_message_parts/;
-    my @rawpart = split /\r?\n?--\Q$boundary\E\r?\n?/, $body;
-    warn "" . @rawpart . " raw parts.\n" if $debug =~ /rawparts/;
-    my $partnum=0;
-    if ($rawpart[0] =~ /This is.*MIME.formatted message/) {
-      shift @rawpart;
-      warn qq[Discarded "This is a MIME-formatted message" stuff.\n] if $debug =~ /rawparts/; $partnum++;
-    }
-    my @part = grep { defined $_ } map {
-      my $rawdata = $_; $partnum++;
-      warn "Processing part $partnum.\n" if $debug =~ /parse_message_parts/;
-      my @line = split /\r?\n/, $rawdata;
-      warn "" . @line . " lines in part $partnum.\n" if $debug =~ /parse_message_parts/;
-      my @nwl = grep { not /^\s*$/ } @line;
-      warn "" . @nwl . " non-whitespace lines in part $partnum.\n" if $debug =~ /parse_message_parts/;
-      my $thispart = undef;
-      if (scalar @nwl) {
-        my (@rawheader, @bodyline);
-        my ($ctype, $charset, $bound, $encoding, $disposition, $filename, $description, $decoded);
-        my $headersdone = 0;
-        while (scalar @line) {
-          my $l = shift @line;
-          if ((not $headersdone) and ($l =~ /^([A-Za-z0-9_-]+)[:]\s*(.*)/)) {
-            my ($hname, $value) = ($1, $2);
-            push @rawheader, $l;
-          } elsif ((not $headersdone) and ($l =~ /^\s+(.*?)\s*$/)) {
-            my $prev = pop @rawheader;
-            push @rawheader, $prev . $l;
-          } elsif (not $headersdone) {
-            $headersdone++;
-          } else {
-            push @bodyline, $l;
-          }}
-        warn "" . @rawheader . " raw headers and " . @bodyline . " body lines in part $partnum.\n" if $debug =~ /parse_message_parts/;
-        if ((scalar @rawheader) or (grep { not /^\s*$/ } @bodyline)) {
-          for my $h (@rawheader) {
-            if ($h =~ m!Content-Type:\s+(.*?)\s*$!i) {
-              my ($raw) = $1;
-              my ($mimetype, @info) = split /;\s*/, $raw;
-              if ($mimetype =~ m!(\w+)[/](\w+)!) {
-                #my ($basetype, $subtype) = ($1, $2);
-                $ctype = $mimetype;
-              }
-              for my $i (@info) {
-                if ($i =~ /charset=(.*)/) {
-                  $charset = $1;
-                }
-                if ($i =~ /boundary=["]([^"]+)["]/) {
-                  $bound = $1;
-                }
-              }
-            } elsif ($h =~ /Content-Transfer-Encoding:\s+(.*)/i) {
-              $encoding = $1;
-            } elsif ($h =~ /Content-Disposition:\s+(.*?)(?:; filename=(.*?))?\s*$/i) {
-              $disposition = $1;
-              $filename = $2 if $2;
-            } elsif ($h =~ /Content-Description:\s+(.*)/i) {
-              $description = $1;
-            } else {
-              warn "Unrecognized MIME part header (in part $partnum): $h" if $debug =~ /parse_message_parts/;
-            }}
-          warn "Part $partnum headers processed.\n" if $debug =~ /parse_message_parts/;
-          if ($encoding =~ /base64/i) {
-            warn "Decoding part $partnum using base64.\n" if $debug =~ /parse_message_parts/;
-            $decoded = decode_base64(join "\n", @bodyline);
-          } else { # No other encodings specially supported at this time.
-            warn "Not decoding part $partnum.\n" if $debug =~ /parse_message_parts/;
-            $decoded = join "\n", @bodyline;
-          }
-          $thispart = +{ content_type => $ctype,
-                         charset      => $charset,
-                         boundary     => $bound,
-                         encoding     => $encoding,
-                         disposition  => $disposition,
-                         filename     => $filename,
-                         description  => $description,
-                         content      => $decoded,
-                         rawdata      => $rawdata,
-                         partnum      => $partnum,
-                       },
-                     }
-      }
-      $thispart;
-    } @rawpart;
-    return ("Success", @part);
-  } else {
-    return; # Not multipart.
-  }
-}
 
 sub msgbody_part {
   my ($part) = @_;
@@ -609,3 +516,7 @@ sub default_html_mail_policy {
 }
 
 
+sub mimelog {
+  my ($info) = @_;
+  warn "$info\n" if $debug =~ /parse_message_parts/;
+}

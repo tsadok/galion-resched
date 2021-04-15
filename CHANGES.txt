@@ -71,6 +71,13 @@ Version 0.9.9:
     field to the resched_program_signup table.  The main rationale
     behind this feature is that staff don't want to make reminder phone
     calls to people who only signed up a few minutes ago.
+  * Fixed security-relevant input parameterization oversight in
+    getrecord(), in db.pl.
+  * Fixed an aesthetic singular/plural wording issue.
+  * Allow certain config values to be made blank and saved that way.
+  * Allow customizing the text of the link to the Circ Desk Mail feature.
+  * Factor-out parse_message_parts to a separate file; it is now shared
+    between multiple projects.
   * 
   
 Version 0.9.8:

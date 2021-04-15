@@ -3906,8 +3906,11 @@ sub usersidebar {
   }
   my ($mailfeature, $inboxnote) = ("", "");
   if (getvariable('resched', 'mail_enable')) {
-    $mailfeature = qq[<div><strong><a href="mail.cgi?usestyle=$input{usestyle}">Circ Desk Mail</a></strong></div>];
-    $otherfeatures++;
+    my $mailfeaturename = getvariable('resched', 'mail_sidebar_link_text');
+    if ($mailfeaturename) {
+      $mailfeature = qq[<div><strong><a href="mail.cgi?usestyle=$input{usestyle}">$mailfeaturename</a></strong></div>];
+      $otherfeatures++;
+    }
     my %unread = %{countfield('circdeskmail_header', 'folder', undef, undef, 'status', [0])};
     if ($unread{inbox}) {
       $inboxnote = qq[<div class="mailfoldersidebar"><a href="mail.cgi">inbox: <span class="unreadcount">$unread{inbox}</span> Unread messages</a></div>];

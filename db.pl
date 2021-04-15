@@ -139,7 +139,9 @@ sub getrecord {
   my ($table, $id, $q) = @_;
   die "Too many arguments: getrecord(".(join', ',@_).")" if $q;
   my $db = dbconn();
-  $q = $db->prepare("SELECT * FROM $table".(($id)?" WHERE id = '$id'":""));  $q->execute();
+  my @param = grep { $_ } ($id);
+  $q = $db->prepare("SELECT * FROM $table".(($id)?" WHERE id = ?":""));
+  $q->execute(@param);
   my @answer; my $r;
   while ($r = $q->fetchrow_hashref()) {
     if (wantarray) {
