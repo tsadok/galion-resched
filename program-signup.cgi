@@ -22,7 +22,7 @@ require "./db.pl";
 require "./ajax.pl";
 require "./datetime-extensions.pl";
 
-our %input = %{getforminput()};
+our %input = %{getforminput() || +{}};
 our $persistentvars = qq[usestyle=$input{usestyle}&amp;useajax=$input{useajax}];
 our $hiddenpersist  = qq[<input type="hidden" name="usestyle" value="$input{usestyle}" />\n  <input type="hidden" name="useajax" value="$input{useajax}" />];
 
@@ -161,6 +161,7 @@ sub programform {
   my @category   = grep { not ($$_{flags} =~ /X/) } getrecord('resched_program_category');
   my %category   = map { $$_{id} => $$_{category} } @category;
   my @defaultcategory = map { $$_{id} } grep { $$_{flags} =~ /D/ } @category;
+  my $footnotes = "";
   #use Data::Dumper; warn Dumper(+{ category_array => \@category, category_hash  => \%category, default        => \@defaultcategory,  });
   if (ref $record) {
     $categoryform  = include::optionlist('category', \%category, $$record{category});
@@ -173,7 +174,8 @@ sub programform {
     $categoryform  = include::optionlist('category', \%category, $defaultcategory[0], 'newprogramcategory');
     my $startdate = DateTime->now(time_zone => $include::localtimezone)->add(months => 1);
     $startdateform = dateform($startdate, 'start');
-    $untilform     = dateform($startdate, 'end', undef, 'timeonly');
+    $untilform     = dateform($startdate, 'end', undef, 'timeonly') . qq[*];
+    $footnotes     = qq[<div class="footnotes">* To create a multi-day event, first create the event, then edit it to change the ending date/time.</div>];
     $savebutton    = 'Create This Program';
     $hidden        = qq[<input type="hidden" name="action" value="createprogram" />];
     $record = +{# Defaults for new programs:
@@ -217,6 +219,7 @@ sub programform {
          <td><span class="explan">Anything you type here will be shown at the top of the signup sheet.</span></td></tr>
   </table>
   <input type="submit" value="$savebutton" />
+  $footnotes
 </form>];
 }
 
