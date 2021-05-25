@@ -87,6 +87,7 @@ if ($auth::user) {
   } elsif ($input{action} eq "markcleaned") {
     my ($content, $title) = markcleaned();
     print include::standardoutput($title, $content, $ab, $input{usestyle});
+    exit 0;
   } elsif ($input{overview}) {
     # User wants to just see a broad overview for certain resource(s).
     my ($content, $title) = overview();
@@ -2066,7 +2067,8 @@ sub doview {
                                   (($input{extend} ? $redirectheader : '')
                                    . $updatescript),
                                  );
-    # ****************************************************************************************************************
+  # ****************************************************************************************************************
+  exit 0;
 }# end of doview()
 
 sub markcleaned {
@@ -2075,7 +2077,8 @@ sub markcleaned {
     $$b{flags} =~ s/C//; # Don't duplicate it.
     $$b{flags} .= "C";
     updaterecord("resched_bookings", $b);
-    return doview();
+    doview();
+    exit 0;
   } else {
     return errordiv("Error: Booking Not Found", qq[I was going to mark a booking (number $input{booking}) as cleaned, but I could not find it in the database.]);
   }

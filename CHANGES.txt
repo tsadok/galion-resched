@@ -79,7 +79,8 @@ Version 0.9.9:
   * Factor-out parse_message_parts to a separate file; it is now shared
     between multiple projects.
   * Add a note on the program creation form about multi-day events.
-  * 
+  * Bugfix: when marking a system cleaned, don't send back two entire
+    copies of the resulting page, duplicating everything.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules
