@@ -298,6 +298,16 @@ my %cfgvar =
                       description => 'Bookmark icon (favicon) to suggest that the browser use to represent (your installation of) resched.',
                       sortkey     => 9000,
                      },
+   wording_overview_verbose_prev_month_label => +{
+                                                  default     => "",
+                                                  description => 'Explanatory label for the previous month arrow on month overviews.',
+                                                  sortkey     => 99202,
+                                                 },
+   wording_overview_verbose_next_month_label => +{
+                                                  default     => "",
+                                                  description => 'Explanatory label for the next month arrow on month overviews.',
+                                                  sortkey     => 99203,
+                                                 },
    wording_personal_schedule => +{
 				  default     => 'Personal Schedule',
 				  description => "Wording to use for the link to a staff member's personal schedule.",

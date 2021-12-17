@@ -81,6 +81,9 @@ Version 0.9.9:
   * Add a note on the program creation form about multi-day events.
   * Bugfix: when marking a system cleaned, don't send back two entire
     copies of the resulting page, duplicating everything.
+  * Overview: add previous/next month buttons (to the left and right,
+    respectively, of the choose-date form).  The choose-date form is now
+    centered between them in the stock stylesheets.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

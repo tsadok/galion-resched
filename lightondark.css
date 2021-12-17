@@ -168,6 +168,11 @@ textarea, select {
   border-style:         inset;
 }
 
+form.nav {
+  min-height:           3em;
+  text-align:           center;
+}
+
 .nav,
 td.content > table,
 td.content > form,
@@ -591,3 +596,32 @@ div.msgbody_html {
   background-color:     #667F7F;
   color:                #FFF3DE;
 }
+
+
+div.prevarrow, div.nextarrow {
+  font-weight:          bold;
+  font-size:            200%;
+  font-style:           normal;
+  margin-bottom:        1em;
+  text-align:           center;
+}
+div.prevarrow a, div.nextarrow a {
+  text-decoration:      none;
+  font-style:           normal;
+}
+div.prevarrow {
+  float:                left;
+  padding-left:         0.5em;
+  padding-right:        1em;
+}
+div.nextarrow {
+  float:                right;
+  padding-left:         1em;
+  padding-right:        0.5em;
+}
+div.prevnextlabel {
+  display:              block;
+  font-size:            33%;
+}
+
+

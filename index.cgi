@@ -1380,8 +1380,9 @@ sub overview {
   for (qw(startyear startmonth startmday endyear endmonth endmday)) {
     ($input{$_}) = $input{$_} =~ /(\d+)/;
   }
-  $input{endyear} ||= $input{startyear};
-  $input{endmonth} ||= $input{startmonth};
+  $input{endyear}   ||= $input{startyear};
+  $input{endmonth}  ||= $input{startmonth};
+  $input{startmday} ||= 1;
 
   my ($begdt, $enddt);
   eval {
@@ -1489,8 +1490,19 @@ sub overview {
   my %monabbr = ( 1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Aug', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dec');
   my $startmonthoptions = include::optionlist('startmonth', \%monabbr, $begdt->month);
   my $endmonthoptions   = include::optionlist('endmonth', \%monabbr, $enddt->month);
+  my $prevdt = $begdt->clone()->subtract( months => 1 );
+  my $nextdt = $begdt->clone()->add( months => 1 );
+  my $prevwhen = "startyear=" . ($prevdt->year()) . "&amp;startmonth=" . ($prevdt->month());
+  my $nextwhen = "startyear=" . ($nextdt->year()) . "&amp;startmonth=" . ($nextdt->month());
+  my $pmtext   = getvariable('resched', 'wording_overview_verbose_prev_month_label') || "";
+  my $nmtext   = getvariable('resched', 'wording_overview_verbose_next_month_label') || "";
+  $pmtext = qq[<div class="prevnextlabel prevlabel">$pmtext</div>] if $pmtext;
+  $nmtext = qq[<div class="prevnextlabel nextlabel">$nmtext</div>] if $nmtext;
   push @calendar, qq[
-    <form class="nav" action="index.cgi" method="get">Get overview
+    <form class="nav" action="index.cgi" method="get">
+         <div class="prevarrow"><a href="index.cgi?overview=$input{overview}&amp;$prevwhen&amp;$persistentvars">⬅$pmtext</a></div>
+         <div class="nextarrow"><a href="index.cgi?overview=$input{overview}&amp;$nextwhen&amp;$persistentvars">➡$nmtext</a></div>
+         Get overview
          <input type="hidden" name="overview" value="$input{overview}" />
          ] . persist('hidden') . qq[
          <span class="nobr">starting from $startmonthoptions
