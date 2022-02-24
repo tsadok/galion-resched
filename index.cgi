@@ -19,6 +19,15 @@ use Math::SigFigs;
 use Data::Dumper;
 use File::Spec::Functions;
 
+# For a list of resource flags, see resflag in admin.cgi
+# For a list of schedule flags, see schflag in admin.cgi
+#   Relatedly, for schedule flag flags, see schflagflag in admin.cgi
+# For equipment flags, see equipflag in admin.cgi
+our %bookingflag = (
+                    C => ["Cleaned"  => "The booked resource has been cleaned since this booking concluded.", ],
+                    R => ["Rebooted" => "The booked resource has been rebooted since this booking concluded." ],
+                   );
+
 require "./forminput.pl";
 require "./include.pl";
 require "./auth.pl";
@@ -88,6 +97,9 @@ if ($auth::user) {
     my ($content, $title) = markcleaned();
     print include::standardoutput($title, $content, $ab, $input{usestyle});
     exit 0;
+  } elsif ($input{action} eq "markrebooted") {
+    my ($content, $title) = markrebooted();
+    print include::standardoutput($title, $content, $ab, $input{usestyle});
   } elsif ($input{overview}) {
     # User wants to just see a broad overview for certain resource(s).
     my ($content, $title) = overview();
@@ -740,6 +752,10 @@ sub viewbooking {
         ? (qq[<div class="bookingflag"><input type="checkbox" id="flagC" name="flagC" ] . (($b{flags} =~ /C/) ? ' checked="checked"' : '') . qq[ />
               <label for="flagC">Cleaned after use</label></div>])
         : "";
+      my $rebooted = ($res{flags} = /D/)
+        ? (qq[<div class="bookingflag"><input type="checkbox" id="flagR" name="flagR" ] . (($b{flags} =~ /R/) ? ' checked="checked"' : '') . qq[ />
+              <label for="flagR">Rebooted after use</label></div>])
+        : "";
       #use Data::Dumper; warn Dumper(\%b);
       push @bookinglisting, qq[<form action="./" method="post">
            <input type="hidden" name="booking" value="$b{id}" />
@@ -781,7 +797,7 @@ sub viewbooking {
                   <td></td>
                   <td><a class="button" href="./?cancel=$b{id}&amp;$persistentvars">Cancel Booking</a></td></tr>
               <tr><td>Notes:</td><td colspan="2"><textarea cols="50" rows="$noteslines" name="booking_notes">$ben{notes}</textarea></td></tr>
-              <tr><td>Flags:</td><td colspan="2">$cleaned</td></tr>
+              <tr><td>Flags:</td><td colspan="2">$cleaned$rebooted</td></tr>
            </tbody></table><!-- /table beth -->
         </form>];
     }
@@ -1803,7 +1819,7 @@ sub doview {
       # rowspan value yet, but we *can* now calculate the *contents*
       # of the td element:
       my $x = $b; my $inits = ($$x{staffinitials} ? " --$$x{staffinitials}" : '');
-      my ($qstringsansmarkcleaned) = ($ENV{QUERY_STRING} =~ /action=markcleaned&(?:amp;)?booking=\d*(.*)/);
+      my ($qstringsansmarkcleaned) = ($ENV{QUERY_STRING} =~ /action=mark(?:cleaned|rebooted)&(?:amp;)?booking=\d*(.*)/);
       $qstringsansmarkcleaned ||= $ENV{QUERY_STRING};
       $$c{tdcontent}[$ts] = "\n<!-- Actual Booking:  *********************************************************
            fromtime => $$x{fromtime},    until => $$x{until},
@@ -1817,13 +1833,20 @@ sub doview {
              (($$x{notes})
               ?' <abbr title="'.encode_entities($$x{notes}.$inits).qq["><img width="24" height="24" alt="[Notes]" src="notes.png"></img></abbr>]
               :"")
-               ."</a>
-              <!-- Booked by $$x{bookedby} for timeslot from $$x{fromtime} to $$x{until} (done: $$x{doneearly}, followed by $$x{followedby}) -->"
+               .qq[</a>
+              <!-- Booked by $$x{bookedby} for timeslot from $$x{fromtime} to $$x{until} (done: $$x{doneearly}, followed by $$x{followedby}) -->
+              <div class="chores">]
                . (($$c{res}{flags} =~ /C/)
                   ? (($$b{flags} =~ /C/)
-                     ? qq(<div><abbr title="Cleaned After Use"><img src="clean.png" width="32" height="32" alt="[Clean]" /></abbr></div>)
-                     : qq[<div><a href="index.cgi?action=markcleaned&amp;booking=$$b{id}&amp;$qstringsansmarkcleaned"><abbr title="Still Needs Cleaned!"><img src="needs-cleaned.png" width="32" height="32" alt="[Needs Cleaned]" /></abbr></a></div>])
-                  : "<!-- Cleanliness not tracked for this resource. -->");
+                     ? qq(<div class="bookingchore"><abbr title="Cleaned After Use"><img src="clean.png" width="32" height="32" alt="[Clean]" /></abbr></div>)
+                     : qq[<div class="bookingchore"><a href="index.cgi?action=markcleaned&amp;booking=$$b{id}&amp;$qstringsansmarkcleaned"><abbr title="Still Needs Cleaned!"><img src="needs-cleaned.png" width="32" height="32" alt="[Needs Cleaned]" /></abbr></a></div>])
+                  : "<!-- Cleanliness not tracked for this resource. -->")
+               . (($$c{res}{flags} =~ /D/)
+                  ? (($$b{flags} =~ /R/)
+                     ? qq(<div class="bookingchore"><abbr title="Rebooted After Use"><img src="rebooted.png" width="32" height="32" alt="[Rebooted]" /></abbr></div>)
+                     : qq[<div class="bookingchore"><a href="index.cgi?action=markrebooted&amp;booking=$$b{id}&amp;$qstringsansmarkcleaned"><abbr title="Needs Rebooted!"><img src="needs-rebooted.png" width="32" height="32" alt="[Needs Rebooted]" /></abbr></a></div>])
+                  : "<!-- Rebooting not tracked for this resource. -->")
+               . "</div>";
       my $bookingcount = 1;
       my $foundfollowedbyempty;
       while ($$x{followedby} and not $foundfollowedbyempty) {
@@ -1837,15 +1860,21 @@ sub doview {
           my $fbytimeth = include::twelvehourtime($fbytime);
           my $isclean   = (($$c{res}{flags} =~ /C/)
                            ? (($$x{flags} =~ /C/)
-                              ? qq(<div><abbr title="Cleaned After Use"><img src="clean.png" width="32" height="32" alt="[Clean]" /></abbr></div>)
-                              : qq[<div><a href="index.cgi?action=markcleaned&amp;booking=$$x{id}&amp;$qstringsansmarkcleaned"><abbr title="Still Needs Cleaned!"><img src="needs-cleaned.png" width="32" height="32" alt="[Needs Cleaned]" /></abbr></a></div>])
+                              ? qq(<div class="bookingchore"><abbr title="Cleaned After Use"><img src="clean.png" width="32" height="32" alt="[Clean]" /></abbr></div>)
+                              : qq[<div class="bookingchore"><a href="index.cgi?action=markcleaned&amp;booking=$$x{id}&amp;$qstringsansmarkcleaned"><abbr title="Still Needs Cleaned!"><img src="needs-cleaned.png" width="32" height="32" alt="[Needs Cleaned]" /></abbr></a></div>])
                            : "<!-- Cleanliness not tracked for this resource. -->");
+          my $isrebooted = (($$c{res}{flags} =~ /D/)
+                            ? (($$x{flags} =~ /R/)
+                               ? qq(<div class="bookingchore"><abbr title="Rebooted After Use"><img src="rebooted.png" width="32" height="32" alt="[Rebooted]" /></abbr></div>)
+                               : qq[<div class="bookingchore"><a href="index.cgi?action=markrebooted&amp;booking=$$x{id}&amp;$qstringsansmarkcleaned"><abbr title="Needs Rebooted!"><img src="needs-rebooted.png" width="32" height="32" alt="[Needs Rebooted]" /></abbr></a></div>])
+                            : "<!-- Rebooting not tracked for this resource. -->");
+          my $bookingchores = qq[<div class="chores">$isclean$isrebooted</div>];
           $$c{tdcontent}[$ts] .= qq[<hr class="doneearly"></hr>\n<!-- Followup Booking: ########################################################
            fromtime => $$x{fromtime},    until => $$x{until},
            --><a href="./?booking=$$x{id}&amp;$persistentvars">].
              (
               include::capitalise(include::dealias(include::normalisebookedfor($$x{bookedfor})))
-             ) ." ($fbytimeth)$isclean$notes</a>
+             ) ." ($fbytimeth)$notes</a>$bookingchores
               <!-- Booked by $$x{bookedby} for timeslot from $$x{fromtime} to $$x{until} (done: $$x{doneearly}, followed by $$x{followedby}) -->";
           $bookingcount += 1; # I have the hr element styled so that this is enough.
         } else {
@@ -2083,17 +2112,28 @@ sub doview {
   exit 0;
 }# end of doview()
 
-sub markcleaned {
+sub markbookingwithflag {
+  my ($flag) = (@_);
+  ref $bookingflag{$flag}
+    or die "No such booking flag: '$flag'";
   my ($b) = getrecord('resched_bookings', $input{booking});
   if ($$b{id} eq $input{booking}) {
-    $$b{flags} =~ s/C//; # Don't duplicate it.
-    $$b{flags} .= "C";
+    $$b{flags} =~ s/$flag//; # Don't duplicate it.
+    $$b{flags} .= $flag;
     updaterecord("resched_bookings", $b);
     doview();
     exit 0;
   } else {
-    return errordiv("Error: Booking Not Found", qq[I was going to mark a booking (number $input{booking}) as cleaned, but I could not find it in the database.]);
+    return errordiv("Error: Booking Not Found", qq[I was going to mark a booking (number $input{booking}) as $bookingflag{$flag}[0], but I could not find it in the database.]);
   }
+}
+
+sub markcleaned {
+  markbookingwithflag("C");
+}
+
+sub markrebooted {
+  markbookingwithflag("R");
 }
 
 sub availstats_for_category {
@@ -2102,6 +2142,7 @@ sub availstats_for_category {
   push @debugline, "category: $category";
   push @debugline, "startstats: $startstats";
   push @debugline, "endstats: $endstats";
+  warn "availstats_for_category($$category[0], " . $startstats->ymd() . ", " . $endstats->ymd() . ")";
   my (@resource, @month, @dow, @time, %monct, %dowct, %timect, %availstat);
   my ($catname, @resid) = @$category;
   my $errors = "";
@@ -2130,17 +2171,21 @@ sub availstats_for_category {
     $when = $when->add(months => 1);
   }
   push @debugline, "months: @month";
+  warn "months: @month\n";
 
   my %closedwday = map { $_ => 1 } split /,\s*/, getvariable('resched', 'daysclosed');
   @dow = grep { not $closedwday{$_} } 0 .. 6;
   push @debugline, "dows: @dow";
+  warn "dows: @dow\n";
 
   my %res = map { my $rid = $_;
 		  my @rec = getrecord('resched_resources', $rid);
 		  $rid => $rec[0] } @resource;
   use Data::Dumper; push @debugline, "res: " . Dumper(\%res);
+  warn "res: " . Dumper(\%res) . "\n";
   my @schedule  = include::uniq(map { $$_{schedule} } values %res);
   push @debugline, "schedules: @schedule";
+  warn "schedules: @schedule\n";
   my %sch = map { my $sid = $_;
 		  my @rec = getrecord('resched_schedules', $sid);
 		  $sid => $rec[0] } @schedule;
@@ -2148,8 +2193,10 @@ sub availstats_for_category {
     $sch{$_}{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2;
   } @schedule);
   push @debugline, "calculated start times: " . join ", ", @starttime;
+  warn "calculated start times: " . (join ", ", @starttime) . "\n";
   my $gcf = include::schedule_start_offset_gcf(map { $sch{$_} } @schedule);
   push @debugline, "gcf: $gcf";
+  warn "gcf: $gcf\n";
   my %ot = include::openingtimes();
   my %ct = include::closingtimes();
 
@@ -2168,10 +2215,12 @@ sub availstats_for_category {
   }; $errors .= dterrormsg($startstats->year(), $startstats->month(), $startstats->day()) if $@;
   my ($firstday, $lastday);
   while ($day->ymd() lt $endstats->ymd()) {
+    #warn $day->ymd();
     my $nextday = $day->clone()->add( days => 1 );
     $when = $day->clone();
     my $dow = $day->dow() % 7;
     push @debugline, "day: $day (dow: $dow)";
+    warn "day: $day (dow: $dow)\n";
     if (not $closedwday{$dow}) {
       my ($ohour, $omin) = @{$ot{$dow} || [8,  0] };
       my ($chour, $cmin) = @{$ct{$dow} || [18, 0] };
@@ -2184,8 +2233,9 @@ sub availstats_for_category {
       # TODO: skip days when everything is booked closed.
       while (($when lt $nextday) and (($when->hour < $chour) or ($when->hour == $chour and $when->minute <= $cmin))) {
         my $nextwhen = $when->clone()->add( minutes => $gcf );
-        my $time = sprintf "%1d:%02d", $when->hour, $when->minute;
+        my $time = sprintf "%02d:%02d", $when->hour, $when->minute;
         push @debugline, "    time $time";
+        warn "time: $time\n";
         my $month = $day->month();
         $timect{$time}++;
         $dowct{$dow}++;
@@ -2208,15 +2258,19 @@ sub availstats_for_category {
 
         # So for perf reasons, we have farmed out the stat collection to availstats-prep.pl
         my ($used, $avail);
+        my $tfs = DateTime::Format::ForDB($when);
+        warn "Checking for pre-calculated stats in the DB.\n";
         my ($availrec) = findrecord('resched_availstats',
                                     category       => $catname,
-                                    timeframestart => DateTime::Format::ForDB($when),
-                                    #timeframeend   => DateTime::Format::ForDB($nextwhen),
+                                    timeframestart => $tfs,
+                                    timeframeend   => DateTime::Format::ForDB($nextwhen),
                                    );
         if (ref $availrec) {
+          warn "Found pre-calculated stats in the DB.\n";
           $used  = $$availrec{numused};
           $avail = $$availrec{numavailable};
         } else {
+          warn "Failed to find pre-calculated stats in the DB, category '$catname', timeframe $tfs\n";
           push @debugline, "    Unknown (catname: $catname; start $when)";
           $used = $avail = '[Unknown]';
         }
@@ -2247,7 +2301,9 @@ sub availstats_for_category {
     }
     $day = $nextday;
   }
+  warn "Sorting times\n";
   @time = sort { $a cmp $b } keys %timect;
+  warn "Times sorted\n";
   push @debugline, "----------------------------------------------------------------------------------------------";
 
   return qq[
@@ -2351,19 +2407,22 @@ sub availstats_for_category {
 }
 
 sub availstats {
-  my (@category);
+  my (@category) = @_;
+  my @allcat = include::categories();
   my $errors = "";
+  warn "availstats(@category)";
   if (grep { $input{$_} } grep { /^categorycb\w+/ } keys %input) {
     $input{category} = ($input{category} ? qq[$input{category},] : '')
       . join(",", map { /categorycb(.*)/; $1 } grep { $input{$_} } grep { /^categorycb\w+/ } keys %input);
   }
   if ($input{category}) {
-    my @allcat = include::categories();
+    warn "Finding category '$input{category}' from the following: " . Dumper(\@allcat);
     for my $c (split /,\s*/, $input{category}) {
       push @category, $_ foreach (grep { $$_[0] eq $c } @allcat);
     }
+    warn "Found: " . Dumper(\@category);
   } else {
-    @category = include::categories();
+    @category = @allcat;
   }
 
   my ($startstats, $endstats);
@@ -2378,6 +2437,7 @@ sub availstats {
       $startstats = $endstats->clone()->subtract( days => 1 );
     }; $errors .= dterrormsg($now->year(), $now->month(), $now->day(), undef, undef,
                              qq[ (for the end of the stats period (yesterday))]) if $@;
+    warn "yesterday\n";
   } elsif ($input{availstats} eq 'lastweek') {
     eval {
       $endstats = DateTime->new(#time_zone => $include::localtimezone,
@@ -2389,6 +2449,7 @@ sub availstats {
       $startstats = $endstats->clone()->subtract( days => 7 );
     }; $errors .= dterrormsg($now->year(), $now->month(), $now->day(), undef, undef,
                              qq[ (for the end of the stats period (lastweek))]) if $@;
+    warn "lastweek\n";
   } elsif ($input{availstats} eq 'lastmonth') {
     eval {
       $endstats = DateTime->new(#time_zone => $include::localtimezone,
@@ -2399,6 +2460,7 @@ sub availstats {
       $startstats = $endstats->clone()->subtract( months => 1 );
     }; $errors .= dterrormsg($now->year(), $now->month(), 1, undef, undef,
                              qq[ (for the end of the stats period (lastmonth))]) if $@;
+    warn "lastmonth\n";
   } elsif ($input{availstats} eq 'lastyear') {
     eval {
       $endstats = DateTime->new(
@@ -2409,6 +2471,7 @@ sub availstats {
       $startstats = $endstats->clone()->subtract( years => 1 );
     }; $errors .= dterrormsg($now->year(), 1, 1, undef, undef,
                              qq[ (for the end of the stats period (lastyear))]) if $@;
+    warn "lastyear\n";
   } elsif ($input{availstats} eq 'custom') {
     eval {
       $startstats = DateTime->new(
@@ -2426,14 +2489,17 @@ sub availstats {
                                );
     }; $errors .= dterrormsg(parsenum($input{endyear}), parsenum($input{endmonth}), parsenum($input{endmday}), undef, undef,
                              qq[ (for the end of the stats period (custom))]) if $@;
+    warn "Custom stats period.\n";
   } elsif ($input{availstats} eq 'overtime') {
     # This is where we start doing multiple date ranges.
     # TODO:  implement this.
+    warn "overtime\n";
   }
   warn "endstats: $endstats\n";
 
   my $dur = $endstats - $startstats;
   my $hrd = human_readable_duration($dur);
+  warn "hrd = $hrd\n";
   my $prevstart = $startstats - $dur;
   my $nextend = $endstats + $dur;
   my $prevlink = qq[<a href="./?availstats=custom]
@@ -2450,20 +2516,15 @@ sub availstats {
   my @monthopt = ( [ 1 => 'January'],   [  2 => 'February'], [  3 => 'March'],    [  4 => 'April'],
                    [ 5 => 'May'],       [  6 => 'June'],     [  7 => 'July'],     [  8 => 'August'],
                    [ 9 => 'September'], [ 10 => 'October'],  [ 11 => 'November'], [ 12 => 'December']);
-
-  print include::standardoutput('Availability Statistics', $errors
-                                . qq[<h1>Availability Statistics</h1>]
-                                . qq[<p>$prevlink | $nextlink</p>]
-                                . (join "\n\n", map { availstats_for_category($_, $startstats, $endstats, \@category) } @category)
-                                . qq[<div>&nbsp;</div><hr /><div>&nbsp;</div>
-
-  <form class="availstatsform" action"index.cgi" method="get">
+  carp "category: " . Dumper(\@category) . "\n";
+  warn "assembling form\n";
+  my $form = qq[<form class="availstatsform" action"index.cgi" method="get">
       <input type="hidden" name="availstats" value="custom" />
       <table class="formtable"><tbody>
           <tr><th>Categories:</th>
               <td>] . (join "\n                  ", map {
                 my ($catname, @res) = @$_;
-                @res = categoryitems($catname, \@category);
+                @res = categoryitems($catname, \@allcat);
                 my $checked = (grep { $$_[0] eq $catname } @category) ? qq[checked="checked"] : '';
                 qq[<input type="checkbox" id="cbcat$catname" name="categorycb$catname" $checked />&nbsp;<label for="cbcat$catname">$catname</label>];
               } include::categories()) . qq[</td></tr>
@@ -2484,7 +2545,20 @@ sub availstats {
                   </tbody></table></td></tr>
           <tr><th>Use These Settings:</th><td><input type="submit" value="Get Availability Stats" /></td></tr>
       </tbody></table>
-  </form>\n],
+  </form>];
+  warn "assembling stats for categories...\n";
+  my $catstats = (join "\n\n", map {
+    my $c = $_;
+    warn "category: $$c[0]\n";
+    availstats_for_category($c, $startstats, $endstats, \@category)
+  } @category);
+  warn "Done, ready to send output now\n";
+  print include::standardoutput('Availability Statistics', $errors
+                                . qq[<h1>Availability Statistics</h1>]
+                                . qq[<p>$prevlink | $nextlink</p>]
+                                . $catstats
+                                . qq[<div>&nbsp;</div><hr /><div>&nbsp;</div>
+  $form\n],
 				$ab, $input{usestyle});
   exit 0;
 }

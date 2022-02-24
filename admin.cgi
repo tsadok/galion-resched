@@ -19,6 +19,7 @@ our $hiddenpersist  = persist('hidden', [qw(category magicdate)]);
 
 my %resflag = (
                C => ['C', 'Cleaned-after-use Tracking', 'Enable tracking whether this resource has been cleaned after each use.'],
+               D => ['D', 'Deep-Freeze Reboot Tracking', 'Enable tracking whether this resource has been rebooted after each use.' ],
                R => ['R', 'Room', 'This resource is a meeting room.'],
                S => ['S', 'StaffSchAux', 'This resource should be listed as an auxilliary schedule when showing staff schedules.'],
                T => ['T', 'TimeDuality', 'This resource can accept a second time, e.g. so that a room booked early for setup can show a meeting start time.'],
@@ -50,6 +51,7 @@ my %equipflag = (
                  N => [ 'N', 'Number',    'Only meaningful for <q>text</q> fields; causes a smaller text entry box.'],
                  X => [ 'X', 'Disabled',  'Do not offer this equipment when booking any resource now, even if it is assigned.' ],
                 );
+# For booking flags, see %bookingflag in index.cgi
 
 my %default = (st_name => "Meeting Start Time");
 

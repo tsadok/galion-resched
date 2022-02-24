@@ -1,0 +1,52 @@
+#!/usr/bin/perl -w
+
+sub historical_hours_of_operation {
+  my ($day) = @_;
+  # TODO:  This is necessarily hardcoded, because resched does not yet
+  #        track historical hours of operation when they differ from current.
+  my $era = ($day->ymd() lt "2020-03-18") ? "before-COVID" :
+    ($day->ymd() lt "2020-07-01") ? "CLOSED-for-COVID" :
+    ($day->ymd() lt "2020-09-07") ? "COVID-hours" :
+    "post-COVID";
+  if (($era eq "CLOSED-for-COVID")
+      or not ($day->wday() % 7)) {
+    $starthour = 12; $startmin = 0;
+    $stophour  = 12; $stopmin  = 0;
+  } elsif ($era eq "before-COVID") {
+    $starthour = 9;
+    $startmin  = 0;
+    if ($day->wday() == 5) {
+      $stophour = 6;
+      $stopmin  = 0;
+    } elsif ($day->wday() == 6) {
+      $stophour = 5;
+      $stopmin  = 0;
+    } else {
+      $stophour = 20;
+      $stopmin  = 30;
+    }
+  } elsif ($day->wday == 6) {
+    $starthour = 10;
+    $startmin  = 30;
+    $stophour  = 16;
+    $stopmin   = 0;
+  } elsif ($era eq "COVID-hours") {
+    $starthour = 9;
+    $startmin  = 30;
+    $stophour  = 18;
+    $stopmin   = 0;
+  } else {
+    $starthour = 9;
+    $startmin  = 30;
+    if ($day->wday() == 5) {
+      $stophour  = 18;
+      $stopmin   = 0;
+    } else {
+      $stophour  = 20;
+      $stopmin   = 30;
+    }
+  }
+  return ($starthour, $startmin, $stophour, $stopmin, $era);
+}
+
+42;

@@ -580,3 +580,35 @@ print "Setting salt_length = $maxlen\n";
 setvariable("resched", "salt_length", $maxlen);
 
 
+$db->prepare(qq[CREATE TABLE IF NOT EXISTS
+      resched_availstats (
+            id               INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            category         tinytext,
+            timeframestart   datetime,
+            timeframeend     datetime,
+            numavailable     integer,
+            numused          integer,
+            numtotal         integer,
+            flags            tinytext );])->execute();
+
+$db->prepare(qq[CREATE TABLE IF NOT EXISTS
+      resched_availstats_month_overall (
+            id               INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            category         tinytext,
+            monthstart       datetime,
+            statinterval     integer,
+            availcount       integer,
+            numtimes         integer,
+            flags            tinytext );])->execute();
+
+$db->prepare(qq[CREATE TABLE IF NOT EXISTS
+      resched_availstats_month_tod (
+            id               INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            category         tinytext,
+            monthstart       datetime,
+            statinterval     integer,
+            timeofday        tinytext,
+            availcount       integer,
+            numtimes         integer,
+            flags            tinytext );])->execute();
+

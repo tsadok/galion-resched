@@ -536,6 +536,9 @@ div.p:last-child {
   margin-bottom:        0.1em;
 }
 
+div.bookingchore {
+  display:              inline-block;
+}
 
 /* ************************  Circ Desk Mail  ************************ */
 div.listwrapper {
