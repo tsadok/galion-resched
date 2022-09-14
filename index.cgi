@@ -1588,6 +1588,10 @@ sub doview {
   } else {
     @res = split /,\s*/, $input{view};
   }
+  my $catnum  = 0;
+  my %catsort = map {
+    ($$_[0] => $catnum++)
+  } @category;
 
   my (%res, @thead, @tbody);
   for my $id (@res) {
@@ -2045,10 +2049,14 @@ sub doview {
     # This is a slightly better title, but maybe we can do better.
   }
   my %specialview = map {
+    @$_
+  } reverse sort {
+    $catsort{$$a[1]} cmp $catsort{$$b[1]}
+  } map {
     my ($name, @res) = @$_;
     @res = categoryitems($name, \@category);
     my $view = join ',', sort { $a <=> $b } @res;
-    ($view => $name)
+    [$view => $name]
   } @category;
   my $thisview = join ",", sort { $a <=> $b } split /,\s*/, $input{view};
   if ($input{magicdate} eq 'today') {
