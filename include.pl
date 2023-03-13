@@ -403,10 +403,10 @@ $nonajaxstyle
 our $footer = qq[<div class="footer">
 <p class="noprint">Powered By <abbr title="Linux, Apache, MySQL, Perl"><a href="http://www.onlamp.com">LAMP</a></abbr>
    and <abbr title="Asynchronous Javascript And XML"><a href="http://en.wikipedia.org/wiki/AJAX">AJAX</a></abbr> Technologies:
-<a href="http://www.linux.org"><img src="tux-small.png" alt="Linux, "></img></a>
-<a href="http://www.apache.org"><img src="feather-small.png" alt="Apache, "></img></a>
-<a href="https://mariadb.org/"><img src="seal-blue-white-small.png" alt="MariaDB, " width="42" height="28"></img></a>
-<a href="http://www.perl.com/"><img src="camel-small.png" alt="Perl, " width="28" height="31"></img></a>
+<a href="https://en.wikipedia.org/wiki/Linux"><img src="tux-small.png" alt="Linux, " /></a>
+<a href="http://www.apache.org"><img src="Apache-feather-small.png" alt="Apache, " width="16" height="32" /></a>
+<a href="https://mariadb.org/"><img src="maria-seal-small.png" alt="MariaDB, " width="47" height="31" /></a>
+<a href="http://www.perl.com/"><img src="camel-small.png" alt="Perl, " width="28" height="31" /></a>
 <a href="http://en.wikipedia.org/wiki/Javascript"><img src="rhino.png" alt="Javascript, " width="23" height="32" /></a>
 <abbr title="Extensible Markup Language"><a href="http://www.w3.org/XML/"><code>&lt;xml/&gt;</code></a></abbr>
 </p></div>\n];
