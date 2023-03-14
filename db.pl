@@ -318,7 +318,7 @@ sub findrecord {
   push @field, $field; $fv{$field} = $value;
   while (@more) {
     ($field, $value, @more) = @more;
-    die "findrecord called with unbalanced arguments (no value for $field field)" if not defined $value;
+    croak "findrecord called with unbalanced arguments (no value for $field field)" if not defined $value;
     push @field, $field;
     $fv{$field} = $value;
   }
