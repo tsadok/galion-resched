@@ -101,7 +101,7 @@ for my $category (include::categories()) {
 		  $sid => $rec[0] } @schedule;
 
   print "Schedules: " . (join ", ", map { qq<$_ [$sch{$_}{name}]> } @schedule) . "\n";
-  my $gcf = include::schedule_start_offset_gcf(map { $sch{$_} } @schedule);
+  my $gcf = include::schedule_start_offset_gcf([map { $sch{$_} } @schedule]);
   print "GCF: $gcf\n";
 
   my %ot = include::openingtimes();

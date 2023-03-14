@@ -1606,9 +1606,9 @@ sub doview {
 
   # We want the starttimes as numbers of minutes since midnight.
   my @starttime = include::uniq(map { $$_{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2; } @s);
-  # (These are used to calculate the gcf and also for the table's start time for the first row.)
+  # (These are used for the table's start time for the first row, in addition to the gcf calculation.)
 
-  my $gcf = include::schedule_start_offset_gcf(@s);
+  my $gcf = include::schedule_start_offset_gcf(\@s, start => \@starttime);
   # $gcf now is the number of minutes per table row.  We can get the
   # rowspan figure for each cell by dividing the duration it
   # represents by this $gcf figure.  We can also calculate the times
@@ -1625,7 +1625,8 @@ sub doview {
   my $year  = ($input{year}  || ((localtime)[5] + 1900));
   my $month = ($input{month} || ((localtime)[4] + 1));
   my $prevday;
-  @dt = map {
+  my $skippedclosedday = 0;
+  @dt = grep { ref $_ } map {
     my $mday = $_;
     if ($mday <= $prevday) {
       # $mday = 1;
@@ -1644,9 +1645,12 @@ sub doview {
                          );
     }; $errors .= dterrormsg($year, $month, $mday, int($t / 60), ($t % 60),
                              qq[ (for what day(s) we are showing)]) if $@;
-    ($alwaysclosed{$dt->dow() % 7})
-      ? () # We are always closed that day.
-      : $dt;
+    if ($alwaysclosed{$dt->dow() % 7}) {
+      # We are always closed that day.
+      $skippedclosedday++;
+      undef $dt;
+    }
+    $dt;
   } map {
     if (/(\d+)-(\d+)/) {
       $1 .. $2
@@ -1671,6 +1675,10 @@ sub doview {
                                                       qq[Sorry, but schedules more than $cutoffmonths months old are
                                                            unavailable.  If this is a problem, ask your ReSched site
                                                            administrator about the privacy policy configuration.]));
+    } elsif ($skippedclosedday) {
+      print include::standardoutput("Error: Closed",
+                                    include::errordiv("Error: Closed",
+                                                      qq[We are always closed that day of the week, so nothing can be scheduled then.]));
     } else {
       print include::standardoutput("Error: No Dates Specified",
                                     include::errordiv("No Dates", qq[Did you forget to specify which dates you wanted to see the schedule for?]));
@@ -2202,7 +2210,7 @@ sub availstats_for_category {
   } @schedule);
   push @debugline, "calculated start times: " . join ", ", @starttime;
   warn "calculated start times: " . (join ", ", @starttime) . "\n";
-  my $gcf = include::schedule_start_offset_gcf(map { $sch{$_} } @schedule);
+  my $gcf = include::schedule_start_offset_gcf([map { $sch{$_} } @schedule]);
   push @debugline, "gcf: $gcf";
   warn "gcf: $gcf\n";
   my %ot = include::openingtimes();

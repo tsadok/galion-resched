@@ -55,6 +55,7 @@ sub getuserfromcookie {
     elsif ($cookie{expires} le DateTime::Format::ForDB(DateTime->now)) {
       return undef; # Cookie is stale.  Ptooey.
     } else {
+      $auth::id = $cookie{id};
       return $cookie{user};
     }
   } else {
@@ -83,6 +84,7 @@ sub newcookie {
     }
   }
   if (addrecord('authcookies', \%r)) {
+    $auth::id = $db::added_record_id;
     return ("login=$r{cookiestring}; expires=".DateTime::Format::Cookie(DateTime::From::MySQL($r{expires})));
   } else {
     return undef;

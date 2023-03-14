@@ -448,9 +448,15 @@ sub uniqnonzero {
 }
 
 sub schedule_start_offset_gcf { # Returns GCF of the _offsets_ (not of the start times themselves).
-  my (@s) = @_;
+  my ($schedules, %arg) = @_;
+  my @s = @$schedules;
   # We want the starttimes as numbers of minutes since midnight.
-  my @starttime = uniq(map { $$_{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2; } @s);
+  my @starttime;
+  if ($arg{start}) {
+    @starttime = @{$arg{start}};
+  } else {
+    @starttime = uniq(map { $$_{firsttime} =~ m/(\d{2})[:](\d{2})[:]\d{2}/; (60*$1)+$2; } @s);
+  }
 
   my $gcf;
   # Start based on schedules...
