@@ -263,12 +263,13 @@ sub authbox {
     # input (_unless_ it is auth related) to be processed after
     # the login.
     my %input_to_keep = map { ((/^AUTH_/)?(undef):(($_=>$main::input{$_}))); } keys %main::input;
+    $input_to_keep{AUTH_logout} = undef;
     my $result = qq[<!-- ****************** BEGIN AUTHBOX ****************** -->\n$status
      <div class="authbox"><!-- TODO:  put login image here? -->
       <div>You are currently Anonymous (not logged in).</div>
       <form method="POST" action="$uri">\n];
-    for (keys %input_to_keep) {
-      $result   .= qq[      <input type="hidden" name="$_" value="$input_to_keep{$_}"></input>\n];
+    for my $k (grep { $input_to_keep{$_} } keys %input_to_keep) {
+      $result   .= qq[      <input type="hidden" name="$k" value="$input_to_keep{$k}"></input>\n];
     }
     $result     .= qq[      <div>Username:  <input type="text"     name="AUTH_login_username" size="12"></input></div>
       <div>Password:  <input type="password" name="AUTH_login_password" size="12"></input></div>\n];

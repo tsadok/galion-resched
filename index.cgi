@@ -481,7 +481,7 @@ if ($auth::user) {
 
     print include::standardoutput('Resource Scheduling',
                                   qq[<h2>Welcome to the Resource Scheduling facility.</h2>
-<form action="./" method="POST">
+<form action="index.cgi" method="POST">
 ] . persist('hidden', ['category']) . qq[
 <table style="border-style: ridge; padding: 0.5em;">
   <colgroup span="2"><col width="40%"></col><col width="60%"></col></colgroup>
@@ -752,7 +752,7 @@ sub viewbooking {
         ? (qq[<div class="bookingflag"><input type="checkbox" id="flagC" name="flagC" ] . (($b{flags} =~ /C/) ? ' checked="checked"' : '') . qq[ />
               <label for="flagC">Cleaned after use</label></div>])
         : "";
-      my $rebooted = ($res{flags} = /D/)
+      my $rebooted = ($res{flags} =~ /D/)
         ? (qq[<div class="bookingflag"><input type="checkbox" id="flagR" name="flagR" ] . (($b{flags} =~ /R/) ? ' checked="checked"' : '') . qq[ />
               <label for="flagR">Rebooted after use</label></div>])
         : "";

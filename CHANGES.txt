@@ -84,6 +84,8 @@ Version 0.9.9:
   * Overview: add previous/next month buttons (to the left and right,
     respectively, of the choose-date form).  The choose-date form is now
     centered between them in the stock stylesheets.
+  * Better error message when the user asks for a schedule for a day
+    of the week on which we are always closed.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

@@ -189,20 +189,22 @@ sub standardoutput {
   # This returns the complete http headers and the html
   # calling code must define sub main::usersidebar that
   # returns an appropriate div.
-  my ($title, $content, $ab, $style, $meta, $favicon, $omitsidebar) = @_;
+  my ($title, $content, $ab, $style, $meta, $favicon, $omitsidebar, $headers) = @_;
   #$style   ||= 'lowcontrast'; # redundant: include::style() does this on its own.
   my $cws = $omitsidebar ? $content
     : contentwithsidebar($content, "$ab\n"."<!-- fi: '$favicon'; os: '$omitsidebar' -->".main::usersidebar());
   my $css = include::style($style);
   $favicon ||= main::getvariable('resched', 'bookmark_icon') || 'resched.ico';
-  return qq[Content-type: $include::content_type\n$auth::cookie
+  $headers ||= "";
+  my $cookie = $auth::cookie || "";
+  return qq[Content-type: $include::content_type\n$cookie$headers
 
 $include::doctype
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
    <!--  This page is served by Galion ReSched, a Resource Scheduling tool.  -->
    <!--  Created by Nathan Eady for Galion Public Library.                   -->
-   <!--  Galion ReSched version 0.9.8 vintage 2019 February 27.              -->
+   <!--  Galion ReSched version 0.9.9 vintage 2023 July.                     -->
    <!--  http://cgi.galion.lib.oh.us/staff/resched-public/                   -->
    <title>$title</title>
    <link rel="SHORTCUT ICON" href="$favicon" />

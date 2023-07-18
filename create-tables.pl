@@ -211,6 +211,15 @@ if (not scalar @bkcolor) {
                                         });
 }
 
+$db->prepare("CREATE TABLE IF NOT EXISTS
+             resched_session (
+                   id integer NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                   authcookie integer,
+                   user       integer,
+                   style      tinytext,
+                   category   tinytext,
+                   flags      tinytext )"
+            )->execute();
 
 $db->prepare(
     "CREATE TABLE IF NOT EXISTS
