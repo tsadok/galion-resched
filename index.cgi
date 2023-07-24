@@ -1620,7 +1620,6 @@ sub doview {
   my $t = $starttime[0]; for (@starttime) { $t = $_ if $_ < $t }
   my $tablestarttime=$t;
 
-
   # What day(s) are we showing?
   my $year  = ($input{year}  || ((localtime)[5] + 1900));
   my $month = ($input{month} || ((localtime)[4] + 1));
@@ -1739,6 +1738,7 @@ sub doview {
         $debugtext .= "<div>r$r edt " . $edt->hms() . "</div>";
       }; $errors .= dterrormsg($dt->year, $dt->month(), $dt->day(), $$end[0], $$end[1],
                                qq[ (for the end of a timeslot)]) if $@;
+
       push @col,
         +{
           res => $res{$r},
@@ -1962,17 +1962,23 @@ sub doview {
                              qq[ (for preliminary column start time)]) if $@;
       my $whentext = $when->date() . " " . $when->time();# . "&amp;tsn=$tsn&amp;gcf=$gcf&amp;ssm=$ssm";
       my $resid = $$c{res}{id};
+      my %ot = include::openingtimes();
+      my ($openhour, $openminute) = @{$ot{$when->dow()} || [ 8, 0]};
+
       if (not $$c{tscont}[$tsn]) {
-        my ($availstuff);
-        if (isroom($resid)
+        my $availstuff = "";
+        if (($when->hour() < $openhour) or (($when->hour() == $openhour) and ($when->minute() < $openminute))) {
+          # TODO: should we show partial timeslots in the morning?
+          $availstuff = qq{<div class="notopenyet">Not Open</div>};
+        } elsif (isroom($resid)
             # or ($$c{sch}{intervalmins} ne $$c{sch}{durationmins}) # This MAY not matter, provided the page will reload anyway when the resource is booked.
             # or (not $$c{sch}{durationlock}) # This MAY not matter too, provided the user can always do things the old way if a different duration is wanted.
             or ($input{useajax} eq 'off')) {
-          $availstuff = qq[<!-- *** Regularly Scheduled Interval ***
+          $availstuff .= qq[<!-- *** Regularly Scheduled Interval ***
              --><a href="./?action=newbooking&amp;resource=$resid&amp;when=$whentext&amp;]. persist() . qq[" class="avail">(available)</a>];
         } else {
           ++$uniqueid;
-          $availstuff = qq[<span id="unid$uniqueid"><!-- *** Regularly Scheduled Interval ***
+          $availstuff .= qq[<span id="unid$uniqueid"><!-- *** Regularly Scheduled Interval ***
              --><a href="./?action=newbooking&amp;resource=$resid&amp;when=$whentext&amp;]. persist() . qq[" class="avail">(available)</a>
                 <input type="button" value="Quick!" onclick="onemoment('unid$uniqueid'); sendajaxrequest('ajax=newbookingform&amp;containerid=unid$uniqueid&amp;resource=$resid&amp;when=$whentext&amp;] . persist(undef, ['magicdate']) . qq[');" />
              </span>];
