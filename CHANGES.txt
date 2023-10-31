@@ -86,6 +86,8 @@ Version 0.9.9:
     centered between them in the stock stylesheets.
   * Better error message when the user asks for a schedule for a day
     of the week on which we are always closed.
+  * Bugfix: when creating a new program, the redirect header now handles
+    variables correctly, that it previously mangled.
   
 Version 0.9.8:
   * Two new config variables have been added, privacy_cutoff_old_schedules

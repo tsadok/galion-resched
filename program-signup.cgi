@@ -116,9 +116,9 @@ sub redirectheader {
   return unless $action;
   my $seconds = getvariable('resched', 'redirect_seconds') || 15;
   my $uri = getvariable('resched', 'url_base')
-    . qq[program-signup.cgi?action=$action&amp;persistentvars];
+    . qq[program-signup.cgi?action=$action&amp;$persistentvars];
   foreach my $key (qw(program category attender id sortby cutoffdate)) {
-    $uri .= qq[&amp;program=$input{$key}] if $input{$key};
+    $uri .= qq[&amp;$key=$input{$key}] if $input{$key};
   }
   if ($0 =~ m~resched-dev/~) {
     # Some sites (such as Galion) may choose deploy a stable version
@@ -521,8 +521,8 @@ sub inheritflags {
 
 sub showprogram {
   my ($id) = $input{program};
-  my $prog = getrecord('resched_program', $id);
-  my $when = include::datewithtwelvehourtime(DateTime::From::MySQL($$prog{starttime}));
+  my ($prog) = findrecord('resched_program', 'id', $id);
+  my $when   = include::datewithtwelvehourtime(DateTime::From::MySQL($$prog{starttime}));
   my $cancelednote = '<!-- no canceled signups -->';
   if ($prog) {
     my @signup = findrecord('resched_program_signup', 'program_id', $id);
